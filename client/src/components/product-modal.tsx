@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,13 +31,21 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
     unidades: 0,
   });
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Produto | null>(null);
 
   const debouncedSearch = useDebounce(formData.nome, 300);
 
   const { data: suggestions = [] } = useQuery<Produto[]>({
     queryKey: ["/api/produtos/search", { q: debouncedSearch }],
-    enabled: debouncedSearch.length >= 2,
+    enabled: debouncedSearch.length >= 1, // Permitir busca com apenas 1 caractere para códigos
   });
+
+  // Auto-select product if exact code match is found
+  useEffect(() => {
+    if (suggestions.length === 1 && suggestions[0].codigo === formData.nome && !selectedProduct) {
+      handleSelectSuggestion(suggestions[0]);
+    }
+  }, [suggestions, formData.nome, selectedProduct]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,8 +89,6 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
     setShowSuggestions(false);
     setSelectedProduct(produto);
   };
-
-  const [selectedProduct, setSelectedProduct] = useState<Produto | null>(null);
 
   const calculateTotalUnits = () => {
     if (!selectedProduct) return 0;
@@ -135,12 +141,12 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
           {/* Product Name with Autocomplete */}
           <div>
             <Label className="block text-sm font-medium text-gray-700 mb-2">
-              Nome do Produto
+              Código ou Nome do Produto
             </Label>
             <div className="relative">
               <Input
                 type="text"
-                placeholder="Digite o nome do produto..."
+                placeholder="Digite o código ou nome do produto..."
                 value={formData.nome}
                 onChange={(e) => {
                   setFormData(prev => ({ ...prev, nome: e.target.value }));
@@ -152,18 +158,27 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
               />
               
               {/* Autocomplete Suggestions */}
-              {showSuggestions && suggestions.length > 0 && formData.nome.length >= 2 && (
-                <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-b-lg shadow-lg z-10 max-h-40 overflow-y-auto">
+              {showSuggestions && suggestions.length > 0 && formData.nome.length >= 1 && (
+                <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-b-lg shadow-lg z-10 max-h-48 overflow-y-auto">
                   {suggestions.map((produto) => (
                     <div
                       key={produto.id}
                       onClick={() => handleSelectSuggestion(produto)}
-                      className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                      className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                     >
-                      <div className="font-medium">{produto.nome}</div>
-                      <div className="text-xs text-gray-500">
-                        Código: {produto.codigo} | 
-                        {produto.unidadesPorPacote * produto.pacotesPorLastro * produto.lastrosPorPallet} unid/pallet
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900">{produto.nome}</div>
+                          <div className="text-sm text-gray-600 mt-1">
+                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
+                              {produto.codigo}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right text-xs text-gray-500">
+                          <div>{produto.unidadesPorPacote * produto.pacotesPorLastro * produto.lastrosPorPallet} unid/pallet</div>
+                          <div>{produto.unidadesPorPacote}/{produto.pacotesPorLastro}/{produto.lastrosPorPallet}</div>
+                        </div>
                       </div>
                     </div>
                   ))}
