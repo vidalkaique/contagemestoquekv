@@ -1,0 +1,66 @@
+Crie um app mobile simples em React Native com Expo e Supabase.
+
+📦 Finalidade: ajudar na contagem diária de estoque de produtos (refrigerantes e bebidas).
+
+✅ Requisitos principais:
+
+1. Sem tela de login. O app deve abrir direto.
+
+2. Tela inicial com 2 botões:
+   - “Criar Nova Contagem”
+   - “Ver Histórico de Contagens”
+
+---
+
+📝 Nova Contagem:
+- Campo de data da contagem (preenchido automaticamente com a data de hoje, mas pode ser editado).
+- Botão: “Adicionar Produto” → abre popup/modal com os campos:
+  - Nome do produto (campo texto com autocomplete, buscando produtos cadastrados)
+  - Pallets (número)
+  - Lastros (número)
+  - Pacotes (número)
+  - Unidades (número)
+  - Botão “Adicionar Produto à Lista”
+
+- Abaixo, mostrar lista dos produtos adicionados.
+
+- Botão “Finalizar Contagem”:
+  - Salva todos os dados da contagem no Supabase.
+  - Chama uma Supabase Edge Function que gera um arquivo Excel (.xlsx) com os dados da contagem e retorna um link.
+  - O app exibe um botão “Baixar Excel” com esse link.
+
+---
+
+📊 Histórico:
+- Lista de contagens anteriores (data da contagem + total de produtos).
+- Cada item da lista tem botão “Ver Excel” que baixa a planilha novamente.
+
+---
+
+📦 Estrutura no Supabase:
+- Tabela `contagens`: id (uuid), data (date), created_at (timestamp)
+- Tabela `produtos`: id (uuid), nome (text)
+- Tabela `itens_contagem`: id, contagem_id (FK), produto_id ou nome_livre, pallets, lastros, pacotes, unidades
+
+---
+
+🎯 Estilo:
+- Layout simples e funcional, usando Tailwind com `tailwind-rn`
+- Cores neutras, boa usabilidade mobile
+
+---
+
+🚀 Extras úteis:
+- Armazenar contagens em andamento localmente com AsyncStorage, caso o app feche antes de finalizar.
+- Validar os campos (nenhum campo de quantidade pode ser negativo).
+- Usar UUIDs automáticos para contagens e itens.
+
+---
+
+🧠 Por fim:
+- Gere o app completo em React Native com Expo
+- Configure o Supabase client no projeto
+- Escreva o código da Edge Function que exporta os dados da contagem para Excel
+- Mostre como rodar localmente com Expo e conectar ao Supabase
+- Não me peça para codar, apenas gere tudo pronto
+
