@@ -31,14 +31,19 @@ ContaEstoque is a modern full-stack web application designed to simplify daily s
 ## Key Components
 
 ### Database Schema
-1. **Produtos Table**: Stores product master data (id, nome, createdAt)
+1. **Produtos Table**: Stores product master data with conversion factors
+   - id, codigo (unique), nome, unidadesPorPacote, pacotesPorLastro, lastrosPorPallet, createdAt
 2. **Contagens Table**: Stores count sessions (id, data, createdAt, excelUrl)
 3. **Itens_Contagem Table**: Stores individual product counts with quantities (pallets, lastros, pacotes, unidades)
 
 ### Core Features
-1. **Product Management**: Autocomplete search, dynamic product creation
+1. **Product Management**: Complete CRUD operations with codes and unit conversions
+   - Product registry with unique codes and names
+   - Unit conversion factors (unidades→pacotes→lastros→pallets)
+   - Search by product name or code
+   - Automatic total unit calculations
 2. **Count Creation**: Date-based counting sessions with multiple products
-3. **Inventory Tracking**: Four-tier quantity system (pallets, lastros, pacotes, unidades)
+3. **Inventory Tracking**: Four-tier quantity system with automatic unit conversion
 4. **Excel Export**: Automated spreadsheet generation with formatted data
 5. **History Management**: View and re-download previous counts
 
@@ -92,6 +97,7 @@ ContaEstoque is a modern full-stack web application designed to simplify daily s
 
 ## Changelog
 - June 30, 2025. Initial setup
+- June 30, 2025. Enhanced product management with unit conversions and automatic calculations
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

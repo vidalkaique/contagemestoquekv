@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/home";
 import NewCount from "@/pages/new-count";
 import History from "@/pages/history";
+import Products from "@/pages/products";
 
 function Router() {
   return (
@@ -13,6 +14,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/new-count" component={NewCount} />
       <Route path="/history" component={History} />
+      <Route path="/products" component={Products} />
       <Route>
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
           <div className="text-center">

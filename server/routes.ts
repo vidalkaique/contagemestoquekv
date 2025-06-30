@@ -9,6 +9,16 @@ import { ptBR } from "date-fns/locale";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Produtos
+  app.get("/api/produtos", async (req, res) => {
+    try {
+      const produtos = await storage.getAllProdutos();
+      res.json(produtos);
+    } catch (error) {
+      console.error("Error fetching produtos:", error);
+      res.status(500).json({ message: "Erro ao buscar produtos" });
+    }
+  });
+
   app.get("/api/produtos/search", async (req, res) => {
     try {
       const query = req.query.q as string || "";
@@ -24,10 +34,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const data = insertProdutoSchema.parse(req.body);
       
-      // Check if produto already exists
-      const existing = await storage.getProdutoByNome(data.nome);
-      if (existing) {
-        return res.json(existing);
+      // Check if produto already exists by codigo or nome
+      const existingCodigo = await storage.getProdutoByCodigo(data.codigo);
+      if (existingCodigo) {
+        return res.status(400).json({ message: "Produto com este código já existe" });
+      }
+      
+      const existingNome = await storage.getProdutoByNome(data.nome);
+      if (existingNome) {
+        return res.status(400).json({ message: "Produto com este nome já existe" });
       }
       
       const produto = await storage.createProduto(data);
@@ -38,6 +53,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Dados inválidos", errors: error.errors });
       }
       res.status(500).json({ message: "Erro ao criar produto" });
+    }
+  });
+
+  app.put("/api/produtos/:id", async (req, res) => {
+    try {
+      const data = insertProdutoSchema.partial().parse(req.body);
+      const produto = await storage.updateProduto(req.params.id, data);
+      res.json(produto);
+    } catch (error) {
+      console.error("Error updating produto:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Dados inválidos", errors: error.errors });
+      }
+      res.status(500).json({ message: "Erro ao atualizar produto" });
+    }
+  });
+
+  app.delete("/api/produtos/:id", async (req, res) => {
+    try {
+      await storage.deleteProduto(req.params.id);
+      res.json({ message: "Produto removido com sucesso" });
+    } catch (error) {
+      console.error("Error deleting produto:", error);
+      res.status(500).json({ message: "Erro ao remover produto" });
     }
   });
 
@@ -90,11 +129,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create or find produto if nome is provided
       if (data.nomeLivre && !data.produtoId) {
-        const existingProduto = await storage.getProdutoByNome(data.nomeLivre);
+        // Try to find by nome first
+        let existingProduto = await storage.getProdutoByNome(data.nomeLivre);
+        
+        // If not found by name, try by codigo
+        if (!existingProduto) {
+          existingProduto = await storage.getProdutoByCodigo(data.nomeLivre);
+        }
+        
         if (existingProduto) {
           data.produtoId = existingProduto.id;
         } else {
-          const newProduto = await storage.createProduto({ nome: data.nomeLivre });
+          // Create new produto with basic data (will need to be completed later in produto management)
+          const newProduto = await storage.createProduto({ 
+            codigo: `AUTO_${Date.now()}`,
+            nome: data.nomeLivre,
+            unidadesPorPacote: 1,
+            pacotesPorLastro: 1,
+            lastrosPorPallet: 1
+          });
           data.produtoId = newProduto.id;
         }
       }

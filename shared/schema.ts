@@ -5,7 +5,11 @@ import { z } from "zod";
 
 export const produtos = pgTable("produtos", {
   id: uuid("id").primaryKey().defaultRandom(),
-  nome: text("nome").notNull().unique(),
+  codigo: text("codigo").notNull().unique(),
+  nome: text("nome").notNull(),
+  unidadesPorPacote: integer("unidades_por_pacote").notNull().default(1),
+  pacotesPorLastro: integer("pacotes_por_lastro").notNull().default(1),
+  lastrosPorPallet: integer("lastros_por_pallet").notNull().default(1),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -51,6 +55,10 @@ export const produtosRelations = relations(produtos, ({ many }) => ({
 export const insertProdutoSchema = createInsertSchema(produtos).omit({
   id: true,
   createdAt: true,
+}).extend({
+  unidadesPorPacote: z.number().min(1, "Unidades por pacote deve ser pelo menos 1"),
+  pacotesPorLastro: z.number().min(1, "Pacotes por lastro deve ser pelo menos 1"),
+  lastrosPorPallet: z.number().min(1, "Lastros por pallet deve ser pelo menos 1"),
 });
 
 export const insertContagemSchema = createInsertSchema(contagens).omit({

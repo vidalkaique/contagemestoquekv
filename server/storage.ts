@@ -17,7 +17,11 @@ export interface IStorage {
   // Produtos
   createProduto(produto: InsertProduto): Promise<Produto>;
   getProdutoByNome(nome: string): Promise<Produto | undefined>;
+  getProdutoByCodigo(codigo: string): Promise<Produto | undefined>;
   searchProdutos(query: string): Promise<Produto[]>;
+  getAllProdutos(): Promise<Produto[]>;
+  updateProduto(id: string, produto: Partial<InsertProduto>): Promise<Produto>;
+  deleteProduto(id: string): Promise<void>;
   
   // Contagens
   createContagem(contagem: InsertContagem): Promise<Contagem>;
@@ -47,14 +51,46 @@ export class DatabaseStorage implements IStorage {
     return produto || undefined;
   }
 
+  async getProdutoByCodigo(codigo: string): Promise<Produto | undefined> {
+    const [produto] = await db
+      .select()
+      .from(produtos)
+      .where(eq(produtos.codigo, codigo));
+    return produto || undefined;
+  }
+
   async searchProdutos(query: string): Promise<Produto[]> {
     if (!query.trim()) return [];
     
     return await db
       .select()
       .from(produtos)
-      .where(ilike(produtos.nome, `%${query}%`))
+      .where(
+        sql`${produtos.nome} ILIKE ${`%${query}%`} OR ${produtos.codigo} ILIKE ${`%${query}%`}`
+      )
       .limit(10);
+  }
+
+  async getAllProdutos(): Promise<Produto[]> {
+    return await db
+      .select()
+      .from(produtos)
+      .orderBy(produtos.nome);
+  }
+
+  async updateProduto(id: string, produto: Partial<InsertProduto>): Promise<Produto> {
+    const [updated] = await db
+      .update(produtos)
+      .set(produto)
+      .where(eq(produtos.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProduto(id: string): Promise<void> {
+    await db
+      .delete(produtos)
+      .where(eq(produtos.id, id));
   }
 
   async createContagem(insertContagem: InsertContagem): Promise<Contagem> {

@@ -79,6 +79,24 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
   const handleSelectSuggestion = (produto: Produto) => {
     setFormData(prev => ({ ...prev, nome: produto.nome }));
     setShowSuggestions(false);
+    setSelectedProduct(produto);
+  };
+
+  const [selectedProduct, setSelectedProduct] = useState<Produto | null>(null);
+
+  const calculateTotalUnits = () => {
+    if (!selectedProduct) return 0;
+    
+    const totalUnitsPerPallet = selectedProduct.unidadesPorPacote * 
+                               selectedProduct.pacotesPorLastro * 
+                               selectedProduct.lastrosPorPallet;
+    
+    const totalUnitsFromPallets = formData.pallets * totalUnitsPerPallet;
+    const totalUnitsFromLastros = formData.lastros * (selectedProduct.unidadesPorPacote * selectedProduct.pacotesPorLastro);
+    const totalUnitsFromPacotes = formData.pacotes * selectedProduct.unidadesPorPacote;
+    const totalUnitsFromUnidades = formData.unidades;
+    
+    return totalUnitsFromPallets + totalUnitsFromLastros + totalUnitsFromPacotes + totalUnitsFromUnidades;
   };
 
   const handleClose = () => {
@@ -90,6 +108,7 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
       unidades: 0,
     });
     setShowSuggestions(false);
+    setSelectedProduct(null);
     onClose();
   };
 
@@ -126,6 +145,7 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
                 onChange={(e) => {
                   setFormData(prev => ({ ...prev, nome: e.target.value }));
                   setShowSuggestions(true);
+                  setSelectedProduct(null); // Reset selection when typing manually
                 }}
                 onFocus={() => setShowSuggestions(true)}
                 className="w-full"
@@ -140,13 +160,44 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
                       onClick={() => handleSelectSuggestion(produto)}
                       className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                     >
-                      {produto.nome}
+                      <div className="font-medium">{produto.nome}</div>
+                      <div className="text-xs text-gray-500">
+                        Código: {produto.codigo} | 
+                        {produto.unidadesPorPacote * produto.pacotesPorLastro * produto.lastrosPorPallet} unid/pallet
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
           </div>
+
+          {/* Product Conversion Info */}
+          {selectedProduct && (
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <h4 className="font-medium text-blue-900 mb-2">Conversões do Produto</h4>
+              <div className="grid grid-cols-3 gap-2 text-xs text-blue-800">
+                <div className="text-center">
+                  <div>1 Pallet</div>
+                  <div className="font-medium">{selectedProduct.lastrosPorPallet} lastros</div>
+                </div>
+                <div className="text-center">
+                  <div>1 Lastro</div>
+                  <div className="font-medium">{selectedProduct.pacotesPorLastro} pacotes</div>
+                </div>
+                <div className="text-center">
+                  <div>1 Pacote</div>
+                  <div className="font-medium">{selectedProduct.unidadesPorPacote} unidades</div>
+                </div>
+              </div>
+              <div className="mt-2 text-center">
+                <div className="text-xs text-blue-600">Total por pallet:</div>
+                <div className="font-medium text-blue-900">
+                  {selectedProduct.unidadesPorPacote * selectedProduct.pacotesPorLastro * selectedProduct.lastrosPorPallet} unidades
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Quantity Fields */}
           <div className="grid grid-cols-2 gap-4">
@@ -203,6 +254,22 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
               />
             </div>
           </div>
+
+          {/* Total Units Display */}
+          {selectedProduct && (formData.pallets > 0 || formData.lastros > 0 || formData.pacotes > 0 || formData.unidades > 0) && (
+            <div className="bg-emerald-50 p-3 rounded-lg">
+              <h4 className="font-medium text-emerald-900 mb-2">Total de Unidades</h4>
+              <div className="text-2xl font-bold text-emerald-800 text-center">
+                {calculateTotalUnits().toLocaleString()} unidades
+              </div>
+              <div className="text-xs text-emerald-600 mt-1 text-center">
+                {formData.pallets > 0 && `${formData.pallets} pallet(s) `}
+                {formData.lastros > 0 && `${formData.lastros} lastro(s) `}
+                {formData.pacotes > 0 && `${formData.pacotes} pacote(s) `}
+                {formData.unidades > 0 && `${formData.unidades} unidade(s)`}
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex space-x-3 pt-4">

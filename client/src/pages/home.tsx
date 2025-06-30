@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ClipboardList, Plus, History, ChartLine } from "lucide-react";
+import { ClipboardList, Plus, History, ChartLine, Package } from "lucide-react";
 import type { ContagemWithItens } from "@shared/schema";
 
 export default function Home() {
@@ -50,6 +50,20 @@ export default function Home() {
             <div className="text-left">
               <div className="font-semibold">Ver Histórico</div>
               <div className="text-gray-500 text-sm">Contagens anteriores</div>
+            </div>
+          </div>
+          <div className="w-2 h-4 border-r-2 border-b-2 border-gray-300 transform rotate-45" />
+        </button>
+
+        <button 
+          onClick={() => setLocation("/products")}
+          className="w-full bg-white border border-gray-200 text-gray-700 rounded-xl py-4 px-6 flex items-center justify-between shadow-sm hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center">
+            <Package className="text-xl mr-3 text-gray-400" size={24} />
+            <div className="text-left">
+              <div className="font-semibold">Gestão de Produtos</div>
+              <div className="text-gray-500 text-sm">Cadastrar produtos e conversões</div>
             </div>
           </div>
           <div className="w-2 h-4 border-r-2 border-b-2 border-gray-300 transform rotate-45" />
