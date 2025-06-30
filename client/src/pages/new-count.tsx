@@ -20,6 +20,10 @@ interface ProductItem {
   lastros: number;
   pacotes: number;
   unidades: number;
+  // Dados do produto para cálculo
+  unidadesPorPacote?: number;
+  pacotesPorLastro?: number;
+  lastrosPorPallet?: number;
 }
 
 export default function NewCount() {
@@ -143,6 +147,20 @@ export default function NewCount() {
     });
   };
 
+  const calculateProductTotal = (product: ProductItem): number => {
+    if (!product.unidadesPorPacote || !product.pacotesPorLastro || !product.lastrosPorPallet) {
+      return 0;
+    }
+    
+    const totalUnitsPerPallet = product.unidadesPorPacote * product.pacotesPorLastro * product.lastrosPorPallet;
+    const totalUnitsFromPallets = product.pallets * totalUnitsPerPallet;
+    const totalUnitsFromLastros = product.lastros * (product.unidadesPorPacote * product.pacotesPorLastro);
+    const totalUnitsFromPacotes = product.pacotes * product.unidadesPorPacote;
+    const totalUnitsFromUnidades = product.unidades;
+    
+    return totalUnitsFromPallets + totalUnitsFromLastros + totalUnitsFromPacotes + totalUnitsFromUnidades;
+  };
+
   return (
     <>
       {/* Header */}
@@ -210,7 +228,7 @@ export default function NewCount() {
                       <Trash2 size={16} />
                     </Button>
                   </div>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="grid grid-cols-2 gap-3 text-sm mb-3">
                     <div>
                       <span className="text-gray-500">Pallets:</span>
                       <span className="font-medium ml-1">{product.pallets}</span>
@@ -228,6 +246,15 @@ export default function NewCount() {
                       <span className="font-medium ml-1">{product.unidades}</span>
                     </div>
                   </div>
+                  
+                  {/* Total de Unidades */}
+                  {calculateProductTotal(product) > 0 && (
+                    <div className="bg-blue-50 p-2 rounded-md">
+                      <div className="text-sm font-medium text-blue-900">
+                        Total: {calculateProductTotal(product).toLocaleString()} unidades
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

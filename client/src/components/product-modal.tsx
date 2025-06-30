@@ -18,6 +18,9 @@ interface ProductModalProps {
     lastros: number;
     pacotes: number;
     unidades: number;
+    unidadesPorPacote?: number;
+    pacotesPorLastro?: number;
+    lastrosPorPallet?: number;
   }) => void;
 }
 
@@ -71,6 +74,12 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
     onAddProduct({
       id: crypto.randomUUID(),
       ...formData,
+      // Incluir dados de conversão se produto foi selecionado
+      ...(selectedProduct && {
+        unidadesPorPacote: selectedProduct.unidadesPorPacote,
+        pacotesPorLastro: selectedProduct.pacotesPorLastro,
+        lastrosPorPallet: selectedProduct.lastrosPorPallet,
+      }),
     });
 
     // Reset form
@@ -82,6 +91,7 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
       unidades: 0,
     });
     setShowSuggestions(false);
+    setSelectedProduct(null);
   };
 
   const handleSelectSuggestion = (produto: Produto) => {

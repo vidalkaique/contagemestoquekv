@@ -11,7 +11,7 @@ import {
   type ContagemWithItens
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, ilike, sql } from "drizzle-orm";
+import { eq, desc, ilike, or } from "drizzle-orm";
 
 export interface IStorage {
   // Produtos
@@ -66,7 +66,10 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(produtos)
       .where(
-        sql`${produtos.nome} ILIKE ${`%${query}%`} OR ${produtos.codigo} ILIKE ${`%${query}%`}`
+        or(
+          ilike(produtos.nome, `%${query}%`),
+          ilike(produtos.codigo, `%${query}%`)
+        )
       )
       .limit(10);
   }
