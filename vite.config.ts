@@ -5,6 +5,9 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 export default defineConfig({
   plugins: [react()],
+  css: {
+    postcss: './postcss.config.cjs'
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src")
