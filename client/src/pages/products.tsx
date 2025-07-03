@@ -20,9 +20,9 @@ export default function Products() {
   const [formData, setFormData] = useState({
     codigo: "",
     nome: "",
-    unidadesPorPacote: 1,
-    pacotesPorLastro: 1,
-    lastrosPorPallet: 1,
+    unidadesPorPacote: 0,
+    pacotesPorLastro: 0,
+    lastrosPorPallet: 0,
   });
 
   const { data: produtos = [], isLoading } = useQuery<Produto[]>({
@@ -94,7 +94,7 @@ export default function Products() {
     },
   });
 
-  const filteredProducts = produtos.filter(produto => {
+  const filteredProducts = (produtos || []).filter((produto: Produto) => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return produto.nome.toLowerCase().includes(query) || 
@@ -105,9 +105,9 @@ export default function Products() {
     setFormData({
       codigo: "",
       nome: "",
-      unidadesPorPacote: 1,
-      pacotesPorLastro: 1,
-      lastrosPorPallet: 1,
+      unidadesPorPacote: 0,
+      pacotesPorLastro: 0,
+      lastrosPorPallet: 0,
     });
     setEditingProduct(null);
     setIsFormOpen(false);
@@ -117,9 +117,9 @@ export default function Products() {
     setFormData({
       codigo: produto.codigo,
       nome: produto.nome,
-      unidadesPorPacote: produto.unidadesPorPacote,
-      pacotesPorLastro: produto.pacotesPorLastro,
-      lastrosPorPallet: produto.lastrosPorPallet,
+      unidadesPorPacote: Number(produto.unidadesPorPacote) || 0,
+      pacotesPorLastro: Number(produto.pacotesPorLastro) || 0,
+      lastrosPorPallet: Number(produto.lastrosPorPallet) || 0,
     });
     setEditingProduct(produto);
     setIsFormOpen(true);
@@ -137,15 +137,28 @@ export default function Products() {
       return;
     }
 
+    // Garantir que os valores numéricos sejam números válidos
+    const data = {
+      ...formData,
+      unidadesPorPacote: Math.max(0, Number(formData.unidadesPorPacote)),
+      pacotesPorLastro: Math.max(0, Number(formData.pacotesPorLastro)),
+      lastrosPorPallet: Math.max(0, Number(formData.lastrosPorPallet))
+    };
+
     if (editingProduct) {
-      updateMutation.mutate({ id: editingProduct.id, data: formData });
+      updateMutation.mutate({ id: editingProduct.id, data });
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate(data);
     }
   };
 
   const calculateTotalUnits = (produto: Produto) => {
-    return produto.unidadesPorPacote * produto.pacotesPorLastro * produto.lastrosPorPallet;
+    // Garantir que todos os valores sejam números válidos
+    const unidadesPorPacote = Number(produto.unidadesPorPacote) || 0;
+    const pacotesPorLastro = Number(produto.pacotesPorLastro) || 0;
+    const lastrosPorPallet = Number(produto.lastrosPorPallet) || 0;
+    
+    return unidadesPorPacote * pacotesPorLastro * lastrosPorPallet;
   };
 
   return (
@@ -222,7 +235,9 @@ export default function Products() {
                     <h3 className="font-medium text-gray-900">{produto.nome}</h3>
                     <p className="text-sm text-gray-500 mb-1">Código: {produto.codigo}</p>
                     <p className="text-xs text-emerald-600 font-medium">
-                      Total por pallet: {calculateTotalUnits(produto)} unidades
+                      Total por pallet: {calculateTotalUnits(produto) === 0
+                        ? "Configure as quantidades"
+                        : `${calculateTotalUnits(produto)} unidades`}
                     </p>
                   </div>
                   <div className="flex space-x-2">
@@ -230,7 +245,7 @@ export default function Products() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleEdit(produto)}
-                      className="p-2 hover:bg-blue-50 text-blue-600"
+                      className="p-2 hover:bg-red-50 text-red-600"
                     >
                       <Edit size={16} />
                     </Button>
@@ -319,9 +334,12 @@ export default function Products() {
                   </Label>
                   <Input
                     type="number"
-                    min="1"
+                    min="0"
                     value={formData.unidadesPorPacote}
-                    onChange={(e) => setFormData(prev => ({ ...prev, unidadesPorPacote: parseInt(e.target.value) || 1 }))}
+                    onChange={(e) => {
+                      const value = Math.max(0, parseInt(e.target.value) || 0);
+                      setFormData(prev => ({ ...prev, unidadesPorPacote: value }));
+                    }}
                     className="w-full"
                   />
                 </div>
@@ -331,9 +349,12 @@ export default function Products() {
                   </Label>
                   <Input
                     type="number"
-                    min="1"
+                    min="0"
                     value={formData.pacotesPorLastro}
-                    onChange={(e) => setFormData(prev => ({ ...prev, pacotesPorLastro: parseInt(e.target.value) || 1 }))}
+                    onChange={(e) => {
+                      const value = Math.max(0, parseInt(e.target.value) || 0);
+                      setFormData(prev => ({ ...prev, pacotesPorLastro: value }));
+                    }}
                     className="w-full"
                   />
                 </div>
@@ -343,9 +364,12 @@ export default function Products() {
                   </Label>
                   <Input
                     type="number"
-                    min="1"
+                    min="0"
                     value={formData.lastrosPorPallet}
-                    onChange={(e) => setFormData(prev => ({ ...prev, lastrosPorPallet: parseInt(e.target.value) || 1 }))}
+                    onChange={(e) => {
+                      const value = Math.max(0, parseInt(e.target.value) || 0);
+                      setFormData(prev => ({ ...prev, lastrosPorPallet: value }));
+                    }}
                     className="w-full"
                   />
                 </div>

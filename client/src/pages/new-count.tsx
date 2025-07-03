@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useLocation, useParams } from "wouter";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ArrowLeft, Plus, Check, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -11,7 +11,8 @@ import ProductModal from "@/components/product-modal";
 import SuccessModal from "@/components/success-modal";
 import { apiRequest } from "@/lib/queryClient";
 import { saveCurrentCount, getCurrentCount, clearCurrentCount } from "@/lib/localStorage";
-import type { InsertContagem, InsertItemContagem } from "@shared/schema";
+import type { InsertContagem, InsertItemContagem, ContagemWithItens } from "@shared/schema";
+import { useCountDate } from "@/hooks/use-count-date";
 
 interface ProductItem {
   id: string;
@@ -28,17 +29,71 @@ interface ProductItem {
 
 export default function NewCount() {
   const [, setLocation] = useLocation();
+  const { id: contagemId } = useParams();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { countDate, setCountDate } = useCountDate();
   
-  const [countDate, setCountDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  // Buscar dados da contagem se existir
+  const { data: contagem } = useQuery<ContagemWithItens>({
+    queryKey: ["/api/contagens", contagemId],
+    enabled: !!contagemId,
+  });
+
   const [products, setProducts] = useState<ProductItem[]>(() => {
+    // Se tiver contagem, usar os itens dela
+    if (contagem) {
+      return contagem.itens.map(item => ({
+        id: item.produto?.id || crypto.randomUUID(),
+        nome: item.produto?.nome || item.nomeLivre || "",
+        pallets: item.pallets,
+        lastros: item.lastros,
+        pacotes: item.pacotes,
+        unidades: item.unidades,
+        unidadesPorPacote: item.produto?.unidadesPorPacote,
+        pacotesPorLastro: item.produto?.pacotesPorLastro,
+        lastrosPorPallet: item.produto?.lastrosPorPallet,
+      }));
+    }
+    // Se não, tentar carregar do localStorage
     const saved = getCurrentCount();
     return saved?.products || [];
   });
+
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
-  const [currentCountId, setCurrentCountId] = useState<string>("");
+
+  // Atualizar estado quando a contagem for carregada
+  useEffect(() => {
+    if (contagem?.data) {
+      try {
+        console.log('Data da contagem do banco:', contagem.data);
+        // Para contagens existentes, sempre usa a data do banco
+        const [ano, mes, dia] = contagem.data.split('-');
+        const formattedDate = `${ano}-${mes}-${dia}`;
+        console.log('Data formatada:', formattedDate);
+        setCountDate(formattedDate);
+        setProducts(contagem.itens.map(item => ({
+          id: item.produto?.id || crypto.randomUUID(),
+          nome: item.produto?.nome || item.nomeLivre || "",
+          pallets: item.pallets,
+          lastros: item.lastros,
+          pacotes: item.pacotes,
+          unidades: item.unidades,
+          unidadesPorPacote: item.produto?.unidadesPorPacote,
+          pacotesPorLastro: item.produto?.pacotesPorLastro,
+          lastrosPorPallet: item.produto?.lastrosPorPallet,
+        })));
+      } catch (error) {
+        console.error("Erro ao carregar data:", error);
+        toast({
+          title: "Erro",
+          description: "Erro ao carregar data da contagem",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [contagem, toast, setCountDate]);
 
   const createCountMutation = useMutation({
     mutationFn: async (data: InsertContagem) => {
@@ -46,7 +101,6 @@ export default function NewCount() {
       return response.json();
     },
     onSuccess: (contagem) => {
-      setCurrentCountId(contagem.id);
       // Add items to the count
       addItemsToCount(contagem.id);
     },
@@ -69,24 +123,48 @@ export default function NewCount() {
   const addItemsToCount = async (contagemId: string) => {
     try {
       for (const product of products) {
+        // Se o produto tem um ID válido (não é um UUID gerado localmente), é um produto cadastrado
+        const isProdutoCadastrado = product.id && product.id.length > 10;
+
+        // Calcular o total
+        let total = 0;
+        if (product.unidadesPorPacote && product.pacotesPorLastro && product.lastrosPorPallet) {
+          const totalUnitsPerPallet = product.unidadesPorPacote * product.pacotesPorLastro * product.lastrosPorPallet;
+          total = (product.pallets || 0) * totalUnitsPerPallet +
+                 (product.lastros || 0) * (product.unidadesPorPacote * product.pacotesPorLastro) +
+                 (product.pacotes || 0) * product.unidadesPorPacote +
+                 (product.unidades || 0);
+        } else {
+          // Se não tem configuração de produto, soma direta
+          total = (product.pallets || 0) + (product.lastros || 0) + (product.pacotes || 0) + (product.unidades || 0);
+        }
+
         await addItemMutation.mutateAsync({
           contagemId,
           item: {
-            contagemId,
-            nomeLivre: product.nome,
+            contagem_id: contagemId,
+            produto_id: isProdutoCadastrado ? product.id : undefined,
+            nome_livre: !isProdutoCadastrado ? product.nome : undefined,
             pallets: product.pallets,
             lastros: product.lastros,
             pacotes: product.pacotes,
             unidades: product.unidades,
+            total: total // Adicionando o total calculado
           },
         });
       }
+
+      // Marcar contagem como finalizada
+      await apiRequest("PUT", `/api/contagens/${contagemId}`, {
+        finalizada: true
+      });
       
       // Clear local storage and show success
       clearCurrentCount();
       queryClient.invalidateQueries({ queryKey: ["/api/contagens"] });
       setIsSuccessModalOpen(true);
     } catch (error) {
+      console.error("Erro ao adicionar itens:", error);
       toast({
         title: "Erro",
         description: "Erro ao adicionar produtos à contagem",
@@ -98,10 +176,13 @@ export default function NewCount() {
   const handleAddProduct = (product: ProductItem) => {
     const newProducts = [...products, product];
     setProducts(newProducts);
-    saveCurrentCount({
-      date: countDate,
-      products: newProducts,
-    });
+    // Só salva no localStorage se for uma nova contagem
+    if (!contagemId) {
+      saveCurrentCount({
+        date: countDate || "",
+        products: newProducts,
+      });
+    }
     setIsProductModalOpen(false);
     
     toast({
@@ -113,10 +194,13 @@ export default function NewCount() {
   const handleRemoveProduct = (index: number) => {
     const newProducts = products.filter((_, i) => i !== index);
     setProducts(newProducts);
-    saveCurrentCount({
-      date: countDate,
-      products: newProducts,
-    });
+    // Só salva no localStorage se for uma nova contagem
+    if (!contagemId) {
+      saveCurrentCount({
+        date: countDate || "",
+        products: newProducts,
+      });
+    }
     
     toast({
       title: "Produto removido",
@@ -134,17 +218,41 @@ export default function NewCount() {
       return;
     }
 
+    // Se já tem ID, apenas adicionar os itens
+    if (contagemId) {
+      addItemsToCount(contagemId);
+      return;
+    }
+
+    // Se não tem ID, criar nova contagem
+    if (!countDate) {
+      toast({
+        title: "Erro",
+        description: "Selecione uma data para a contagem",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log('Data sendo enviada na finalização:', countDate);
     createCountMutation.mutate({
       data: countDate,
+      finalizada: false
     });
   };
 
   const handleDateChange = (newDate: string) => {
+    console.log('Nova data selecionada:', newDate);
+    if (!newDate) {
+      toast({
+        title: "Erro",
+        description: "Selecione uma data válida",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setCountDate(newDate);
-    saveCurrentCount({
-      date: newDate,
-      products,
-    });
   };
 
   const calculateProductTotal = (product: ProductItem): number => {
@@ -168,12 +276,14 @@ export default function NewCount() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setLocation("/")}
+          onClick={() => setLocation("/start-count")}
           className="p-2 -ml-2 rounded-lg hover:bg-gray-100"
         >
           <ArrowLeft className="text-gray-600" size={20} />
         </Button>
-        <h2 className="text-lg font-semibold text-gray-900 ml-3">Nova Contagem</h2>
+        <h2 className="text-lg font-semibold text-gray-900 ml-3">
+          {contagemId ? "Continuar Contagem" : "Nova Contagem"}
+        </h2>
       </div>
 
       <div className="p-4 space-y-6">
@@ -184,9 +294,13 @@ export default function NewCount() {
           </Label>
           <Input
             type="date"
-            value={countDate}
+            value={countDate || ""}
             onChange={(e) => handleDateChange(e.target.value)}
             className="w-full"
+            disabled={!!contagemId}
+            placeholder="dd/mm/aaaa"
+            min="2020-01-01"
+            max="2030-12-31"
           />
         </div>
 
@@ -249,8 +363,8 @@ export default function NewCount() {
                   
                   {/* Total de Unidades */}
                   {calculateProductTotal(product) > 0 && (
-                    <div className="bg-blue-50 p-2 rounded-md">
-                      <div className="text-sm font-medium text-blue-900">
+                    <div className="bg-red-50 p-2 rounded-md">
+                      <div className="text-sm font-medium text-red-900">
                         Total: {calculateProductTotal(product).toLocaleString()} unidades
                       </div>
                     </div>
@@ -294,7 +408,7 @@ export default function NewCount() {
           setIsSuccessModalOpen(false);
           setLocation("/");
         }}
-        countId={currentCountId}
+        countId={contagemId}
       />
     </>
   );

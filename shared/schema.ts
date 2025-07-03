@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, uuid, date, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, uuid, date, timestamp, boolean } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -18,6 +18,7 @@ export const contagens = pgTable("contagens", {
   data: date("data").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   excelUrl: text("excel_url"),
+  finalizada: boolean("finalizada").notNull().default(false),
 });
 
 export const itensContagem = pgTable("itens_contagem", {
@@ -29,6 +30,7 @@ export const itensContagem = pgTable("itens_contagem", {
   lastros: integer("lastros").notNull().default(0),
   pacotes: integer("pacotes").notNull().default(0),
   unidades: integer("unidades").notNull().default(0),
+  total: integer("total").notNull().default(0),
 });
 
 // Relations
@@ -56,9 +58,9 @@ export const insertProdutoSchema = createInsertSchema(produtos).omit({
   id: true,
   createdAt: true,
 }).extend({
-  unidadesPorPacote: z.number().min(1, "Unidades por pacote deve ser pelo menos 1"),
-  pacotesPorLastro: z.number().min(1, "Pacotes por lastro deve ser pelo menos 1"),
-  lastrosPorPallet: z.number().min(1, "Lastros por pallet deve ser pelo menos 1"),
+  unidadesPorPacote: z.number().min(0, "Unidades por pacote não pode ser negativo"),
+  pacotesPorLastro: z.number().min(0, "Pacotes por lastro não pode ser negativo"),
+  lastrosPorPallet: z.number().min(0, "Lastros por pallet não pode ser negativo"),
 });
 
 export const insertContagemSchema = createInsertSchema(contagens).omit({
@@ -70,6 +72,9 @@ export const insertContagemSchema = createInsertSchema(contagens).omit({
 export const insertItemContagemSchema = createInsertSchema(itensContagem).omit({
   id: true,
 }).extend({
+  contagem_id: z.string().uuid(),
+  produto_id: z.string().uuid().optional(),
+  nome_livre: z.string().optional(),
   pallets: z.number().min(0, "Pallets não pode ser negativo"),
   lastros: z.number().min(0, "Lastros não pode ser negativo"),
   pacotes: z.number().min(0, "Pacotes não pode ser negativo"),
@@ -84,7 +89,15 @@ export type Contagem = typeof contagens.$inferSelect;
 export type InsertContagem = z.infer<typeof insertContagemSchema>;
 
 export type ItemContagem = typeof itensContagem.$inferSelect;
-export type InsertItemContagem = z.infer<typeof insertItemContagemSchema>;
+export type InsertItemContagem = {
+  contagem_id: string;
+  produto_id?: string;
+  nome_livre?: string;
+  pallets: number;
+  lastros: number;
+  pacotes: number;
+  unidades: number;
+};
 
 export type ContagemWithItens = Contagem & {
   itens: (ItemContagem & { produto?: Produto })[];

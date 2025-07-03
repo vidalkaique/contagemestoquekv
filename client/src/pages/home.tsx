@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ClipboardList, Plus, History, ChartLine, Package } from "lucide-react";
+import { ClipboardList, Plus, History, ChartLine, Package, ChevronRight } from "lucide-react";
 import type { ContagemWithItens } from "@shared/schema";
 
 export default function Home() {
@@ -27,19 +27,23 @@ export default function Home() {
 
       {/* Main Actions */}
       <div className="space-y-4 mb-8">
-        <button 
-          onClick={() => setLocation("/new-count")}
-          className="w-full bg-primary text-primary-foreground rounded-xl py-4 px-6 flex items-center justify-between shadow-lg hover:bg-primary/90 transition-colors"
+        <a
+          href="/start-count"
+          className="bg-white border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors block"
         >
-          <div className="flex items-center">
-            <Plus className="text-xl mr-3" size={24} />
-            <div className="text-left">
-              <div className="font-semibold">Criar Nova Contagem</div>
-              <div className="text-primary-foreground/80 text-sm">Iniciar contagem de produtos</div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="bg-emerald-100 text-emerald-600 p-2 rounded-lg">
+                <Plus size={24} />
+              </div>
+              <div className="ml-3">
+                <h3 className="font-medium text-gray-900">Nova Contagem</h3>
+                <p className="text-sm text-gray-500">Iniciar uma nova contagem de estoque</p>
+              </div>
             </div>
+            <ChevronRight className="text-gray-400" size={20} />
           </div>
-          <div className="w-2 h-4 border-r-2 border-b-2 border-primary-foreground/60 transform rotate-45" />
-        </button>
+        </a>
 
         <button 
           onClick={() => setLocation("/history")}
@@ -71,7 +75,7 @@ export default function Home() {
       </div>
 
       {/* Quick Stats Card */}
-      <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-xl p-4 border border-emerald-100">
+      <div className="bg-gradient-to-r from-emerald-50 to-red-50 rounded-xl p-4 border border-emerald-100">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-600 mb-1">Última contagem</p>
