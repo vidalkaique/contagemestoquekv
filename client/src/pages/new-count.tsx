@@ -149,7 +149,7 @@ export default function NewCount() {
             lastros: product.lastros,
             pacotes: product.pacotes,
             unidades: product.unidades,
-            total: total // Adicionando o total calculado
+            quantidade: Number(total)
           },
         });
       }

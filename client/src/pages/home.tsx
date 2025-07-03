@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ClipboardList, Plus, History, ChartLine, Package, ChevronRight } from "lucide-react";
+import { ClipboardList, Plus, History, LineChart, Package, ChevronRight } from "lucide-react";
 import type { ContagemWithItens } from "@shared/schema";
 
 export default function Home() {
@@ -96,7 +96,7 @@ export default function Home() {
             )}
           </div>
           <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-            <ChartLine className="text-emerald-600" size={24} />
+            <LineChart className="text-emerald-600" size={24} />
           </div>
         </div>
       </div>
