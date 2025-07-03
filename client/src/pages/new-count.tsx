@@ -407,7 +407,7 @@ export default function NewCount() {
           setIsSuccessModalOpen(false);
           setLocation("/");
         }}
-        countId={contagemId}
+        countId={contagemId || ""}
       />
     </>
   );
