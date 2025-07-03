@@ -1,7 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { storage } from '../server/storage';
+import { Storage } from './_storage';
 import { insertContagemSchema } from "@shared/schema";
 import { z } from "zod";
+
+const storage = new Storage();
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Configurar CORS
