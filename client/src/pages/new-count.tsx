@@ -148,8 +148,7 @@ export default function NewCount() {
             pallets: product.pallets,
             lastros: product.lastros,
             pacotes: product.pacotes,
-            unidades: product.unidades,
-            quantidade: Number(total)
+            unidades: product.unidades
           },
         });
       }
