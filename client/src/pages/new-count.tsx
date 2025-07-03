@@ -275,7 +275,7 @@ export default function NewCount() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setLocation("/start-count")}
+          onClick={() => setLocation("/")}
           className="p-2 -ml-2 rounded-lg hover:bg-gray-100"
         >
           <ArrowLeft className="text-gray-600" size={20} />

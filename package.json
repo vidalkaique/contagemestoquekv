@@ -61,7 +61,8 @@
     "vaul": "^0.8.0",
     "wouter": "^2.12.1",
     "ws": "^8.16.0",
-    "zod": "^3.22.4"
+    "zod": "^3.22.4",
+    "bufferutil": "^4.0.8"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
