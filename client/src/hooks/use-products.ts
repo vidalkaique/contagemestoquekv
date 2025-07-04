@@ -1,16 +1,35 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import type { Produto, InsertProduto } from "@shared/schema";
+import { supabase } from "@/lib/supabase";
 
 export function useProducts() {
   return useQuery<Produto[]>({
-    queryKey: ["/api/produtos"],
+    queryKey: ["produtos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('produtos')
+        .select()
+        .order('nome');
+
+      if (error) throw error;
+      return data || [];
+    }
   });
 }
 
 export function useProductSearch(query: string) {
   return useQuery<Produto[]>({
-    queryKey: ["/api/produtos/search", { q: query }],
+    queryKey: ["produtos/search", query],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('produtos')
+        .select()
+        .or(`nome.ilike.%${query}%,codigo.ilike.%${query}%`)
+        .limit(10);
+
+      if (error) throw error;
+      return data || [];
+    },
     enabled: query.length >= 2,
   });
 }
@@ -20,11 +39,17 @@ export function useCreateProduct() {
   
   return useMutation({
     mutationFn: async (data: InsertProduto) => {
-      const response = await apiRequest("POST", "/api/produtos", data);
-      return response.json();
+      const { data: newProduct, error } = await supabase
+        .from('produtos')
+        .insert([data])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return newProduct;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/produtos"] });
+      queryClient.invalidateQueries({ queryKey: ["produtos"] });
     },
   });
 }

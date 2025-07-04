@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { supabase } from "@/lib/supabase";
+import { useProducts, useCreateProduct } from "@/hooks/use-products";
 import type { Produto, InsertProduto } from "@shared/schema";
 
 export default function Products() {
@@ -25,39 +26,23 @@ export default function Products() {
     lastrosPorPallet: 0,
   });
 
-  const { data: produtos = [], isLoading } = useQuery<Produto[]>({
-    queryKey: ["/api/produtos"],
-  });
-
-  const createMutation = useMutation({
-    mutationFn: async (data: InsertProduto) => {
-      const response = await apiRequest("POST", "/api/produtos", data);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/produtos"] });
-      resetForm();
-      toast({
-        title: "Produto criado",
-        description: "Produto adicionado com sucesso",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao criar produto",
-        variant: "destructive",
-      });
-    },
-  });
+  const { data: produtos = [], isLoading } = useProducts();
+  const createProduct = useCreateProduct();
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<InsertProduto> }) => {
-      const response = await apiRequest("PUT", `/api/produtos/${id}`, data);
-      return response.json();
+      const { data: updatedProduct, error } = await supabase
+        .from('produtos')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return updatedProduct;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/produtos"] });
+      queryClient.invalidateQueries({ queryKey: ["produtos"] });
       resetForm();
       toast({
         title: "Produto atualizado",
@@ -75,11 +60,15 @@ export default function Products() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest("DELETE", `/api/produtos/${id}`);
-      return response.json();
+      const { error } = await supabase
+        .from('produtos')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/produtos"] });
+      queryClient.invalidateQueries({ queryKey: ["produtos"] });
       toast({
         title: "Produto removido",
         description: "Produto excluído com sucesso",
@@ -148,7 +137,7 @@ export default function Products() {
     if (editingProduct) {
       updateMutation.mutate({ id: editingProduct.id, data });
     } else {
-      createMutation.mutate(data);
+      createProduct(data);
     }
   };
 
@@ -393,13 +382,10 @@ export default function Products() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
+                  disabled={updateMutation.isPending}
                   className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
                 >
-                  {createMutation.isPending || updateMutation.isPending ? 
-                    "Salvando..." : 
-                    (editingProduct ? "Atualizar" : "Criar")
-                  }
+                  {updateMutation.isPending ? "Salvando..." : (editingProduct ? "Atualizar" : "Criar")}
                 </Button>
               </div>
             </form>
