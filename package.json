@@ -5,10 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build:client": "tsc && vite build",
-    "build:server": "tsc -p tsconfig.server.json",
-    "build": "npm run build:client && npm run build:server",
-    "start": "node dist/server/index.js"
+    "build": "tsc && vite build"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.9.0",
