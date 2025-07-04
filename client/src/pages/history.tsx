@@ -55,7 +55,7 @@ export default function History() {
       // Buscar dados da contagem
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contagens?select=id,data,itens_contagem(id,produto_id,nome_livre,pallets,lastros,pacotes,unidades,total,produtos(id,codigo,nome,unidades_por_pacote,pacotes_por_lastro,lastros_por_pallet))&id=eq.${contagemId}`, {
         headers: {
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY as string,
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
           'Prefer': 'return=representation'
