@@ -2,28 +2,38 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { ContagemWithItens, InsertContagem } from "@shared/schema";
 import type { Database } from "@/lib/database.types";
-import type { PostgrestResponse, PostgrestSingleResponse } from "@supabase/supabase-js";
 
 type Tables = Database['public']['Tables'];
 type ContagemRow = Tables['contagens']['Row'];
 type ProdutoRow = Tables['produtos']['Row'];
 
-interface RawItemContagem {
+type DatabaseContagem = {
   id: string;
-  produto_id: string | null;
-  nome_livre: string | null;
-  pallets: number;
-  lastros: number;
-  pacotes: number;
-  unidades: number;
-  total: number;
+  data: string;
+  finalizada: boolean;
+  excel_url: string | null;
   created_at: string;
-  produtos: ProdutoRow | null;
-}
-
-interface RawContagem extends ContagemRow {
-  itens_contagem: RawItemContagem[];
-}
+  itens_contagem: Array<{
+    id: string;
+    produto_id: string | null;
+    nome_livre: string | null;
+    pallets: number;
+    lastros: number;
+    pacotes: number;
+    unidades: number;
+    total: number;
+    created_at: string;
+    produtos: {
+      id: string;
+      codigo: string;
+      nome: string;
+      unidades_por_pacote: number;
+      pacotes_por_lastro: number;
+      lastros_por_pallet: number;
+      created_at: string;
+    } | null;
+  }>;
+};
 
 export function useCounts() {
   return useQuery<ContagemWithItens[]>({
@@ -63,8 +73,10 @@ export function useCounts() {
       if (error) throw error;
       if (!data) return [];
 
-      const contagens = data as RawContagem[];
+      // Convertemos para o tipo exato que o Supabase retorna
+      const contagens = data as unknown as DatabaseContagem[];
 
+      // Convertemos para o tipo final ContagemWithItens[]
       return contagens.map(contagem => ({
         id: contagem.id,
         data: contagem.data,
