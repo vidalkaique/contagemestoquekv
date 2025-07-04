@@ -16,9 +16,9 @@ export function useProducts() {
       // Garantir que os valores numéricos sejam números
       return (data || []).map(produto => ({
         ...produto,
-        unidadesPorPacote: Number(produto.unidadesPorPacote) || 0,
-        pacotesPorLastro: Number(produto.pacotesPorLastro) || 0,
-        lastrosPorPallet: Number(produto.lastrosPorPallet) || 0,
+        unidadesPorPacote: parseInt(String(produto.unidades_por_pacote)) || 1,
+        pacotesPorLastro: parseInt(String(produto.pacotes_por_lastro)) || 1,
+        lastrosPorPallet: parseInt(String(produto.lastros_por_pallet)) || 1,
       }));
     }
   });
@@ -67,18 +67,18 @@ export function useProductSearch(query: string) {
         // Garantir que os valores numéricos sejam números
         return (flexData || []).map(produto => ({
           ...produto,
-          unidadesPorPacote: Number(produto.unidadesPorPacote) || 0,
-          pacotesPorLastro: Number(produto.pacotesPorLastro) || 0,
-          lastrosPorPallet: Number(produto.lastrosPorPallet) || 0,
+          unidadesPorPacote: parseInt(String(produto.unidades_por_pacote)) || 1,
+          pacotesPorLastro: parseInt(String(produto.pacotes_por_lastro)) || 1,
+          lastrosPorPallet: parseInt(String(produto.lastros_por_pallet)) || 1,
         }));
       }
 
       // Garantir que os valores numéricos sejam números
       return (data || []).map(produto => ({
         ...produto,
-        unidadesPorPacote: Number(produto.unidadesPorPacote) || 0,
-        pacotesPorLastro: Number(produto.pacotesPorLastro) || 0,
-        lastrosPorPallet: Number(produto.lastrosPorPallet) || 0,
+        unidadesPorPacote: parseInt(String(produto.unidades_por_pacote)) || 1,
+        pacotesPorLastro: parseInt(String(produto.pacotes_por_lastro)) || 1,
+        lastrosPorPallet: parseInt(String(produto.lastros_por_pallet)) || 1,
       }));
     },
     enabled: true, // Sempre habilitado para melhor experiência
@@ -102,9 +102,9 @@ export function useCreateProduct() {
       // Garantir que os valores numéricos sejam números
       return {
         ...newProduct,
-        unidadesPorPacote: Number(newProduct.unidadesPorPacote) || 0,
-        pacotesPorLastro: Number(newProduct.pacotesPorLastro) || 0,
-        lastrosPorPallet: Number(newProduct.lastrosPorPallet) || 0,
+        unidadesPorPacote: parseInt(String(newProduct.unidades_por_pacote)) || 1,
+        pacotesPorLastro: parseInt(String(newProduct.pacotes_por_lastro)) || 1,
+        lastrosPorPallet: parseInt(String(newProduct.lastros_por_pallet)) || 1,
       };
     },
     onSuccess: () => {
