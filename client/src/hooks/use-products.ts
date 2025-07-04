@@ -19,6 +19,7 @@ export function useProducts() {
         unidadesPorPacote: parseInt(String(produto.unidades_por_pacote)) || 1,
         pacotesPorLastro: parseInt(String(produto.pacotes_por_lastro)) || 1,
         lastrosPorPallet: parseInt(String(produto.lastros_por_pallet)) || 1,
+        quantidadePacsPorPallet: parseInt(String(produto.quantidade_pacs_por_pallet)) || 0,
       }));
     }
   });
@@ -70,6 +71,7 @@ export function useProductSearch(query: string) {
           unidadesPorPacote: parseInt(String(produto.unidades_por_pacote)) || 1,
           pacotesPorLastro: parseInt(String(produto.pacotes_por_lastro)) || 1,
           lastrosPorPallet: parseInt(String(produto.lastros_por_pallet)) || 1,
+          quantidadePacsPorPallet: parseInt(String(produto.quantidade_pacs_por_pallet)) || 0,
         }));
       }
 
@@ -79,6 +81,7 @@ export function useProductSearch(query: string) {
         unidadesPorPacote: parseInt(String(produto.unidades_por_pacote)) || 1,
         pacotesPorLastro: parseInt(String(produto.pacotes_por_lastro)) || 1,
         lastrosPorPallet: parseInt(String(produto.lastros_por_pallet)) || 1,
+        quantidadePacsPorPallet: parseInt(String(produto.quantidade_pacs_por_pallet)) || 0,
       }));
     },
     enabled: true, // Sempre habilitado para melhor experiência
@@ -97,7 +100,8 @@ export function useCreateProduct() {
         nome: data.nome,
         unidades_por_pacote: data.unidadesPorPacote,
         pacotes_por_lastro: data.pacotesPorLastro,
-        lastros_por_pallet: data.lastrosPorPallet
+        lastros_por_pallet: data.lastrosPorPallet,
+        quantidade_pacs_por_pallet: data.pacotesPorLastro * data.lastrosPorPallet,
       };
 
       const { data: newProduct, error } = await supabase
@@ -123,6 +127,7 @@ export function useCreateProduct() {
         unidadesPorPacote: newProduct.unidades_por_pacote,
         pacotesPorLastro: newProduct.pacotes_por_lastro,
         lastrosPorPallet: newProduct.lastros_por_pallet,
+        quantidadePacsPorPallet: newProduct.quantidade_pacs_por_pallet,
         createdAt: new Date(newProduct.created_at),
       };
     },

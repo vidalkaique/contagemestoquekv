@@ -30,6 +30,7 @@ type DatabaseContagem = {
       unidades_por_pacote: number;
       pacotes_por_lastro: number;
       lastros_por_pallet: number;
+      quantidade_pacs_por_pallet: number;
       created_at: string;
     } | null;
   }>;
@@ -63,6 +64,7 @@ export function useUnfinishedCount() {
               unidades_por_pacote,
               pacotes_por_lastro,
               lastros_por_pallet,
+              quantidade_pacs_por_pallet,
               created_at
             )
           )
@@ -99,6 +101,7 @@ export function useUnfinishedCount() {
             unidadesPorPacote: item.produtos.unidades_por_pacote,
             pacotesPorLastro: item.produtos.pacotes_por_lastro,
             lastrosPorPallet: item.produtos.lastros_por_pallet,
+            quantidadePacsPorPallet: item.produtos.quantidade_pacs_por_pallet,
             createdAt: new Date(item.produtos.created_at)
           } : undefined
         }))
@@ -108,7 +111,7 @@ export function useUnfinishedCount() {
 }
 
 export function useCounts() {
-  return useQuery<ContagemWithItens[]>({
+  return useQuery<ContagemWithItens[]>({ 
     queryKey: ["contagens"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -135,6 +138,7 @@ export function useCounts() {
               unidades_por_pacote,
               pacotes_por_lastro,
               lastros_por_pallet,
+              quantidade_pacs_por_pallet,
               created_at
             )
           )
@@ -168,6 +172,7 @@ export function useCounts() {
             unidadesPorPacote: item.produtos.unidades_por_pacote,
             pacotesPorLastro: item.produtos.pacotes_por_lastro,
             lastrosPorPallet: item.produtos.lastros_por_pallet,
+            quantidadePacsPorPallet: item.produtos.quantidade_pacs_por_pallet,
             createdAt: new Date(item.produtos.created_at)
           } : undefined
         }))
@@ -211,7 +216,7 @@ export function useCreateCount() {
       } as ContagemWithItens;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/contagens"] });
+      queryClient.invalidateQueries({ queryKey: ["contagens"] });
     },
   });
 }

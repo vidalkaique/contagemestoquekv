@@ -26,6 +26,7 @@ interface ProductItem {
   unidadesPorPacote?: number;
   pacotesPorLastro?: number;
   lastrosPorPallet?: number;
+  quantidadePacsPorPallet?: number;
 }
 
 export default function NewCount() {
@@ -64,6 +65,7 @@ export default function NewCount() {
         unidadesPorPacote: item.produto?.unidadesPorPacote,
         pacotesPorLastro: item.produto?.pacotesPorLastro,
         lastrosPorPallet: item.produto?.lastrosPorPallet,
+        quantidadePacsPorPallet: item.produto?.quantidadePacsPorPallet ?? undefined,
       })));
     } else {
       // Se não tem contagem não finalizada, tentar carregar do localStorage
@@ -391,6 +393,12 @@ export default function NewCount() {
                       <span className="text-gray-500">Unidades:</span>
                       <span className="font-medium ml-1">{product.unidades}</span>
                     </div>
+                    {product.quantidadePacsPorPallet && (
+                      <div>
+                        <span className="text-gray-500">Pacotes/Pallet:</span>
+                        <span className="font-medium ml-1">{product.quantidadePacsPorPallet}</span>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Total de Unidades */}

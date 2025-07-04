@@ -10,6 +10,7 @@ export const produtos = pgTable("produtos", {
   unidadesPorPacote: integer("unidades_por_pacote").notNull().default(1),
   pacotesPorLastro: integer("pacotes_por_lastro").notNull().default(1),
   lastrosPorPallet: integer("lastros_por_pallet").notNull().default(1),
+  quantidadePacsPorPallet: integer("quantidade_pacs_por_pallet"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -93,7 +94,7 @@ export const insertItemContagemSchema = createInsertSchema(itensContagem).omit({
 
 // Types
 export type Produto = typeof produtos.$inferSelect;
-export type InsertProduto = z.infer<typeof insertProdutoSchema>;
+export type InsertProduto = Omit<Produto, 'id' | 'createdAt'>;
 
 export type Contagem = typeof contagens.$inferSelect;
 export type InsertContagem = z.infer<typeof insertContagemSchema>;

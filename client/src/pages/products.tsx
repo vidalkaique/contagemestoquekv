@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Edit, Trash2, Search, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ export default function Products() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Produto | null>(null);
@@ -32,9 +32,9 @@ export default function Products() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<InsertProduto> }) => {
       const { data: updatedProduct, error } = await supabase
-        .from('produtos')
+        .from("produtos")
         .update(data)
-        .eq('id', id)
+        .eq("id", id)
         .select()
         .single();
 
@@ -61,9 +61,9 @@ export default function Products() {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from('produtos')
+        .from("produtos")
         .delete()
-        .eq('id', id);
+        .eq("id", id);
 
       if (error) throw error;
     },
@@ -86,8 +86,7 @@ export default function Products() {
   const filteredProducts = (produtos || []).filter((produto: Produto) => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
-    return produto.nome.toLowerCase().includes(query) || 
-           produto.codigo.toLowerCase().includes(query);
+    return produto.nome.toLowerCase().includes(query) || produto.codigo.toLowerCase().includes(query);
   });
 
   const resetForm = () => {
@@ -116,7 +115,7 @@ export default function Products() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.codigo.trim() || !formData.nome.trim()) {
       toast({
         title: "Erro",
@@ -126,12 +125,11 @@ export default function Products() {
       return;
     }
 
-    // Garantir que os valores numéricos sejam números válidos
     const data = {
       ...formData,
       unidadesPorPacote: Math.max(0, Number(formData.unidadesPorPacote)),
       pacotesPorLastro: Math.max(0, Number(formData.pacotesPorLastro)),
-      lastrosPorPallet: Math.max(0, Number(formData.lastrosPorPallet))
+      lastrosPorPallet: Math.max(0, Number(formData.lastrosPorPallet)),
     };
 
     if (editingProduct) {
@@ -142,7 +140,7 @@ export default function Products() {
           resetForm();
           toast({
             title: "Produto criado",
-            description: "Produto adicionado com sucesso",
+            description: "Novo produto adicionado com sucesso",
           });
         },
         onError: (error: any) => {
@@ -151,158 +149,132 @@ export default function Products() {
             description: error.message || "Erro ao criar produto",
             variant: "destructive",
           });
-        }
+        },
       });
     }
   };
 
   const calculateTotalUnits = (produto: Produto) => {
-    // Garantir que todos os valores sejam números válidos
-    const unidadesPorPacote = Number(produto.unidadesPorPacote) || 0;
-    const pacotesPorLastro = Number(produto.pacotesPorLastro) || 0;
-    const lastrosPorPallet = Number(produto.lastrosPorPallet) || 0;
-    
-    return unidadesPorPacote * pacotesPorLastro * lastrosPorPallet;
+    return (
+      (Number(produto.unidadesPorPacote) || 0) *
+      (Number(produto.pacotesPorLastro) || 0) *
+      (Number(produto.lastrosPorPallet) || 0)
+    );
   };
 
   return (
     <>
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setLocation("/")}
-          className="p-2 -ml-2 rounded-lg hover:bg-gray-100"
-        >
-          <ArrowLeft className="text-gray-600" size={20} />
-        </Button>
-        <h2 className="text-lg font-semibold text-gray-900 ml-3">Gestão de Produtos</h2>
-      </div>
+      <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
+        <header className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-4">
+            <Button variant="outline" size="icon" onClick={() => setLocation("/")}>
+              <ArrowLeft size={20} />
+            </Button>
+            <h1 className="text-2xl font-bold text-gray-800">Gestão de Produtos</h1>
+          </div>
+          <Button onClick={() => setIsFormOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Plus size={18} className="mr-2" />
+            Novo Produto
+          </Button>
+        </header>
 
-      <div className="p-4 space-y-4">
-        {/* Search and Add Button */}
-        <div className="flex space-x-3">
-          <div className="relative flex-1">
+        <div className="mb-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <Input
               type="text"
-              placeholder="Buscar por código ou nome..."
+              placeholder="Buscar por nome ou código..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="w-full pl-10"
             />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           </div>
-          <Button
-            onClick={() => setIsFormOpen(true)}
-            className="bg-primary text-primary-foreground px-4 hover:bg-primary/90"
-          >
-            <Plus size={20} />
-          </Button>
         </div>
 
-        {/* Products List */}
-        {isLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded w-24 mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded w-48"></div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <div className="h-8 w-8 bg-gray-200 rounded"></div>
-                    <div className="h-8 w-8 bg-gray-200 rounded"></div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : filteredProducts.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <Package className="mx-auto mb-3 text-gray-400" size={48} />
-            <p className="text-sm">
-              {searchQuery ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}
-            </p>
-            <p className="text-xs">
-              {searchQuery ? "Tente buscar com outros termos" : "Adicione seu primeiro produto"}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {filteredProducts.map((produto) => (
-              <div key={produto.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="font-medium text-gray-900">{produto.nome}</h3>
-                    <p className="text-sm text-gray-500 mb-1">Código: {produto.codigo}</p>
-                    <p className="text-xs text-emerald-600 font-medium">
-                      Total por pallet: {calculateTotalUnits(produto) === 0
-                        ? "Configure as quantidades"
-                        : `${calculateTotalUnits(produto)} unidades`}
-                    </p>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(produto)}
-                      className="p-2 hover:bg-red-50 text-red-600"
-                    >
-                      <Edit size={16} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteMutation.mutate(produto.id)}
-                      className="p-2 hover:bg-red-50 text-red-600"
-                    >
-                      <Trash2 size={16} />
-                    </Button>
+        <div className="mt-6 bg-white p-4 sm:p-6 rounded-lg shadow-sm">
+          {isLoading ? (
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-24"></div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                      <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                    </div>
                   </div>
                 </div>
-                
-                <div className="grid grid-cols-3 gap-3 text-xs">
-                  <div className="text-center p-2 bg-gray-50 rounded">
-                    <p className="text-gray-500">Unid/Pacote</p>
-                    <p className="font-medium">{produto.unidadesPorPacote}</p>
+              ))}
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="text-center py-10">
+              <Package className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                {searchQuery ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">
+                {searchQuery ? "Tente buscar com outros termos" : "Adicione seu primeiro produto"}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredProducts.map((produto) => (
+                <div key={produto.id} className="bg-white border border-gray-200 rounded-lg p-4 transition-shadow hover:shadow-md">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-800">{produto.nome}</h3>
+                      <p className="text-sm text-gray-500">Código: {produto.codigo}</p>
+                    </div>
+                    <div className="flex items-center space-x-2 ml-4">
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(produto)} className="text-gray-500 hover:text-gray-800 hover:bg-gray-100">
+                        <Edit size={18} />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(produto.id)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
+                        <Trash2 size={18} />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="text-center p-2 bg-gray-50 rounded">
-                    <p className="text-gray-500">Pac/Lastro</p>
-                    <p className="font-medium">{produto.pacotesPorLastro}</p>
-                  </div>
-                  <div className="text-center p-2 bg-gray-50 rounded">
-                    <p className="text-gray-500">Last/Pallet</p>
-                    <p className="font-medium">{produto.lastrosPorPallet}</p>
+                  <div className="mt-4 border-t border-gray-200 pt-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                      <div>
+                        <p className="text-xs text-gray-500">Un/Pacote</p>
+                        <p className="font-medium text-sm text-gray-800">{produto.unidadesPorPacote}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Pac/Lastro</p>
+                        <p className="font-medium text-sm text-gray-800">{produto.pacotesPorLastro}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Lastro/Pallet</p>
+                        <p className="font-medium text-sm text-gray-800">{produto.lastrosPorPallet}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Pacotes/Pallet</p>
+                        <p className="font-medium text-sm text-gray-800">{produto.quantidadePacsPorPallet}</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 bg-emerald-50 text-emerald-800 rounded-md p-2 text-center">
+                      <p className="text-xs font-semibold">
+                        Total de {calculateTotalUnits(produto)} unidades por pallet
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Form Modal */}
+      {/* Formulário de Criar/Editar Produto (Modal) */}
       {isFormOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end">
-          <div className="bg-white rounded-t-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {editingProduct ? "Editar Produto" : "Novo Produto"}
-              </h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={resetForm}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                ×
-              </Button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
+            <h2 className="text-xl font-bold mb-4">{editingProduct ? "Editar Produto" : "Novo Produto"}</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <Label className="block text-sm font-medium text-gray-700 mb-2">
                   Código do Produto *
@@ -311,7 +283,7 @@ export default function Products() {
                   type="text"
                   placeholder="Ex: COCA-001"
                   value={formData.codigo}
-                  onChange={(e) => setFormData(prev => ({ ...prev, codigo: e.target.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, codigo: e.target.value }))}
                   className="w-full"
                   required
                 />
@@ -325,16 +297,16 @@ export default function Products() {
                   type="text"
                   placeholder="Ex: Coca-Cola 350ml"
                   value={formData.nome}
-                  onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, nome: e.target.value }))}
                   className="w-full"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label className="block text-sm font-medium text-gray-700 mb-2">
-                    Unidades por Pacote
+                    Un/Pacote
                   </Label>
                   <Input
                     type="number"
@@ -342,14 +314,14 @@ export default function Products() {
                     value={formData.unidadesPorPacote}
                     onChange={(e) => {
                       const value = Math.max(0, parseInt(e.target.value) || 0);
-                      setFormData(prev => ({ ...prev, unidadesPorPacote: value }));
+                      setFormData((prev) => ({ ...prev, unidadesPorPacote: value }));
                     }}
                     className="w-full"
                   />
                 </div>
                 <div>
                   <Label className="block text-sm font-medium text-gray-700 mb-2">
-                    Pacotes por Lastro
+                    Pac/Lastro
                   </Label>
                   <Input
                     type="number"
@@ -357,14 +329,14 @@ export default function Products() {
                     value={formData.pacotesPorLastro}
                     onChange={(e) => {
                       const value = Math.max(0, parseInt(e.target.value) || 0);
-                      setFormData(prev => ({ ...prev, pacotesPorLastro: value }));
+                      setFormData((prev) => ({ ...prev, pacotesPorLastro: value }));
                     }}
                     className="w-full"
                   />
                 </div>
                 <div>
                   <Label className="block text-sm font-medium text-gray-700 mb-2">
-                    Lastros por Pallet
+                    Lastro/Pallet
                   </Label>
                   <Input
                     type="number"
@@ -372,7 +344,7 @@ export default function Products() {
                     value={formData.lastrosPorPallet}
                     onChange={(e) => {
                       const value = Math.max(0, parseInt(e.target.value) || 0);
-                      setFormData(prev => ({ ...prev, lastrosPorPallet: value }));
+                      setFormData((prev) => ({ ...prev, lastrosPorPallet: value }));
                     }}
                     className="w-full"
                   />
@@ -380,19 +352,21 @@ export default function Products() {
               </div>
 
               {/* Preview */}
-              <div className="bg-emerald-50 p-3 rounded-lg">
-                <p className="text-sm text-emerald-800">
-                  <strong>Total por pallet:</strong> {formData.unidadesPorPacote * formData.pacotesPorLastro * formData.lastrosPorPallet} unidades
-                </p>
+              <div className="bg-emerald-50 p-4 rounded-lg space-y-2">
+                <div className="flex justify-between items-center">
+                  <p className="text-sm font-medium text-emerald-800">Pacotes por pallet:</p>
+                  <p className="text-sm font-bold text-emerald-900">{formData.pacotesPorLastro * formData.lastrosPorPallet}</p>
+                </div>
+                <div className="flex justify-between items-center">
+                  <p className="text-sm font-medium text-emerald-800">Total de unidades por pallet:</p>
+                  <p className="text-sm font-bold text-emerald-900">
+                    {formData.unidadesPorPacote * formData.pacotesPorLastro * formData.lastrosPorPallet}
+                  </p>
+                </div>
               </div>
 
               <div className="flex space-x-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={resetForm}
-                  className="flex-1"
-                >
+                <Button type="button" variant="outline" onClick={resetForm} className="flex-1">
                   Cancelar
                 </Button>
                 <Button
@@ -400,7 +374,7 @@ export default function Products() {
                   disabled={createMutation.isPending || updateMutation.isPending}
                   className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
                 >
-                  {createMutation.isPending || updateMutation.isPending ? "Salvando..." : (editingProduct ? "Atualizar" : "Criar")}
+                  {createMutation.isPending || updateMutation.isPending ? "Salvando..." : editingProduct ? "Atualizar" : "Criar"}
                 </Button>
               </div>
             </form>
