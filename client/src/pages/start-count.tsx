@@ -68,10 +68,13 @@ export default function StartCount() {
       return;
     }
 
-    console.log('Data sendo enviada:', countDate);
+    // Corrige o problema de fuso horário criando uma data UTC para ser agnóstica a timezone.
+    const [year, month, day] = countDate.split('-').map(Number);
+    const utcDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+
     createCountMutation.mutate({
-      data: countDate,
-      finalizada: false
+      data: utcDate.toISOString().split('T')[0],
+      finalizada: false,
     });
   };
 
