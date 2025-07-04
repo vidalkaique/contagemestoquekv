@@ -73,17 +73,14 @@ export function useCounts() {
       if (error) throw error;
       if (!data) return [];
 
-      // Convertemos para o tipo exato que o Supabase retorna
-      const contagens = data as unknown as DatabaseContagem[];
-
       // Convertemos para o tipo final ContagemWithItens[]
-      return contagens.map(contagem => ({
+      return (data as any[]).map(contagem => ({
         id: contagem.id,
         data: contagem.data,
         finalizada: contagem.finalizada,
         excelUrl: contagem.excel_url,
         createdAt: new Date(contagem.created_at),
-        itens: (contagem.itens_contagem || []).map(item => ({
+        itens: (contagem.itens_contagem || []).map((item: any) => ({
           id: item.id,
           contagemId: contagem.id,
           produtoId: item.produto_id,
