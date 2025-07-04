@@ -63,7 +63,13 @@ export default function History() {
       });
 
       if (!response.ok) {
-        throw new Error("Erro ao buscar dados da contagem");
+        const errorBody = await response.text();
+        console.error("Falha na requisição ao Supabase:", { 
+          status: response.status, 
+          statusText: response.statusText,
+          body: errorBody 
+        });
+        throw new Error(`Erro ao buscar dados da contagem: ${response.status} ${response.statusText}`);
       }
 
       const [contagem] = await response.json() as Contagem[];
