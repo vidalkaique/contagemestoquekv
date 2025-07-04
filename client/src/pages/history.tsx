@@ -10,6 +10,31 @@ import { useToast } from "@/hooks/use-toast";
 import type { ContagemWithItens } from "@shared/schema";
 import { Workbook } from "exceljs";
 
+interface ItemContagem {
+  id: string;
+  produto_id?: string;
+  nome_livre?: string;
+  pallets: number;
+  lastros: number;
+  pacotes: number;
+  unidades: number;
+  total: number;
+  produtos?: {
+    id: string;
+    codigo: string;
+    nome: string;
+    unidades_por_pacote: number;
+    pacotes_por_lastro: number;
+    lastros_por_pallet: number;
+  };
+}
+
+interface Contagem {
+  id: string;
+  data: string;
+  itens_contagem: ItemContagem[];
+}
+
 export default function History() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -38,7 +63,7 @@ export default function History() {
         throw new Error("Erro ao buscar dados da contagem");
       }
 
-      const [contagem] = await response.json();
+      const [contagem] = await response.json() as Contagem[];
 
       // Criar workbook
       const workbook = new Workbook();
@@ -56,7 +81,7 @@ export default function History() {
       ];
 
       // Adicionar dados
-      contagem.itens_contagem.forEach((item) => {
+      contagem.itens_contagem.forEach((item: ItemContagem) => {
         worksheet.addRow({
           codigo: item.produtos?.codigo || "N/A",
           nome: item.produtos?.nome || item.nome_livre || "N/A",
