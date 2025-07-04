@@ -68,16 +68,14 @@ export default function StartCount() {
       return;
     }
 
-    // Lógica de depuração e correção de fuso horário.
+    // Solução definitiva para fuso horário:
+    // Envia a data completa no formato ISO 8601 com fuso horário UTC (Z).
+    // O banco de dados (Postgres) irá extrair corretamente a parte da data.
     const [year, month, day] = countDate.split('-').map(Number);
     const utcDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-    const finalDate = utcDate.toISOString().split('T')[0];
-
-    // LOG DE DEPURAÇÃO FINAL: Verifique este log no console do navegador (F12).
-    console.log(`[DEPURAÇÃO] Data selecionada (input): '${countDate}', Data final a ser enviada: '${finalDate}'`);
 
     createCountMutation.mutate({
-      data: finalDate,
+      data: utcDate.toISOString(), // Envia a string completa, ex: '2025-07-04T12:00:00.000Z'
       finalizada: false,
     });
   };
