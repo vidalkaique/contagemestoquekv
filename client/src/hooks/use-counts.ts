@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { ContagemWithItens, InsertContagem } from "@shared/schema";
 import type { Database } from "@/lib/database.types";
-import type { PostgrestResponse } from "@supabase/supabase-js";
+import type { PostgrestResponse, PostgrestSingleResponse } from "@supabase/supabase-js";
 
 type Tables = Database['public']['Tables'];
 type ContagemRow = Tables['contagens']['Row'];
@@ -58,12 +58,14 @@ export function useCounts() {
             )
           )
         `)
-        .order('data', { ascending: false }) as PostgrestResponse<RawContagem>;
+        .order('data', { ascending: false });
 
       if (error) throw error;
       if (!data) return [];
 
-      return data.map(contagem => ({
+      const contagens = data as RawContagem[];
+
+      return contagens.map(contagem => ({
         id: contagem.id,
         data: contagem.data,
         finalizada: contagem.finalizada,
@@ -112,17 +114,19 @@ export function useCreateCount() {
           excel_url,
           created_at
         `)
-        .single() as PostgrestResponse<ContagemRow>;
+        .single();
 
       if (error) throw error;
       if (!result) throw new Error('Nenhum dado retornado');
 
+      const contagem = result as ContagemRow;
+
       return {
-        id: result.id,
-        data: result.data,
-        finalizada: result.finalizada,
-        excelUrl: result.excel_url,
-        createdAt: new Date(result.created_at),
+        id: contagem.id,
+        data: contagem.data,
+        finalizada: contagem.finalizada,
+        excelUrl: contagem.excel_url,
+        createdAt: new Date(contagem.created_at),
         itens: []
       } as ContagemWithItens;
     },
