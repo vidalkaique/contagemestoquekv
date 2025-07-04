@@ -12,7 +12,14 @@ export function useProducts() {
         .order('nome');
 
       if (error) throw error;
-      return data || [];
+
+      // Garantir que os valores numéricos sejam números
+      return (data || []).map(produto => ({
+        ...produto,
+        unidadesPorPacote: Number(produto.unidadesPorPacote) || 0,
+        pacotesPorLastro: Number(produto.pacotesPorLastro) || 0,
+        lastrosPorPallet: Number(produto.lastrosPorPallet) || 0,
+      }));
     }
   });
 }
@@ -56,10 +63,23 @@ export function useProductSearch(query: string) {
           .limit(50);
 
         if (flexError) throw flexError;
-        return flexData || [];
+        
+        // Garantir que os valores numéricos sejam números
+        return (flexData || []).map(produto => ({
+          ...produto,
+          unidadesPorPacote: Number(produto.unidadesPorPacote) || 0,
+          pacotesPorLastro: Number(produto.pacotesPorLastro) || 0,
+          lastrosPorPallet: Number(produto.lastrosPorPallet) || 0,
+        }));
       }
 
-      return data;
+      // Garantir que os valores numéricos sejam números
+      return (data || []).map(produto => ({
+        ...produto,
+        unidadesPorPacote: Number(produto.unidadesPorPacote) || 0,
+        pacotesPorLastro: Number(produto.pacotesPorLastro) || 0,
+        lastrosPorPallet: Number(produto.lastrosPorPallet) || 0,
+      }));
     },
     enabled: true, // Sempre habilitado para melhor experiência
     staleTime: 1000 * 60 * 5, // Cache por 5 minutos
@@ -78,7 +98,14 @@ export function useCreateProduct() {
         .single();
 
       if (error) throw error;
-      return newProduct;
+
+      // Garantir que os valores numéricos sejam números
+      return {
+        ...newProduct,
+        unidadesPorPacote: Number(newProduct.unidadesPorPacote) || 0,
+        pacotesPorLastro: Number(newProduct.pacotesPorLastro) || 0,
+        lastrosPorPallet: Number(newProduct.lastrosPorPallet) || 0,
+      };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["produtos"] });
