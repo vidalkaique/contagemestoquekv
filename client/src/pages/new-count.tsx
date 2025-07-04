@@ -2,17 +2,18 @@ import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { ArrowLeft, Plus, Check, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Check, Trash2, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ProductModal from "@/components/product-modal";
 import SuccessModal from "@/components/success-modal";
-import { apiRequest } from "@/lib/queryClient";
+import { supabase } from "@/lib/supabase";
 import { saveCurrentCount, getCurrentCount, clearCurrentCount } from "@/lib/localStorage";
 import type { InsertContagem, InsertItemContagem, ContagemWithItens } from "@shared/schema";
 import { useCountDate } from "@/hooks/use-count-date";
+import { useUnfinishedCount } from "@/hooks/use-counts";
 
 interface ProductItem {
   id: string;
@@ -34,16 +35,26 @@ export default function NewCount() {
   const queryClient = useQueryClient();
   const { countDate, setCountDate } = useCountDate();
   
+  // Buscar contagem não finalizada
+  const { data: unfinishedCount } = useUnfinishedCount();
+
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [products, setProducts] = useState<ProductItem[]>([]);
+
   // Buscar dados da contagem se existir
   const { data: contagem } = useQuery<ContagemWithItens>({
     queryKey: ["/api/contagens", contagemId],
     enabled: !!contagemId,
   });
 
-  const [products, setProducts] = useState<ProductItem[]>(() => {
-    // Se tiver contagem, usar os itens dela
-    if (contagem) {
-      return contagem.itens.map(item => ({
+  // Carregar contagem não finalizada ou do localStorage
+  useEffect(() => {
+    if (unfinishedCount) {
+      // Se tem contagem não finalizada, usar ela
+      setCountDate(unfinishedCount.data);
+      // Carregar produtos da contagem não finalizada
+      setProducts(unfinishedCount.itens.map(item => ({
         id: item.produto?.id || crypto.randomUUID(),
         nome: item.produto?.nome || item.nomeLivre || "",
         pallets: item.pallets,
@@ -53,52 +64,27 @@ export default function NewCount() {
         unidadesPorPacote: item.produto?.unidadesPorPacote,
         pacotesPorLastro: item.produto?.pacotesPorLastro,
         lastrosPorPallet: item.produto?.lastrosPorPallet,
-      }));
-    }
-    // Se não, tentar carregar do localStorage
-    const saved = getCurrentCount();
-    return saved?.products || [];
-  });
-
-  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
-
-  // Atualizar estado quando a contagem for carregada
-  useEffect(() => {
-    if (contagem?.data) {
-      try {
-        console.log('Data da contagem do banco:', contagem.data);
-        // Para contagens existentes, sempre usa a data do banco
-        const [ano, mes, dia] = contagem.data.split('-');
-        const formattedDate = `${ano}-${mes}-${dia}`;
-        console.log('Data formatada:', formattedDate);
-        setCountDate(formattedDate);
-        setProducts(contagem.itens.map(item => ({
-          id: item.produto?.id || crypto.randomUUID(),
-          nome: item.produto?.nome || item.nomeLivre || "",
-          pallets: item.pallets,
-          lastros: item.lastros,
-          pacotes: item.pacotes,
-          unidades: item.unidades,
-          unidadesPorPacote: item.produto?.unidadesPorPacote,
-          pacotesPorLastro: item.produto?.pacotesPorLastro,
-          lastrosPorPallet: item.produto?.lastrosPorPallet,
-        })));
-      } catch (error) {
-        console.error("Erro ao carregar data:", error);
-        toast({
-          title: "Erro",
-          description: "Erro ao carregar data da contagem",
-          variant: "destructive",
-        });
+      })));
+    } else {
+      // Se não tem contagem não finalizada, tentar carregar do localStorage
+      const savedCount = getCurrentCount();
+      if (savedCount) {
+        setCountDate(savedCount.date);
+        setProducts(savedCount.products);
       }
     }
-  }, [contagem, toast, setCountDate]);
+  }, [unfinishedCount]);
 
   const createCountMutation = useMutation({
-    mutationFn: async (data: InsertContagem) => {
-      const response = await apiRequest("POST", "/api/contagens", data);
-      return response.json();
+    mutationFn: async ({ data, finalizada }: { data: string; finalizada: boolean }) => {
+      const { data: contagem, error } = await supabase
+        .from('contagens')
+        .insert([{ data, finalizada }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return contagem;
     },
     onSuccess: (contagem) => {
       // Add items to the count
@@ -115,8 +101,22 @@ export default function NewCount() {
 
   const addItemMutation = useMutation({
     mutationFn: async ({ contagemId, item }: { contagemId: string; item: InsertItemContagem }) => {
-      const response = await apiRequest("POST", `/api/contagens/${contagemId}/itens`, item);
-      return response.json();
+      const { data, error } = await supabase
+        .from('itens_contagem')
+        .insert([{
+          contagem_id: contagemId,
+          produto_id: item.produto_id,
+          nome_livre: item.nome_livre,
+          pallets: item.pallets,
+          lastros: item.lastros,
+          pacotes: item.pacotes,
+          unidades: item.unidades
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
     },
   });
 
@@ -154,13 +154,16 @@ export default function NewCount() {
       }
 
       // Marcar contagem como finalizada
-      await apiRequest("PUT", `/api/contagens/${contagemId}`, {
-        finalizada: true
-      });
+      const { error: updateError } = await supabase
+        .from('contagens')
+        .update({ finalizada: true })
+        .eq('id', contagemId);
+
+      if (updateError) throw updateError;
       
       // Clear local storage and show success
       clearCurrentCount();
-      queryClient.invalidateQueries({ queryKey: ["/api/contagens"] });
+      queryClient.invalidateQueries({ queryKey: ["contagens"] });
       setIsSuccessModalOpen(true);
     } catch (error) {
       console.error("Erro ao adicionar itens:", error);

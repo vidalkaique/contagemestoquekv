@@ -35,9 +35,82 @@ type DatabaseContagem = {
   }>;
 };
 
+export function useUnfinishedCount() {
+  return useQuery<ContagemWithItens | null>({
+    queryKey: ["contagens", "unfinished"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('contagens')
+        .select(`
+          id,
+          data,
+          finalizada,
+          excel_url,
+          created_at,
+          itens_contagem (
+            id,
+            produto_id,
+            nome_livre,
+            pallets,
+            lastros,
+            pacotes,
+            unidades,
+            total,
+            created_at,
+            produtos (
+              id,
+              codigo,
+              nome,
+              unidades_por_pacote,
+              pacotes_por_lastro,
+              lastros_por_pallet,
+              created_at
+            )
+          )
+        `)
+        .eq('finalizada', false)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      if (!data) return null;
+
+      // Convertemos para o tipo final ContagemWithItens
+      return {
+        id: data.id,
+        data: data.data,
+        finalizada: data.finalizada,
+        excelUrl: data.excel_url,
+        createdAt: new Date(data.created_at),
+        itens: (data.itens_contagem || []).map((item: any) => ({
+          id: item.id,
+          contagemId: data.id,
+          produtoId: item.produto_id,
+          nomeLivre: item.nome_livre,
+          pallets: item.pallets,
+          lastros: item.lastros,
+          pacotes: item.pacotes,
+          unidades: item.unidades,
+          total: item.total,
+          produto: item.produtos ? {
+            id: item.produtos.id,
+            codigo: item.produtos.codigo,
+            nome: item.produtos.nome,
+            unidadesPorPacote: item.produtos.unidades_por_pacote,
+            pacotesPorLastro: item.produtos.pacotes_por_lastro,
+            lastrosPorPallet: item.produtos.lastros_por_pallet,
+            createdAt: new Date(item.produtos.created_at)
+          } : undefined
+        }))
+      };
+    }
+  });
+}
+
 export function useCounts() {
   return useQuery<ContagemWithItens[]>({
-    queryKey: ["/api/contagens"],
+    queryKey: ["contagens"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('contagens')
@@ -74,7 +147,7 @@ export function useCounts() {
       if (!data) return [];
 
       // Convertemos para o tipo final ContagemWithItens[]
-      return (data as any[]).map(contagem => ({
+      return data.map(contagem => ({
         id: contagem.id,
         data: contagem.data,
         finalizada: contagem.finalizada,
