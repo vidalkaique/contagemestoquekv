@@ -27,7 +27,7 @@ export default function Products() {
   });
 
   const { data: produtos = [], isLoading } = useProducts();
-  const createProduct = useCreateProduct();
+  const createMutation = useCreateProduct();
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<InsertProduto> }) => {
@@ -137,7 +137,22 @@ export default function Products() {
     if (editingProduct) {
       updateMutation.mutate({ id: editingProduct.id, data });
     } else {
-      createProduct(data);
+      createMutation.mutate(data, {
+        onSuccess: () => {
+          resetForm();
+          toast({
+            title: "Produto criado",
+            description: "Produto adicionado com sucesso",
+          });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Erro",
+            description: error.message || "Erro ao criar produto",
+            variant: "destructive",
+          });
+        }
+      });
     }
   };
 
@@ -382,10 +397,10 @@ export default function Products() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={updateMutation.isPending}
+                  disabled={createMutation.isPending || updateMutation.isPending}
                   className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
                 >
-                  {updateMutation.isPending ? "Salvando..." : (editingProduct ? "Atualizar" : "Criar")}
+                  {createMutation.isPending || updateMutation.isPending ? "Salvando..." : (editingProduct ? "Atualizar" : "Criar")}
                 </Button>
               </div>
             </form>

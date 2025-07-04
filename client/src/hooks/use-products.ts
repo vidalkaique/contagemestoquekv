@@ -37,7 +37,7 @@ export function useProductSearch(query: string) {
 export function useCreateProduct() {
   const queryClient = useQueryClient();
   
-  return useMutation({
+  return useMutation<Produto, Error, InsertProduto>({
     mutationFn: async (data: InsertProduto) => {
       const { data: newProduct, error } = await supabase
         .from('produtos')
