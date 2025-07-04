@@ -100,8 +100,6 @@ export function useCreateProduct() {
         lastros_por_pallet: data.lastrosPorPallet
       };
 
-      console.log('Enviando para o Supabase:', produtoParaInserir);
-
       const { data: newProduct, error } = await supabase
         .from('produtos')
         .insert(produtoParaInserir)

@@ -68,12 +68,16 @@ export default function StartCount() {
       return;
     }
 
-    // Corrige o problema de fuso horário criando uma data UTC para ser agnóstica a timezone.
+    // Lógica de depuração e correção de fuso horário.
     const [year, month, day] = countDate.split('-').map(Number);
     const utcDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+    const finalDate = utcDate.toISOString().split('T')[0];
+
+    // LOG DE DEPURAÇÃO FINAL: Verifique este log no console do navegador (F12).
+    console.log(`[DEPURAÇÃO] Data selecionada (input): '${countDate}', Data final a ser enviada: '${finalDate}'`);
 
     createCountMutation.mutate({
-      data: utcDate.toISOString().split('T')[0],
+      data: finalDate,
       finalizada: false,
     });
   };
