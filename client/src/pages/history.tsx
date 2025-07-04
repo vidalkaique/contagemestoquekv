@@ -1,4 +1,5 @@
 import { useLocation } from "wouter";
+import { supabase } from "@/lib/supabase";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -52,27 +53,38 @@ export default function History() {
 
   const handleDownloadExcel = async (contagemId: string) => {
     try {
-      // Buscar dados da contagem
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contagens?select=id,data,itens_contagem(id,produto_id,nome_livre,pallets,lastros,pacotes,unidades,total,produtos(id,codigo,nome,unidades_por_pacote,pacotes_por_lastro,lastros_por_pallet))&id=eq.${contagemId}`, {
-        headers: {
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY as string,
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        },
-      });
+      // Buscar dados da contagem de forma autenticada
+      const { data: contagem, error } = await supabase
+        .from('contagens')
+        .select(`
+          id,
+          data,
+          itens_contagem (
+            id,
+            produto_id,
+            nome_livre,
+            pallets,
+            lastros,
+            pacotes,
+            unidades,
+            total,
+            produtos (
+              id,
+              codigo,
+              nome,
+              unidades_por_pacote,
+              pacotes_por_lastro,
+              lastros_por_pallet
+            )
+          )
+        `)
+        .eq('id', contagemId)
+        .single();
 
-      if (!response.ok) {
-        const errorBody = await response.text();
-        console.error("Falha na requisição ao Supabase:", { 
-          status: response.status, 
-          statusText: response.statusText,
-          body: errorBody 
-        });
-        throw new Error(`Erro ao buscar dados da contagem: ${response.status} ${response.statusText}`);
+      if (error || !contagem) {
+        console.error('Erro ao buscar dados da contagem:', error);
+        throw new Error('Erro ao buscar dados da contagem');
       }
-
-      const [contagem] = await response.json() as Contagem[];
 
       // Criar workbook
       const workbook = new Workbook();
@@ -90,10 +102,11 @@ export default function History() {
       ];
 
       // Adicionar dados
-      contagem.itens_contagem.forEach((item: ItemContagem) => {
+      (contagem.itens_contagem || []).forEach((item: any) => {
+        const produto = Array.isArray(item.produtos) ? item.produtos[0] : item.produtos;
         worksheet.addRow({
-          codigo: item.produtos?.codigo || "N/A",
-          nome: item.produtos?.nome || item.nome_livre || "N/A",
+          codigo: produto?.codigo || "N/A",
+          nome: produto?.nome || item.nome_livre || "N/A",
           pallets: item.pallets || 0,
           lastros: item.lastros || 0,
           pacotes: item.pacotes || 0,

@@ -56,7 +56,6 @@ export function useUnfinishedCount() {
             pacotes,
             unidades,
             total,
-            created_at,
             produtos (
               id,
               codigo,
@@ -129,7 +128,6 @@ export function useCounts() {
             pacotes,
             unidades,
             total,
-            created_at,
             produtos (
               id,
               codigo,
