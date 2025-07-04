@@ -14,16 +14,25 @@ export function useCountDate() {
 
   const updateCountDate = (newDate: string) => {
     try {
-      // Validar se a data é válida
-      const date = new Date(newDate);
+      if (!newDate) {
+        setCountDate('');
+        return;
+      }
+
+      // Solução definitiva para o problema de fuso horário na sua origem.
+      // O input type="date" retorna uma string 'YYYY-MM-DD'.
+      // new Date('YYYY-MM-DD') por padrão cria uma data em UTC.
+      // Para tratar como data local, o que corrige o bug, adicionamos um horário.
+      const date = new Date(`${newDate}T12:00:00`);
+
       if (isNaN(date.getTime())) {
         throw new Error('Data inválida');
       }
       
-      // Formatar a data no formato YYYY-MM-DD
+      // Agora, a formatação para yyyy-MM-dd será correta.
       const formattedDate = format(date, "yyyy-MM-dd");
-      console.log('Data formatada:', formattedDate);
       setCountDate(formattedDate);
+
     } catch (error) {
       console.error('Erro ao atualizar data:', error);
       setCountDate('');
