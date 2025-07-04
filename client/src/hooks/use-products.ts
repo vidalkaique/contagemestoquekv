@@ -21,16 +21,48 @@ export function useProductSearch(query: string) {
   return useQuery<Produto[]>({
     queryKey: ["produtos/search", query],
     queryFn: async () => {
+      // Se a query estiver vazia, retorna array vazio
+      if (!query.trim()) return [];
+
+      // Limpa a query e prepara para busca
+      const searchTerm = query.trim().toLowerCase();
+      
       const { data, error } = await supabase
         .from('produtos')
         .select()
-        .or(`nome.ilike.%${query}%,codigo.ilike.%${query}%`)
-        .limit(10);
+        .or(
+          `nome.ilike.%${searchTerm}%,` + // Busca parcial no nome
+          `nome.ilike.${searchTerm}%,` +   // Começa com
+          `codigo.ilike.%${searchTerm}%,` + // Busca parcial no código
+          `codigo.ilike.${searchTerm}%`     // Começa com
+        )
+        .order('nome')
+        .limit(50);
 
       if (error) throw error;
-      return data || [];
+
+      // Se não encontrou nada, tenta uma busca mais flexível
+      if (!data?.length) {
+        // Divide a query em palavras e busca cada uma
+        const terms = searchTerm.split(/\s+/);
+        
+        const { data: flexData, error: flexError } = await supabase
+          .from('produtos')
+          .select()
+          .or(
+            terms.map(term => `nome.ilike.%${term}%`).join(',')
+          )
+          .order('nome')
+          .limit(50);
+
+        if (flexError) throw flexError;
+        return flexData || [];
+      }
+
+      return data;
     },
-    enabled: query.length >= 2,
+    enabled: true, // Sempre habilitado para melhor experiência
+    staleTime: 1000 * 60 * 5, // Cache por 5 minutos
   });
 }
 
