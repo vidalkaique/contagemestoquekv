@@ -233,11 +233,26 @@ export default function NewCount() {
       return;
     }
 
-    console.log('Data sendo enviada na finalização:', countDate);
-    createCountMutation.mutate({
-      data: countDate,
-      finalizada: false
-    });
+    try {
+      // Validar se a data é válida
+      const date = new Date(countDate);
+      if (isNaN(date.getTime())) {
+        throw new Error('Data inválida');
+      }
+
+      console.log('Data sendo enviada na finalização:', countDate);
+      createCountMutation.mutate({
+        data: countDate,
+        finalizada: false
+      });
+    } catch (error) {
+      console.error('Erro ao validar data:', error);
+      toast({
+        title: "Erro",
+        description: "Data inválida",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDateChange = (newDate: string) => {
@@ -251,7 +266,22 @@ export default function NewCount() {
       return;
     }
 
-    setCountDate(newDate);
+    try {
+      // Validar se a data é válida
+      const date = new Date(newDate);
+      if (isNaN(date.getTime())) {
+        throw new Error('Data inválida');
+      }
+      
+      setCountDate(newDate);
+    } catch (error) {
+      console.error('Erro ao validar data:', error);
+      toast({
+        title: "Erro",
+        description: "Data inválida",
+        variant: "destructive",
+      });
+    }
   };
 
   const calculateProductTotal = (product: ProductItem): number => {

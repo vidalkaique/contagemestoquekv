@@ -67,6 +67,16 @@ export const insertContagemSchema = createInsertSchema(contagens).omit({
   id: true,
   createdAt: true,
   excelUrl: true,
+}).extend({
+  data: z.string().refine((data) => {
+    try {
+      const date = new Date(data);
+      return !isNaN(date.getTime());
+    } catch {
+      return false;
+    }
+  }, "Data inválida"),
+  finalizada: z.boolean().optional().default(false)
 });
 
 export const insertItemContagemSchema = createInsertSchema(itensContagem).omit({

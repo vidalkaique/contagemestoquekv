@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { supabase } from './supabase';
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -7,20 +8,20 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-export async function apiRequest(
-  method: string,
-  url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
-  const res = await fetch(url, {
+export async function apiRequest(method: string, path: string, data?: any) {
+  const response = await fetch(path, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
   });
 
-  await throwIfResNotOk(res);
-  return res;
+  if (!response.ok) {
+    throw new Error('Erro na requisição');
+  }
+
+  return response;
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
