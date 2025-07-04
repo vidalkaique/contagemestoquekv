@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { ContagemWithItens } from "@shared/schema";
+import { Workbook } from "exceljs";
 
 export default function History() {
   const [, setLocation] = useLocation();
@@ -26,32 +27,64 @@ export default function History() {
 
   const handleDownloadExcel = async (contagemId: string) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-excel/${contagemId}`, {
-        method: "GET",
+      // Buscar dados da contagem
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contagens?select=id,data,itens_contagem(id,produto_id,nome_livre,pallets,lastros,pacotes,unidades,total,produtos(id,codigo,nome,unidades_por_pacote,pacotes_por_lastro,lastros_por_pallet))&id=eq.${contagemId}`, {
         headers: {
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
       });
 
       if (!response.ok) {
-        throw new Error("Erro ao gerar Excel");
+        throw new Error("Erro ao buscar dados da contagem");
       }
 
-      const blob = await response.blob();
+      const [contagem] = await response.json();
+
+      // Criar workbook
+      const workbook = new Workbook();
+      const worksheet = workbook.addWorksheet("Contagem");
+
+      // Configurar colunas
+      worksheet.columns = [
+        { header: "Código", key: "codigo", width: 15 },
+        { header: "Produto", key: "nome", width: 30 },
+        { header: "Pallets", key: "pallets", width: 10 },
+        { header: "Lastros", key: "lastros", width: 10 },
+        { header: "Pacotes", key: "pacotes", width: 10 },
+        { header: "Unidades", key: "unidades", width: 10 },
+        { header: "Total", key: "total", width: 15 },
+      ];
+
+      // Adicionar dados
+      contagem.itens_contagem.forEach((item) => {
+        worksheet.addRow({
+          codigo: item.produtos?.codigo || "N/A",
+          nome: item.produtos?.nome || item.nome_livre || "N/A",
+          pallets: item.pallets || 0,
+          lastros: item.lastros || 0,
+          pacotes: item.pacotes || 0,
+          unidades: item.unidades || 0,
+          total: item.total || 0,
+        });
+      });
+
+      // Estilizar cabeçalho
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFE0E0E0" },
+      };
+
+      // Gerar e baixar o arquivo
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.style.display = "none";
       a.href = url;
-      
-      // Get filename from response headers
-      const contentDisposition = response.headers.get("content-disposition");
-      const filename = contentDisposition?.match(/filename="(.+)"/)?.[1] || `contagem_${contagemId}.xlsx`;
-      a.download = filename;
-      
-      document.body.appendChild(a);
+      a.download = `contagem_${contagemId}.xlsx`;
       a.click();
       window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
 
       toast({
         title: "Download iniciado",
