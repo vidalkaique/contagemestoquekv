@@ -93,7 +93,13 @@ export function useCreateProduct() {
     mutationFn: async (data: InsertProduto) => {
       const { data: newProduct, error } = await supabase
         .from('produtos')
-        .insert([data])
+        .insert([{
+          codigo: data.codigo,
+          nome: data.nome,
+          unidades_por_pacote: data.unidadesPorPacote,
+          pacotes_por_lastro: data.pacotesPorLastro,
+          lastros_por_pallet: data.lastrosPorPallet
+        }])
         .select()
         .single();
 
