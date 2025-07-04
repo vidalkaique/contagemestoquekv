@@ -4,23 +4,33 @@ import { Workbook } from "https://esm.sh/exceljs@4.4.0";
 
 // Configuração dos headers CORS
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Origin': 'https://contagemestoquekv.vercel.app',
+  'Access-Control-Allow-Headers': '*',
+  'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 };
 
 serve(async (req) => {
+  console.log("Método da requisição:", req.method);
+  console.log("Headers da requisição:", Object.fromEntries(req.headers.entries()));
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    console.log("Respondendo à requisição OPTIONS (preflight)");
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders
+    });
   }
 
   try {
     // Extrair o ID da contagem da URL
     const url = new URL(req.url);
     const contagemId = url.pathname.split("/").pop();
+    console.log("ID da contagem:", contagemId);
 
     if (!contagemId) {
+      console.error("ID da contagem não fornecido");
       return new Response(
         JSON.stringify({ error: "ID da contagem não fornecido" }),
         { 
@@ -34,12 +44,19 @@ serve(async (req) => {
     }
 
     // Criar cliente Supabase
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY");
+    console.log("URL do Supabase:", supabaseUrl);
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.error("Variáveis de ambiente do Supabase não configuradas");
+      throw new Error("Configuração do Supabase incompleta");
+    }
+
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
     // Buscar dados da contagem
+    console.log("Buscando dados da contagem...");
     const { data: contagem, error: contagemError } = await supabaseClient
       .from("contagens")
       .select(`
@@ -67,8 +84,20 @@ serve(async (req) => {
       .eq("id", contagemId)
       .single();
 
-    if (contagemError) throw contagemError;
-    if (!contagem) throw new Error("Contagem não encontrada");
+    if (contagemError) {
+      console.error("Erro ao buscar contagem:", contagemError);
+      throw contagemError;
+    }
+    if (!contagem) {
+      console.error("Contagem não encontrada");
+      throw new Error("Contagem não encontrada");
+    }
+
+    console.log("Dados da contagem encontrados:", {
+      id: contagem.id,
+      data: contagem.data,
+      numItens: contagem.itens_contagem?.length
+    });
 
     // Criar workbook
     const workbook = new Workbook();
@@ -107,7 +136,9 @@ serve(async (req) => {
     };
 
     // Gerar buffer do Excel
+    console.log("Gerando arquivo Excel...");
     const buffer = await workbook.xlsx.writeBuffer();
+    console.log("Arquivo Excel gerado com sucesso");
 
     // Retornar arquivo
     return new Response(buffer, {
@@ -120,7 +151,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Erro ao gerar Excel:", error);
     return new Response(
-      JSON.stringify({ error: "Erro ao gerar arquivo Excel" }),
+      JSON.stringify({ error: "Erro ao gerar arquivo Excel", details: error.message }),
       { 
         status: 500, 
         headers: { 
