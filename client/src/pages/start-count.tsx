@@ -7,10 +7,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiRequest } from "@/lib/queryClient";
 import type { InsertContagem, ContagemWithItens } from "@shared/schema";
 import { saveCurrentCount } from "@/lib/localStorage";
 import { useCountDate } from "@/hooks/use-count-date";
+import { supabase } from "@/lib/supabase";
 
 export default function StartCount() {
   const [, setLocation] = useLocation();
@@ -19,13 +19,31 @@ export default function StartCount() {
   
   // Buscar contagens não finalizadas
   const { data: unfinishedCounts = [] } = useQuery<ContagemWithItens[]>({
-    queryKey: ["/api/contagens/unfinished"],
+    queryKey: ["contagens/unfinished"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contagens")
+        .select(`
+          *,
+          itens (*)
+        `)
+        .eq("finalizada", false);
+
+      if (error) throw error;
+      return data || [];
+    }
   });
 
   const createCountMutation = useMutation({
     mutationFn: async (data: InsertContagem) => {
-      const response = await apiRequest("POST", "/api/contagens", data);
-      return response.json();
+      const { data: newCount, error } = await supabase
+        .from("contagens")
+        .insert([data])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return newCount;
     },
     onSuccess: (contagem) => {
       // Redirecionar para a página de contagem com o ID
