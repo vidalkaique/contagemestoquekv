@@ -13,9 +13,11 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
 
   const handleDownloadExcel = async () => {
     try {
-      const response = await fetch(`/api/contagens/${countId}/excel`, {
-        method: "POST",
-        credentials: "include",
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-excel/${countId}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
       });
 
       if (!response.ok) {
@@ -43,6 +45,7 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
         description: "O arquivo Excel está sendo baixado",
       });
     } catch (error) {
+      console.error("Erro ao baixar Excel:", error);
       toast({
         title: "Erro",
         description: "Erro ao baixar arquivo Excel",
