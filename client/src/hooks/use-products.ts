@@ -91,26 +91,41 @@ export function useCreateProduct() {
   
   return useMutation<Produto, Error, InsertProduto>({
     mutationFn: async (data: InsertProduto) => {
+      // Mapeia os dados de camelCase (app) para snake_case (banco de dados)
+      const produtoParaInserir = {
+        codigo: data.codigo,
+        nome: data.nome,
+        unidades_por_pacote: data.unidadesPorPacote,
+        pacotes_por_lastro: data.pacotesPorLastro,
+        lastros_por_pallet: data.lastrosPorPallet
+      };
+
+      console.log('Enviando para o Supabase:', produtoParaInserir);
+
       const { data: newProduct, error } = await supabase
         .from('produtos')
-        .insert([{
-          codigo: data.codigo,
-          nome: data.nome,
-          unidades_por_pacote: data.unidadesPorPacote,
-          pacotes_por_lastro: data.pacotesPorLastro,
-          lastros_por_pallet: data.lastrosPorPallet
-        }])
+        .insert(produtoParaInserir)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw new Error(`Erro ao criar produto: ${error.message}`);
+      }
 
-      // Garantir que os valores numéricos sejam números
+      if (!newProduct) {
+        throw new Error('Nenhum produto foi retornado após a criação.');
+      }
+
+      // Mapeia os dados de snake_case (banco de dados) para camelCase (app)
       return {
-        ...newProduct,
-        unidadesPorPacote: parseInt(String(newProduct.unidades_por_pacote)) || 1,
-        pacotesPorLastro: parseInt(String(newProduct.pacotes_por_lastro)) || 1,
-        lastrosPorPallet: parseInt(String(newProduct.lastros_por_pallet)) || 1,
+        id: newProduct.id,
+        codigo: newProduct.codigo,
+        nome: newProduct.nome,
+        unidadesPorPacote: newProduct.unidades_por_pacote,
+        pacotesPorLastro: newProduct.pacotes_por_lastro,
+        lastrosPorPallet: newProduct.lastros_por_pallet,
+        createdAt: new Date(newProduct.created_at),
       };
     },
     onSuccess: () => {
