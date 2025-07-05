@@ -94,7 +94,7 @@ export const insertItemContagemSchema = createInsertSchema(itensContagem).omit({
 
 // Types
 export type Produto = typeof produtos.$inferSelect;
-export type InsertProduto = Omit<Produto, 'id' | 'createdAt' | 'quantidadePacsPorPallet'>;
+export type InsertProduto = Omit<Produto, 'id' | 'createdAt'>;
 
 export type Contagem = typeof contagens.$inferSelect;
 export type InsertContagem = z.infer<typeof insertContagemSchema>;
