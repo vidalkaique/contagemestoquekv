@@ -7,6 +7,7 @@ import Home from "@/pages/home";
 import NewCount from "@/pages/new-count";
 import StartCount from "@/pages/start-count";
 import History from "@/pages/history";
+import CountSuccess from "@/pages/count-success";
 import Products from "@/pages/products";
 
 function Router() {
@@ -15,6 +16,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/start-count" component={StartCount} />
       <Route path="/count/:id" component={NewCount} />
+      <Route path="/count/:id/success" component={CountSuccess} />
       <Route path="/history" component={History} />
       <Route path="/products" component={Products} />
       <Route>

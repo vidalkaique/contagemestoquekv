@@ -167,7 +167,7 @@ export default function NewCount() {
       clearCurrentCount();
       queryClient.invalidateQueries({ queryKey: ["/api/contagens"] });
       queryClient.invalidateQueries({ queryKey: ["/api/contagens/unfinished"] });
-      setLocation(`/contagem/${newContagemId}/sucesso`);
+      setLocation(`/count/${newContagemId}/success`);
     } catch (error) {
       console.error("Erro ao adicionar itens:", error);
       toast({ title: "Erro", description: "Falha ao salvar os itens da contagem.", variant: "destructive" });
