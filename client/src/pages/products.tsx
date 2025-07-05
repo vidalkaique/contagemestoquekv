@@ -130,6 +130,7 @@ export default function Products() {
       unidadesPorPacote: Math.max(0, Number(formData.unidadesPorPacote)),
       pacotesPorLastro: Math.max(0, Number(formData.pacotesPorLastro)),
       lastrosPorPallet: Math.max(0, Number(formData.lastrosPorPallet)),
+      quantidadePacsPorPallet: Math.max(0, Number(formData.pacotesPorLastro)) * Math.max(0, Number(formData.lastrosPorPallet)),
     };
 
     if (editingProduct) {
