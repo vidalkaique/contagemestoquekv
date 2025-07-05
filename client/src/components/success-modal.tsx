@@ -61,17 +61,17 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
   const handleDownloadExcel = async () => {
     try {
       // Buscar dados da contagem de forma autenticada
-      const { data: contagem, error } = await supabase
+      const { data: contagemData, error } = await supabase
         .from('contagens')
         .select(`
           id,
           data,
           estoque_id,
-          estoques!inner(
+          estoques:estoques!contagens_estoque_id_fkey(
             id,
             nome
           ),
-          itens_contagem (
+          itens_contagem!contagem_id(
             id,
             produto_id,
             nome_livre,
@@ -81,7 +81,7 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
             unidades,
             total,
             total_pacotes,
-            produtos (
+            produtos:produtos!itens_contagem_produto_id_fkey(
               id,
               codigo,
               nome,
@@ -93,6 +93,13 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
         `)
         .eq('id', countId)
         .single();
+
+      if (error) {
+        console.error('Erro ao buscar dados da contagem:', error);
+        throw new Error('Erro ao buscar dados da contagem');
+      }
+
+      const contagem = contagemData as unknown as Contagem;
 
       if (error || !contagem) {
         console.error('Erro ao buscar dados da contagem:', error);
