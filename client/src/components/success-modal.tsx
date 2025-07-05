@@ -38,8 +38,21 @@ interface Estoque {
 interface Contagem {
   id: string;
   data: string;
-  estoque: Estoque | Estoque[] | null;
-  itens_contagem: ItemContagem[];
+  estoque_id: string;
+  estoques: {
+    id: string;
+    nome: string;
+  } | null;
+  itens_contagem: Array<ItemContagem & {
+    produtos: {
+      id: string;
+      codigo: string;
+      nome: string;
+      unidades_por_pacote: number;
+      pacotes_por_lastro: number;
+      lastros_por_pallet: number;
+    } | null;
+  }>;
 }
 
 export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalProps) {
@@ -53,7 +66,8 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
         .select(`
           id,
           data,
-          estoque:estoques(
+          estoque_id,
+          estoques!inner(
             id,
             nome
           ),
@@ -96,19 +110,16 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
       worksheet.mergeCells('A1:H1');
       
       // Adicionar informações do estoque e data
-      let estoqueNome = 'N/A';
-      if (contagem.estoque) {
-        if (Array.isArray(contagem.estoque) && contagem.estoque.length > 0) {
-          estoqueNome = contagem.estoque[0]?.nome || 'N/A';
-        } else if (typeof contagem.estoque === 'object' && contagem.estoque !== null) {
-          estoqueNome = (contagem.estoque as { nome?: string }).nome || 'N/A';
-        }
-      }
+      const estoqueNome = contagem.estoques && Array.isArray(contagem.estoques) 
+        ? contagem.estoques[0]?.nome || 'N/A'
+        : (contagem.estoques as any)?.nome || 'N/A';
+      
+      const dataContagem = contagem.data ? new Date(contagem.data) : new Date();
       
       const estoqueInfo = worksheet.addRow([
         `Estoque: ${estoqueNome}`,
         '', '', '', '', '', '',
-        `Data: ${new Date(contagem.data).toLocaleDateString('pt-BR')}`
+        `Data: ${dataContagem.toLocaleDateString('pt-BR')}`
       ]);
       estoqueInfo.font = { bold: true };
       worksheet.mergeCells('A2:D2');
