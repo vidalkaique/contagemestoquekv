@@ -30,13 +30,15 @@ interface ItemContagem {
   };
 }
 
+interface Estoque {
+  id: string;
+  nome: string;
+}
+
 interface Contagem {
   id: string;
   data: string;
-  estoque?: {
-    id: string;
-    nome: string;
-  };
+  estoque: Estoque | Estoque[] | null;
   itens_contagem: ItemContagem[];
 }
 
@@ -94,10 +96,15 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
       worksheet.mergeCells('A1:H1');
       
       // Adicionar informações do estoque e data
-      const estoqueNome = Array.isArray(contagem.estoque) 
-        ? contagem.estoque[0]?.nome || 'N/A'
-        : contagem.estoque?.nome || 'N/A';
-        
+      let estoqueNome = 'N/A';
+      if (contagem.estoque) {
+        if (Array.isArray(contagem.estoque) && contagem.estoque.length > 0) {
+          estoqueNome = contagem.estoque[0]?.nome || 'N/A';
+        } else if (typeof contagem.estoque === 'object' && contagem.estoque !== null) {
+          estoqueNome = (contagem.estoque as { nome?: string }).nome || 'N/A';
+        }
+      }
+      
       const estoqueInfo = worksheet.addRow([
         `Estoque: ${estoqueNome}`,
         '', '', '', '', '', '',
