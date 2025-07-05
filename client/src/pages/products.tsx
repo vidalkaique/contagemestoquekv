@@ -31,9 +31,22 @@ export default function Products() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<InsertProduto> }) => {
+      // Mapeia os dados do formulário (camelCase) para o formato do banco (snake_case)
+      const dataToUpdate = {
+        codigo: data.codigo,
+        nome: data.nome,
+        unidades_por_pacote: data.unidadesPorPacote,
+        pacotes_por_lastro: data.pacotesPorLastro,
+        lastros_por_pallet: data.lastrosPorPallet,
+        quantidade_pacs_por_pallet: data.quantidadePacsPorPallet,
+      };
+
+      // Remove chaves indefinidas para não enviar campos vazios na atualização
+      Object.keys(dataToUpdate).forEach(key => (dataToUpdate as any)[key] === undefined && delete (dataToUpdate as any)[key]);
+
       const { data: updatedProduct, error } = await supabase
         .from("produtos")
-        .update(data)
+        .update(dataToUpdate)
         .eq("id", id)
         .select()
         .single();
