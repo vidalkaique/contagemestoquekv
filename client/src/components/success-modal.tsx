@@ -94,8 +94,12 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
       worksheet.mergeCells('A1:H1');
       
       // Adicionar informações do estoque e data
+      const estoqueNome = Array.isArray(contagem.estoque) 
+        ? contagem.estoque[0]?.nome || 'N/A'
+        : contagem.estoque?.nome || 'N/A';
+        
       const estoqueInfo = worksheet.addRow([
-        `Estoque: ${contagem.estoque?.nome || 'N/A'}`,
+        `Estoque: ${estoqueNome}`,
         '', '', '', '', '', '',
         `Data: ${new Date(contagem.data).toLocaleDateString('pt-BR')}`
       ]);
