@@ -12,7 +12,7 @@ interface SelectStockModalProps {
   onStockSelected?: (stock: { id: string; nome: string }) => void;
 }
 
-export const SelectStockModal = ({ isOpen, onOpenChange }: SelectStockModalProps) => {
+export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: SelectStockModalProps) => {
   const [, setLocation] = useLocation();
   const [selectedStock, setSelectedStock] = useState<string | null>(null);
 
