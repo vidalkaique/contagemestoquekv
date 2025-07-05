@@ -171,30 +171,9 @@ export default function NewCount() {
   const addItemsToCount = async (newContagemId: string) => {
     try {
       for (const product of products) {
-        const isProdutoCadastrado = !product.id.includes('-');
+        const isProdutoCadastrado = !product.id.startsWith('free-');
         const total = calculateProductTotal(product);
         const totalPacotes = calculateTotalPacotes(product);
-
-        console.log("--- DEBUG: Salvando Item ---", {
-          nome: product.nome,
-          id: product.id,
-          isProdutoCadastrado: !product.id.includes('-'),
-          inputs: {
-            pallets: product.pallets,
-            lastros: product.lastros,
-            pacotes: product.pacotes,
-            unidades: product.unidades,
-          },
-          fatores: {
-            unidadesPorPacote: product.unidadesPorPacote,
-            pacotesPorLastro: product.pacotesPorLastro,
-            lastrosPorPallet: product.lastrosPorPallet,
-          },
-          calculado: {
-            totalUnidades: total,
-            totalPacotes: totalPacotes,
-          },
-        });
 
         await addItemMutation.mutateAsync({
           item: {
