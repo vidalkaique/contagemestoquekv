@@ -33,6 +33,10 @@ interface ItemContagem {
 interface Contagem {
   id: string;
   data: string;
+  estoque?: {
+    id: string;
+    nome: string;
+  };
   itens_contagem: ItemContagem[];
 }
 
@@ -47,6 +51,10 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
         .select(`
           id,
           data,
+          estoque:estoques(
+            id,
+            nome
+          ),
           itens_contagem (
             id,
             produto_id,
@@ -79,16 +87,48 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
       const workbook = new Workbook();
       const worksheet = workbook.addWorksheet("Contagem");
 
+      // Adicionar título
+      const titleRow = worksheet.addRow(['CONTAGEM DE ESTOQUE']);
+      titleRow.font = { bold: true, size: 18 };
+      titleRow.alignment = { horizontal: 'center' };
+      worksheet.mergeCells('A1:H1');
+      
+      // Adicionar informações do estoque e data
+      const estoqueInfo = worksheet.addRow([
+        `Estoque: ${contagem.estoque?.nome || 'N/A'}`,
+        '', '', '', '', '', '',
+        `Data: ${new Date(contagem.data).toLocaleDateString('pt-BR')}`
+      ]);
+      estoqueInfo.font = { bold: true };
+      worksheet.mergeCells('A2:D2');
+      worksheet.mergeCells('G2:H2');
+      
+      // Adicionar linha em branco
+      worksheet.addRow([]);
+
       // Configurar colunas
+      const headerRow = worksheet.addRow([
+        "Código", "Produto", "Pallets", "Lastros", "Pacotes", "Unidades", "Total Pacotes", "Total Unidades"
+      ]);
+      
+      // Estilizar cabeçalho
+      headerRow.font = { bold: true };
+      headerRow.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFE0E0E0" },
+      };
+      
+      // Configurar largura das colunas
       worksheet.columns = [
-        { header: "Código", key: "codigo", width: 15 },
-        { header: "Produto", key: "nome", width: 30 },
-        { header: "Pallets", key: "pallets", width: 10 },
-        { header: "Lastros", key: "lastros", width: 10 },
-        { header: "Pacotes", key: "pacotes", width: 10 },
-        { header: "Unidades", key: "unidades", width: 10 },
-        { header: "Total Pacotes", key: "totalPacotes", width: 15 },
-        { header: "Total Unidades", key: "total", width: 18 },
+        { key: "codigo", width: 15 },
+        { key: "nome", width: 30 },
+        { key: "pallets", width: 10 },
+        { key: "lastros", width: 10 },
+        { key: "pacotes", width: 10 },
+        { key: "unidades", width: 10 },
+        { key: "totalPacotes", width: 15 },
+        { key: "total", width: 15 },
       ];
 
       // Adicionar dados
@@ -106,13 +146,12 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
         });
       });
 
-      // Estilizar cabeçalho
-      worksheet.getRow(1).font = { bold: true };
-      worksheet.getRow(1).fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFE0E0E0" },
-      };
+      // Adicionar rodapé com marca d'água
+      worksheet.addRow([]); // Linha em branco
+      const footerRow = worksheet.addRow(['Feito por: Kaique Vidal']);
+      footerRow.font = { italic: true, color: { argb: 'FF808080' } };
+      worksheet.mergeCells('A' + footerRow.number + ':H' + footerRow.number);
+      footerRow.alignment = { horizontal: 'right' };
 
       // Gerar e baixar o arquivo
       const buffer = await workbook.xlsx.writeBuffer();
