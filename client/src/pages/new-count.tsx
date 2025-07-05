@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
 import { ArrowLeft, Plus, Check, Trash2, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ProductModal from "@/components/product-modal";
-import SuccessModal from "@/components/success-modal";
 import { supabase } from "@/lib/supabase";
 import { saveCurrentCount, getCurrentCount, clearCurrentCount } from "@/lib/localStorage";
 import type { InsertContagem, InsertItemContagem, ContagemWithItens } from "@shared/schema";
@@ -22,8 +20,7 @@ interface ProductItem {
   lastros: number;
   pacotes: number;
   unidades: number;
-  totalPacotes: number; // Novo campo para o total de pacotes
-  // Dados do produto para cálculo
+  totalPacotes: number; 
   unidadesPorPacote?: number;
   pacotesPorLastro?: number;
   lastrosPorPallet?: number;
@@ -37,25 +34,27 @@ export default function NewCount() {
   const queryClient = useQueryClient();
   const { countDate, setCountDate } = useCountDate();
   
-  // Buscar contagem não finalizada
   const { data: unfinishedCount } = useUnfinishedCount();
 
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [products, setProducts] = useState<ProductItem[]>([]);
 
-  // Buscar dados da contagem se existir
   const { data: contagem } = useQuery<ContagemWithItens>({
     queryKey: ["/api/contagens", contagemId],
     enabled: !!contagemId,
   });
 
-  // Carregar contagem não finalizada ou do localStorage
+  const calculateProductPackages = (product: Omit<ProductItem, 'totalPacotes'>): number => {
+    const pacotesPorLastro = product.pacotesPorLastro || 0;
+    const lastrosPorPallet = product.lastrosPorPallet || 0;
+    const totalFromPallets = product.pallets * lastrosPorPallet * pacotesPorLastro;
+    const totalFromLastros = product.lastros * pacotesPorLastro;
+    return totalFromPallets + totalFromLastros + product.pacotes;
+  };
+
   useEffect(() => {
     if (unfinishedCount) {
-      // Se tem contagem não finalizada, usar ela
       setCountDate(unfinishedCount.data);
-      // Carregar produtos da contagem não finalizada
       const productsWithTotals = unfinishedCount.itens.map(item => {
         const productData = {
           id: item.produto?.id || crypto.randomUUID(),
@@ -76,14 +75,13 @@ export default function NewCount() {
       });
       setProducts(productsWithTotals);
     } else {
-      // Se não tem contagem não finalizada, tentar carregar do localStorage
       const savedCount = getCurrentCount();
       if (savedCount) {
         setCountDate(savedCount.date);
         setProducts(savedCount.products);
       }
     }
-  }, [unfinishedCount]);
+  }, [unfinishedCount, setCountDate]);
 
   const createCountMutation = useMutation({
     mutationFn: async ({ data, finalizada }: { data: string; finalizada: boolean }) => {
@@ -92,393 +90,182 @@ export default function NewCount() {
         .insert([{ data, finalizada }])
         .select()
         .single();
-
       if (error) throw error;
       return contagem;
     },
     onSuccess: (contagem) => {
-      // Add items to the count
       addItemsToCount(contagem.id);
     },
     onError: () => {
-      toast({
-        title: "Erro",
-        description: "Erro ao criar contagem",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Erro ao criar contagem", variant: "destructive" });
     },
   });
 
-    const addItemMutation = useMutation({
+  const addItemMutation = useMutation({
     mutationFn: async ({ item }: { item: InsertItemContagem }) => {
-      const { data, error } = await supabase
-        .from('itens_contagem')
-        .insert(item)
-        .select()
-        .single();
-
+      const { data, error } = await supabase.from('itens_contagem').insert(item).select().single();
       if (error) throw error;
       return data;
     },
   });
 
-  const addItemsToCount = async (contagemId: string) => {
+  const calculateProductTotal = (product: ProductItem): number => {
+    if (!product.unidadesPorPacote || !product.pacotesPorLastro || !product.lastrosPorPallet) return 0;
+    const pacotesPorLastro = product.pacotesPorLastro;
+    const lastrosPorPallet = product.lastrosPorPallet;
+    const unidadesPorPacote = product.unidadesPorPacote;
+    const totalFromPallets = product.pallets * lastrosPorPallet * pacotesPorLastro * unidadesPorPacote;
+    const totalFromLastros = product.lastros * pacotesPorLastro * unidadesPorPacote;
+    const totalFromPacotes = product.pacotes * unidadesPorPacote;
+    return totalFromPallets + totalFromLastros + totalFromPacotes + product.unidades;
+  };
+
+  const addItemsToCount = async (newContagemId: string) => {
     try {
       for (const product of products) {
-        // Se o produto tem um ID válido (não é um UUID gerado localmente), é um produto cadastrado
-        const isProdutoCadastrado = product.id && product.id.length > 10;
-
-        // Calcular o total
-        let total = 0;
-        if (product.unidadesPorPacote && product.pacotesPorLastro && product.lastrosPorPallet) {
-          const totalUnitsPerPallet = product.unidadesPorPacote * product.pacotesPorLastro * product.lastrosPorPallet;
-          total = (product.pallets || 0) * totalUnitsPerPallet +
-                 (product.lastros || 0) * (product.unidadesPorPacote * product.pacotesPorLastro) +
-                 (product.pacotes || 0) * product.unidadesPorPacote +
-                 (product.unidades || 0);
-        } else {
-          // Se não tem configuração de produto, soma direta
-          total = (product.pallets || 0) + (product.lastros || 0) + (product.pacotes || 0) + (product.unidades || 0);
-        }
-
-                await addItemMutation.mutateAsync({
+        const isProdutoCadastrado = !product.id.includes('-');
+        const total = isProdutoCadastrado ? calculateProductTotal(product) : (product.pallets || 0) + (product.lastros || 0) + (product.pacotes || 0) + (product.unidades || 0);
+        await addItemMutation.mutateAsync({
           item: {
-            contagem_id: contagemId,
+            contagem_id: newContagemId,
             produto_id: isProdutoCadastrado ? product.id : undefined,
             nome_livre: !isProdutoCadastrado ? product.nome : undefined,
             pallets: product.pallets,
             lastros: product.lastros,
             pacotes: product.pacotes,
             unidades: product.unidades,
-            total: total, // Salva o total de unidades
-            totalPacotes: product.totalPacotes, // Salva o total de pacotes
+            total: total,
+            totalPacotes: product.totalPacotes,
           },
         });
       }
-
-      // Marcar contagem como finalizada
-      const { error: updateError } = await supabase
-        .from('contagens')
-        .update({ finalizada: true })
-        .eq('id', contagemId);
-
-      if (updateError) throw updateError;
-      
-      // Clear local storage and show success
       clearCurrentCount();
-      queryClient.invalidateQueries({ queryKey: ["contagens"] });
-      setIsSuccessModalOpen(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/contagens"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/contagens/unfinished"] });
+      setLocation(`/contagem/${newContagemId}/sucesso`);
     } catch (error) {
       console.error("Erro ao adicionar itens:", error);
-      toast({
-        title: "Erro",
-        description: "Erro ao adicionar produtos à contagem",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Falha ao salvar os itens da contagem.", variant: "destructive" });
     }
   };
 
-    const handleAddProduct = (productData: Omit<ProductItem, 'totalPacotes'>) => {
+  const handleAddProduct = (productData: Omit<ProductItem, 'totalPacotes'>) => {
     const totalPacotes = calculateProductPackages(productData);
     const newProduct: ProductItem = { ...productData, totalPacotes };
     const newProducts = [...products, newProduct];
-    
     setProducts(newProducts);
-    
-    // Só salva no localStorage se for uma nova contagem
     if (!contagemId) {
-      saveCurrentCount({
-        date: countDate || "",
-        products: newProducts,
-      });
+      saveCurrentCount({ date: countDate || "", products: newProducts });
     }
     setIsProductModalOpen(false);
-    
-    toast({
-      title: "Produto adicionado",
-      description: `${productData.nome} foi adicionado à contagem`,
-    });
+    toast({ title: "Produto adicionado", description: `${productData.nome} foi adicionado à contagem` });
   };
 
   const handleRemoveProduct = (index: number) => {
     const newProducts = products.filter((_, i) => i !== index);
     setProducts(newProducts);
-    // Só salva no localStorage se for uma nova contagem
     if (!contagemId) {
-      saveCurrentCount({
-        date: countDate || "",
-        products: newProducts,
-      });
+      saveCurrentCount({ date: countDate || "", products: newProducts });
     }
-    
-    toast({
-      title: "Produto removido",
-      description: "Produto foi removido da contagem",
-    });
+    toast({ title: "Produto removido", description: "O produto foi removido da contagem.", variant: "destructive" });
   };
 
   const handleFinalizeCount = () => {
-    if (products.length === 0) {
-      toast({
-        title: "Erro",
-        description: "Adicione pelo menos um produto à contagem",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Se já tem ID, apenas adicionar os itens
-    if (contagemId) {
-      addItemsToCount(contagemId);
-      return;
-    }
-
-    // Se não tem ID, criar nova contagem
     if (!countDate) {
-      toast({
-        title: "Erro",
-        description: "Selecione uma data para a contagem",
-        variant: "destructive",
-      });
+      toast({ title: "Data não selecionada", description: "Por favor, selecione a data da contagem.", variant: "destructive" });
       return;
     }
-
-    try {
-      // Validar se a data é válida
-      const date = new Date(countDate);
-      if (isNaN(date.getTime())) {
-        throw new Error('Data inválida');
-      }
-
-      console.log('Data sendo enviada na finalização:', countDate);
-      createCountMutation.mutate({
-        data: countDate,
-        finalizada: false
-      });
-    } catch (error) {
-      console.error('Erro ao validar data:', error);
-      toast({
-        title: "Erro",
-        description: "Data inválida",
-        variant: "destructive",
-      });
-    }
+    createCountMutation.mutate({ data: countDate, finalizada: true });
   };
 
   const handleDateChange = (newDate: string) => {
-    console.log('Nova data selecionada:', newDate);
-    if (!newDate) {
-      toast({
-        title: "Erro",
-        description: "Selecione uma data válida",
-        variant: "destructive",
-      });
-      return;
+    setCountDate(newDate);
+    if (!contagemId) {
+      saveCurrentCount({ date: newDate, products: products });
     }
-
-    try {
-      // Validar se a data é válida
-      const date = new Date(newDate);
-      if (isNaN(date.getTime())) {
-        throw new Error('Data inválida');
-      }
-      
-      setCountDate(newDate);
-    } catch (error) {
-      console.error('Erro ao validar data:', error);
-      toast({
-        title: "Erro",
-        description: "Data inválida",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const calculateProductPackages = (product: Omit<ProductItem, 'totalPacotes'>): number => {
-    const pacotesPorLastro = product.pacotesPorLastro || 0;
-    const lastrosPorPallet = product.lastrosPorPallet || 0;
-
-    const totalFromPallets = product.pallets * lastrosPorPallet * pacotesPorLastro;
-    const totalFromLastros = product.lastros * pacotesPorLastro;
-
-    return totalFromPallets + totalFromLastros + product.pacotes;
-  };
-
-  const calculateProductTotal = (product: ProductItem): number => {
-    if (!product.unidadesPorPacote || !product.pacotesPorLastro || !product.lastrosPorPallet) {
-      return 0;
-    }
-    
-    const totalUnitsPerPallet = product.unidadesPorPacote * product.pacotesPorLastro * product.lastrosPorPallet;
-    const totalUnitsFromPallets = product.pallets * totalUnitsPerPallet;
-    const totalUnitsFromLastros = product.lastros * (product.unidadesPorPacote * product.pacotesPorLastro);
-    const totalUnitsFromPacotes = product.pacotes * product.unidadesPorPacote;
-    const totalUnitsFromUnidades = product.unidades;
-    
-    return totalUnitsFromPallets + totalUnitsFromLastros + totalUnitsFromPacotes + totalUnitsFromUnidades;
   };
 
   return (
     <>
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setLocation("/")}
-          className="p-2 -ml-2 rounded-lg hover:bg-gray-100"
-        >
-          <ArrowLeft className="text-gray-600" size={20} />
-        </Button>
-        <h2 className="text-lg font-semibold text-gray-900 ml-3">
-          {contagemId ? "Continuar Contagem" : "Nova Contagem"}
-        </h2>
-      </div>
-
-      <div className="p-4 space-y-6">
-        {/* Date Selection */}
-        <div>
-          <Label className="block text-sm font-medium text-gray-700 mb-2">
-            Data da Contagem
-          </Label>
-          <Input
-            type="date"
-            value={countDate || ""}
-            onChange={(e) => handleDateChange(e.target.value)}
-            className="w-full"
-            disabled={!!contagemId}
-            placeholder="dd/mm/aaaa"
-            min="2020-01-01"
-            max="2030-12-31"
-          />
+      <div className="p-4 max-w-2xl mx-auto">
+        <div className="flex items-center mb-4">
+          <Button variant="ghost" size="icon" onClick={() => setLocation("/")}>
+            <ArrowLeft />
+          </Button>
+          <h1 className="text-2xl font-bold ml-2">
+            {contagemId ? `Contagem #${contagem?.id}` : "Nova Contagem"}
+          </h1>
         </div>
 
-        {/* Add Product Button */}
-        <Button
-          onClick={() => setIsProductModalOpen(true)}
-          className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg flex items-center justify-center font-medium hover:bg-primary/90 transition-colors"
-        >
+        <div className="mb-4">
+          <Label htmlFor="count-date">Data da Contagem</Label>
+          <Input id="count-date" type="date" value={countDate} onChange={(e) => handleDateChange(e.target.value)} className="mt-1" />
+        </div>
+
+        <Button onClick={() => setIsProductModalOpen(true)} className="w-full mb-4">
           <Plus className="mr-2" size={20} />
           Adicionar Produto
         </Button>
 
-        {/* Products List */}
-        <div>
-          <h3 className="text-sm font-medium text-gray-700 mb-3">
-            Produtos Adicionados
-            <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs ml-2">
-              {products.length}
-            </span>
-          </h3>
-          
-          {products.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <p className="text-sm">Nenhum produto adicionado ainda</p>
-              <p className="text-xs">Clique em "Adicionar Produto" para começar</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {products.map((product, index) => (
-                <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-medium text-gray-900">{product.nome}</h4>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveProduct(index)}
-                      className="text-red-500 hover:text-red-700 p-1"
-                    >
-                      <Trash2 size={16} />
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 text-sm mb-3">
-                    <div>
-                      <span className="text-gray-500">Pallets:</span>
-                      <span className="font-medium ml-1">{product.pallets}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Lastros:</span>
-                      <span className="font-medium ml-1">{product.lastros}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Pacotes:</span>
-                      <span className="font-medium ml-1">{product.pacotes}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Unidades:</span>
-                      <span className="font-medium ml-1">{product.unidades}</span>
-                    </div>
-                  </div>
+        {products.length === 0 ? (
+          <div className="text-center text-gray-500 py-8">
+            <Package size={48} className="mx-auto mb-2" />
+            <p>Nenhum produto adicionado ainda.</p>
+            <p className="text-sm">Clique em "Adicionar Produto" para começar.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {products.map((product, index) => (
+              <div key={product.id} className="bg-white p-4 rounded-lg border">
+                <div className="flex justify-between items-start">
+                  <h3 className="font-semibold text-lg flex-1 pr-2">{product.nome}</h3>
+                  <Button variant="ghost" size="icon" onClick={() => handleRemoveProduct(index)}>
+                    <Trash2 className="text-red-500" size={20} />
+                  </Button>
+                </div>
 
-                  {/* Detalhes do produto base */}
-                  {(product.unidadesPorPacote || product.pacotesPorLastro || product.lastrosPorPallet || product.quantidadePacsPorPallet) ? (
-                    <div className="border-t pt-3 mt-3 text-xs text-gray-600">
-                      <p className="font-semibold mb-2">Detalhes do Produto:</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {product.unidadesPorPacote && <div>Un/Pacote: <span className="font-bold">{product.unidadesPorPacote}</span></div>}
-                        {product.pacotesPorLastro && <div>Pac/Lastro: <span className="font-bold">{product.pacotesPorLastro}</span></div>}
-                        {product.lastrosPorPallet && <div>Lastro/Pallet: <span className="font-bold">{product.lastrosPorPallet}</span></div>}
-                                              {/* Exibe pacotes/pallet, calculando se necessário */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 text-sm">
+                  <div><span className="text-gray-500">Pallets:</span><span className="font-medium ml-1">{product.pallets}</span></div>
+                  <div><span className="text-gray-500">Lastros:</span><span className="font-medium ml-1">{product.lastros}</span></div>
+                  <div><span className="text-gray-500">Pacotes:</span><span className="font-medium ml-1">{product.pacotes}</span></div>
+                  <div><span className="text-gray-500">Unidades:</span><span className="font-medium ml-1">{product.unidades}</span></div>
+                </div>
+
+                {(product.unidadesPorPacote || product.pacotesPorLastro || product.lastrosPorPallet || product.quantidadePacsPorPallet) && (
+                  <div className="border-t pt-3 mt-3 text-xs text-gray-600">
+                    <p className="font-semibold mb-2">Detalhes do Produto:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {product.unidadesPorPacote && <div>Un/Pacote: <span className="font-bold">{product.unidadesPorPacote}</span></div>}
+                      {product.pacotesPorLastro && <div>Pac/Lastro: <span className="font-bold">{product.pacotesPorLastro}</span></div>}
+                      {product.lastrosPorPallet && <div>Lastro/Pallet: <span className="font-bold">{product.lastrosPorPallet}</span></div>}
                       {(product.pacotesPorLastro && product.lastrosPorPallet) && 
-                        <div>
-                          Pacotes/Pallet: <span className="font-bold">
-                            {product.quantidadePacsPorPallet ?? (product.pacotesPorLastro * product.lastrosPorPallet)}
-                          </span>
-                        </div>
+                        <div>Pacotes/Pallet: <span className="font-bold">{product.quantidadePacsPorPallet ?? (product.pacotesPorLastro * product.lastrosPorPallet)}</span></div>
                       }
-                      </div>
                     </div>
-                  ) : null}
-                  
-                  {/* Totais */}
-                  {(calculateProductTotal(product) > 0 || product.totalPacotes > 0) && (
-                    <div className="bg-red-50 p-3 rounded-lg mt-3 text-center">
-                      <div className="text-sm font-medium text-red-900">
-                        Total Unidades: <span className="font-bold">{calculateProductTotal(product).toLocaleString()}</span>
-                      </div>
-                      <div className="text-sm font-medium text-red-900 mt-1">
-                        Total Pacotes: <span className="font-bold">{product.totalPacotes.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  )}
+                  </div>
+                )}
+                
+                {(calculateProductTotal(product) > 0 || product.totalPacotes > 0) && (
+                  <div className="bg-red-50 p-3 rounded-lg mt-3 text-center">
+                    <div className="text-sm font-medium text-red-900">Total Unidades: <span className="font-bold">{calculateProductTotal(product).toLocaleString()}</span></div>
+                    <div className="text-sm font-medium text-red-900 mt-1">Total Pacotes: <span className="font-bold">{product.totalPacotes.toLocaleString()}</span></div>
+                  </div>
+                )}
               </div>
             ))}
+          </div>
+        )}
 
-        {/* Finalize Button */}
         {products.length > 0 && (
           <div className="pt-4">
-            <Button
-              onClick={handleFinalizeCount}
-              disabled={createCountMutation.isPending}
-              className="w-full bg-emerald-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-emerald-600 transition-colors"
-            >
-              {createCountMutation.isPending ? (
-                "Finalizando..."
-              ) : (
-                <>
-                  <Check className="mr-2" size={20} />
-                  Finalizar Contagem
-                </>
-              )}
+            <Button onClick={handleFinalizeCount} disabled={createCountMutation.isPending} className="w-full bg-emerald-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-emerald-600 transition-colors">
+              {createCountMutation.isPending ? "Finalizando..." : <><Check className="mr-2" size={20} />Finalizar Contagem</>}
             </Button>
           </div>
         )}
       </div>
 
-      <ProductModal
-        isOpen={isProductModalOpen}
-        onClose={() => setIsProductModalOpen(false)}
-        onAddProduct={handleAddProduct}
-      />
-
-      <SuccessModal
-        isOpen={isSuccessModalOpen}
-        onClose={() => {
-          setIsSuccessModalOpen(false);
-          setLocation("/");
-        }}
-        countId={contagemId || ""}
-      />
+      <ProductModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} onAddProduct={handleAddProduct} />
     </>
   );
 }
