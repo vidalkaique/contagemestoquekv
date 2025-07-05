@@ -116,7 +116,19 @@ export default function NewCount() {
 
   const addItemMutation = useMutation({
     mutationFn: async ({ item }: { item: InsertItemContagem }) => {
-      const { data, error } = await supabase.from('itens_contagem').insert(item).select().single();
+      // Converte para snake_case conforme as colunas reais do banco de dados
+      const dbItem: any = {
+        contagem_id: item.contagemId,
+        produto_id: item.produtoId,
+        nome_livre: item.nomeLivre,
+        pallets: item.pallets,
+        lastros: item.lastros,
+        pacotes: item.pacotes,
+        unidades: item.unidades,
+        total: item.total,
+        total_pacotes: item.totalPacotes,
+      };
+      const { data, error } = await supabase.from('itens_contagem').insert(dbItem).select().single();
       if (error) throw error;
       return data;
     },
