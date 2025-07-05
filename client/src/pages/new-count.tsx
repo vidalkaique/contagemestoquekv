@@ -22,6 +22,7 @@ interface ProductItem {
   lastros: number;
   pacotes: number;
   unidades: number;
+  totalPacotes: number; // Novo campo para o total de pacotes
   // Dados do produto para cálculo
   unidadesPorPacote?: number;
   pacotesPorLastro?: number;
@@ -55,18 +56,25 @@ export default function NewCount() {
       // Se tem contagem não finalizada, usar ela
       setCountDate(unfinishedCount.data);
       // Carregar produtos da contagem não finalizada
-      setProducts(unfinishedCount.itens.map(item => ({
-        id: item.produto?.id || crypto.randomUUID(),
-        nome: item.produto?.nome || item.nomeLivre || "",
-        pallets: item.pallets,
-        lastros: item.lastros,
-        pacotes: item.pacotes,
-        unidades: item.unidades,
-        unidadesPorPacote: item.produto?.unidadesPorPacote,
-        pacotesPorLastro: item.produto?.pacotesPorLastro,
-        lastrosPorPallet: item.produto?.lastrosPorPallet,
-        quantidadePacsPorPallet: item.produto?.quantidadePacsPorPallet ?? undefined,
-      })));
+      const productsWithTotals = unfinishedCount.itens.map(item => {
+        const productData = {
+          id: item.produto?.id || crypto.randomUUID(),
+          nome: item.produto?.nome || item.nomeLivre || "",
+          pallets: item.pallets,
+          lastros: item.lastros,
+          pacotes: item.pacotes,
+          unidades: item.unidades,
+          unidadesPorPacote: item.produto?.unidadesPorPacote,
+          pacotesPorLastro: item.produto?.pacotesPorLastro,
+          lastrosPorPallet: item.produto?.lastrosPorPallet,
+          quantidadePacsPorPallet: item.produto?.quantidadePacsPorPallet ?? undefined,
+        };
+        return {
+          ...productData,
+          totalPacotes: calculateProductPackages(productData)
+        };
+      });
+      setProducts(productsWithTotals);
     } else {
       // Se não tem contagem não finalizada, tentar carregar do localStorage
       const savedCount = getCurrentCount();
@@ -101,19 +109,11 @@ export default function NewCount() {
     },
   });
 
-  const addItemMutation = useMutation({
-    mutationFn: async ({ contagemId, item }: { contagemId: string; item: InsertItemContagem }) => {
+    const addItemMutation = useMutation({
+    mutationFn: async ({ item }: { item: InsertItemContagem }) => {
       const { data, error } = await supabase
         .from('itens_contagem')
-        .insert([{
-          contagem_id: contagemId,
-          produto_id: item.produto_id,
-          nome_livre: item.nome_livre,
-          pallets: item.pallets,
-          lastros: item.lastros,
-          pacotes: item.pacotes,
-          unidades: item.unidades
-        }])
+        .insert(item)
         .select()
         .single();
 
@@ -141,8 +141,7 @@ export default function NewCount() {
           total = (product.pallets || 0) + (product.lastros || 0) + (product.pacotes || 0) + (product.unidades || 0);
         }
 
-        await addItemMutation.mutateAsync({
-          contagemId,
+                await addItemMutation.mutateAsync({
           item: {
             contagem_id: contagemId,
             produto_id: isProdutoCadastrado ? product.id : undefined,
@@ -150,7 +149,9 @@ export default function NewCount() {
             pallets: product.pallets,
             lastros: product.lastros,
             pacotes: product.pacotes,
-            unidades: product.unidades
+            unidades: product.unidades,
+            total: total, // Salva o total de unidades
+            totalPacotes: product.totalPacotes, // Salva o total de pacotes
           },
         });
       }
@@ -177,9 +178,13 @@ export default function NewCount() {
     }
   };
 
-  const handleAddProduct = (product: ProductItem) => {
-    const newProducts = [...products, product];
+    const handleAddProduct = (productData: Omit<ProductItem, 'totalPacotes'>) => {
+    const totalPacotes = calculateProductPackages(productData);
+    const newProduct: ProductItem = { ...productData, totalPacotes };
+    const newProducts = [...products, newProduct];
+    
     setProducts(newProducts);
+    
     // Só salva no localStorage se for uma nova contagem
     if (!contagemId) {
       saveCurrentCount({
@@ -191,7 +196,7 @@ export default function NewCount() {
     
     toast({
       title: "Produto adicionado",
-      description: `${product.nome} foi adicionado à contagem`,
+      description: `${productData.nome} foi adicionado à contagem`,
     });
   };
 
@@ -287,6 +292,16 @@ export default function NewCount() {
         variant: "destructive",
       });
     }
+  };
+
+  const calculateProductPackages = (product: Omit<ProductItem, 'totalPacotes'>): number => {
+    const pacotesPorLastro = product.pacotesPorLastro || 0;
+    const lastrosPorPallet = product.lastrosPorPallet || 0;
+
+    const totalFromPallets = product.pallets * lastrosPorPallet * pacotesPorLastro;
+    const totalFromLastros = product.lastros * pacotesPorLastro;
+
+    return totalFromPallets + totalFromLastros + product.pacotes;
   };
 
   const calculateProductTotal = (product: ProductItem): number => {
@@ -415,19 +430,19 @@ export default function NewCount() {
                     </div>
                   ) : null}
                   
-                  {/* Total de Unidades */}
-                  {calculateProductTotal(product) > 0 && (
-                    <div className="bg-red-50 p-2 rounded-md">
+                  {/* Totais */}
+                  {(calculateProductTotal(product) > 0 || product.totalPacotes > 0) && (
+                    <div className="bg-red-50 p-3 rounded-lg mt-3 text-center">
                       <div className="text-sm font-medium text-red-900">
-                        Total: {calculateProductTotal(product).toLocaleString()} unidades
+                        Total Unidades: <span className="font-bold">{calculateProductTotal(product).toLocaleString()}</span>
+                      </div>
+                      <div className="text-sm font-medium text-red-900 mt-1">
+                        Total Pacotes: <span className="font-bold">{product.totalPacotes.toLocaleString()}</span>
                       </div>
                     </div>
                   )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+              </div>
+            ))}
 
         {/* Finalize Button */}
         {products.length > 0 && (

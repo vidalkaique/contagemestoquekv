@@ -32,6 +32,7 @@ export const itensContagem = pgTable("itens_contagem", {
   pacotes: integer("pacotes").notNull().default(0),
   unidades: integer("unidades").notNull().default(0),
   total: integer("total").notNull().default(0),
+  totalPacotes: integer("total_pacotes").notNull().default(0),
 });
 
 // Relations
@@ -100,15 +101,7 @@ export type Contagem = typeof contagens.$inferSelect;
 export type InsertContagem = z.infer<typeof insertContagemSchema>;
 
 export type ItemContagem = typeof itensContagem.$inferSelect;
-export type InsertItemContagem = {
-  contagem_id: string;
-  produto_id?: string;
-  nome_livre?: string;
-  pallets: number;
-  lastros: number;
-  pacotes: number;
-  unidades: number;
-};
+export type InsertItemContagem = z.infer<typeof insertItemContagemSchema>;
 
 export type ContagemWithItens = Contagem & {
   itens: (ItemContagem & { produto?: Produto })[];
