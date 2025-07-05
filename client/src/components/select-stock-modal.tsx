@@ -49,23 +49,38 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
   }, [stocksError]);
 
   const createCountMutation = useMutation({
-    mutationFn: async (newCount: NovaContagem) => {
-      const response = await fetch('http://localhost:3000/contagens', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newCount),
-      });
-      if (!response.ok) {
-        throw new Error('Falha ao criar contagem');
+    mutationFn: async (estoqueId: string) => {
+      console.log('Criando nova contagem para o estoque:', estoqueId);
+      
+      // Formatar a data atual no formato YYYY-MM-DD
+      const today = new Date();
+      const formattedDate = today.toISOString().split('T')[0];
+      
+      const { data, error } = await supabase
+        .from('contagens')
+        .insert([{
+          data: formattedDate,
+          finalizada: false,
+          estoque_id: estoqueId
+        }])
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Erro ao criar contagem:', error);
+        throw new Error('Falha ao criar contagem: ' + error.message);
       }
-      return response.json();
+      
+      console.log('Contagem criada com sucesso:', data);
+      return data;
     },
     onSuccess: (data) => {
       toast.success('Contagem iniciada com sucesso!');
       setLocation(`/count/${data.id}`);
       onOpenChange(false);
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Erro na mutação de criar contagem:', error);
       toast.error('Erro ao iniciar contagem. Tente novamente.');
     },
   });
@@ -80,8 +95,9 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
     
     if (onStockSelected && selectedStockData) {
       onStockSelected(selectedStockData);
-    } else {
-      createCountMutation.mutate({ estoqueId: selectedStock });
+    } else if (selectedStock) {
+      // Usar diretamente o ID do estoque selecionado
+      createCountMutation.mutate(selectedStock);
     }
   };
 
