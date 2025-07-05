@@ -146,12 +146,8 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
         });
       });
 
-      // Adicionar rodapé com marca d'água
-      worksheet.addRow([]); // Linha em branco
-      const footerRow = worksheet.addRow(['Feito por: Kaique Vidal']);
-      footerRow.font = { italic: true, color: { argb: 'FF808080' } };
-      worksheet.mergeCells('A' + footerRow.number + ':H' + footerRow.number);
-      footerRow.alignment = { horizontal: 'right' };
+      // Adicionar linha em branco antes do final
+      worksheet.addRow([]);
 
       // Gerar e baixar o arquivo
       const buffer = await workbook.xlsx.writeBuffer();

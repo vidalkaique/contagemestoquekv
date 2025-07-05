@@ -12,6 +12,7 @@ import Products from "@/pages/products";
 import Stocks from "@/pages/stocks";
 
 import { Home as HomeIcon, Package, Plus, Warehouse } from "lucide-react";
+import Footer from "@/components/footer";
 
 function Router() {
   return (
@@ -40,9 +41,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <div className="max-w-sm mx-auto bg-white min-h-screen relative overflow-hidden">
+        <div className="max-w-sm mx-auto bg-white min-h-screen flex flex-col">
           <Toaster />
-          <Router />
+          <main className="flex-1 overflow-auto pb-16">
+            <Router />
+          </main>
+          <Footer />
         </div>
       </TooltipProvider>
     </QueryClientProvider>
