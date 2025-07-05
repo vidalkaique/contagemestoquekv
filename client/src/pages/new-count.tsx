@@ -393,13 +393,20 @@ export default function NewCount() {
                       <span className="text-gray-500">Unidades:</span>
                       <span className="font-medium ml-1">{product.unidades}</span>
                     </div>
-                    {product.quantidadePacsPorPallet && (
-                      <div>
-                        <span className="text-gray-500">Pacotes/Pallet:</span>
-                        <span className="font-medium ml-1">{product.quantidadePacsPorPallet}</span>
-                      </div>
-                    )}
                   </div>
+
+                  {/* Detalhes do produto base */}
+                  {(product.unidadesPorPacote || product.pacotesPorLastro || product.lastrosPorPallet || product.quantidadePacsPorPallet) ? (
+                    <div className="border-t pt-3 mt-3 text-xs text-gray-600">
+                      <p className="font-semibold mb-2">Detalhes do Produto:</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {product.unidadesPorPacote && <div>Un/Pacote: <span className="font-bold">{product.unidadesPorPacote}</span></div>}
+                        {product.pacotesPorLastro && <div>Pac/Lastro: <span className="font-bold">{product.pacotesPorLastro}</span></div>}
+                        {product.lastrosPorPallet && <div>Lastro/Pallet: <span className="font-bold">{product.lastrosPorPallet}</span></div>}
+                        {product.quantidadePacsPorPallet && <div>Pacotes/Pallet: <span className="font-bold">{product.quantidadePacsPorPallet}</span></div>}
+                      </div>
+                    </div>
+                  ) : null}
                   
                   {/* Total de Unidades */}
                   {calculateProductTotal(product) > 0 && (

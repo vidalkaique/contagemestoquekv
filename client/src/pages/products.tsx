@@ -38,7 +38,10 @@ export default function Products() {
         unidades_por_pacote: data.unidadesPorPacote,
         pacotes_por_lastro: data.pacotesPorLastro,
         lastros_por_pallet: data.lastrosPorPallet,
-        quantidade_pacs_por_pallet: data.quantidadePacsPorPallet,
+        // Recalcula o valor aqui para garantir que esteja sempre correto
+        quantidade_pacs_por_pallet: (data.pacotesPorLastro !== undefined && data.lastrosPorPallet !== undefined)
+          ? data.pacotesPorLastro * data.lastrosPorPallet
+          : undefined,
       };
 
       // Remove chaves indefinidas para não enviar campos vazios na atualização
