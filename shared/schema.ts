@@ -77,6 +77,7 @@ export const insertContagemSchema = createInsertSchema(contagens).omit({
   createdAt: true,
   excelUrl: true,
 }).extend({
+  estoqueId: z.string().uuid(),
   data: z.string().refine((data) => {
     try {
       const date = new Date(data);
@@ -101,6 +102,11 @@ export const insertItemContagemSchema = createInsertSchema(itensContagem).omit({
 });
 
 // Types
+export const novaContagemSchema = z.object({
+  estoqueId: z.string().uuid(),
+});
+export type NovaContagem = z.infer<typeof novaContagemSchema>;
+
 export type Produto = typeof produtos.$inferSelect;
 export type InsertProduto = Omit<Produto, 'id' | 'createdAt'>;
 
