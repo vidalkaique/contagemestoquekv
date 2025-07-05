@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { ArrowLeft, Plus, History } from "lucide-react";
+import { ArrowLeft, Plus, History, Warehouse } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,11 +11,14 @@ import type { InsertContagem, ContagemWithItens } from "@shared/schema";
 import { saveCurrentCount } from "@/lib/localStorage";
 import { useCountDate } from "@/hooks/use-count-date";
 import { supabase } from "@/lib/supabase";
+import { SelectStockModal } from "@/components/select-stock-modal";
 
 export default function StartCount() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { countDate, setCountDate } = useCountDate();
+  const [selectedStock, setSelectedStock] = useState<{id: string, nome: string} | null>(null);
+  const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   
   // Buscar contagens não finalizadas
   const { data: unfinishedCounts = [] } = useQuery<ContagemWithItens[]>({
@@ -68,6 +71,11 @@ export default function StartCount() {
       return;
     }
 
+    if (!selectedStock) {
+      setIsStockModalOpen(true);
+      return;
+    }
+
     // Solução definitiva para fuso horário:
     // Envia a data completa no formato ISO 8601 com fuso horário UTC (Z).
     // O banco de dados (Postgres) irá extrair corretamente a parte da data.
@@ -77,6 +85,7 @@ export default function StartCount() {
     createCountMutation.mutate({
       data: utcDate.toISOString(), // Envia a string completa, ex: '2025-07-04T12:00:00.000Z'
       finalizada: false,
+      estoqueId: selectedStock.id,
     });
   };
 
@@ -108,6 +117,16 @@ export default function StartCount() {
 
   return (
     <>
+      <SelectStockModal 
+        isOpen={isStockModalOpen} 
+        onOpenChange={setIsStockModalOpen} 
+        onStockSelected={(stock) => {
+          setSelectedStock(stock);
+          setIsStockModalOpen(false);
+          // Chama handleStartNewCount novamente após selecionar o estoque
+          setTimeout(handleStartNewCount, 100);
+        }}
+      />
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center">
         <Button
@@ -141,14 +160,23 @@ export default function StartCount() {
         </div>
 
         {/* Start New Count Button */}
-        <Button
-          onClick={handleStartNewCount}
-          disabled={createCountMutation.isPending}
-          className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg flex items-center justify-center font-medium hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="mr-2" size={20} />
-          {createCountMutation.isPending ? "Iniciando..." : "Iniciar Nova Contagem"}
-        </Button>
+        <div className="space-y-2">
+          {selectedStock && (
+            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+              <Warehouse className="w-5 h-5 text-gray-500" />
+              <span className="text-sm font-medium">Estoque selecionado:</span>
+              <span className="text-sm">{selectedStock.nome}</span>
+            </div>
+          )}
+          <Button
+            onClick={handleStartNewCount}
+            disabled={createCountMutation.isPending}
+            className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg flex items-center justify-center font-medium hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="mr-2" size={20} />
+            {createCountMutation.isPending ? "Iniciando..." : "Iniciar Nova Contagem"}
+          </Button>
+        </div>
 
         {/* Unfinished Counts */}
         {unfinishedCounts.length > 0 && (

@@ -20,6 +20,8 @@ export const estoques = pgTable("estoques", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export type Estoque = typeof estoques.$inferSelect;
+
 export const contagens = pgTable("contagens", {
   id: uuid("id").primaryKey().defaultRandom(),
   estoqueId: uuid("estoque_id").references(() => estoques.id),
@@ -104,7 +106,9 @@ export const insertItemContagemSchema = createInsertSchema(itensContagem).omit({
 // Types
 export const novaContagemSchema = z.object({
   estoqueId: z.string().uuid(),
+  data_contagem: z.string().optional(),
 });
+
 export type NovaContagem = z.infer<typeof novaContagemSchema>;
 
 export type Produto = typeof produtos.$inferSelect;
@@ -116,6 +120,4 @@ export type InsertContagem = z.infer<typeof insertContagemSchema>;
 export type ItemContagem = typeof itensContagem.$inferSelect;
 export type InsertItemContagem = z.infer<typeof insertItemContagemSchema>;
 
-export type ContagemWithItens = Contagem & {
-  itens: (ItemContagem & { produto?: Produto })[];
-};
+export type ContagemWithItens = Contagem & { itens: (ItemContagem & { produto: Produto | null })[]; estoque: Estoque | null };

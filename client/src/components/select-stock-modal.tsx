@@ -9,6 +9,7 @@ import type { Estoque, NovaContagem } from '@shared/schema';
 interface SelectStockModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onStockSelected?: (stock: { id: string; nome: string }) => void;
 }
 
 export const SelectStockModal = ({ isOpen, onOpenChange }: SelectStockModalProps) => {
@@ -52,7 +53,13 @@ export const SelectStockModal = ({ isOpen, onOpenChange }: SelectStockModalProps
       return;
     }
 
-    createCountMutation.mutate({ estoqueId: selectedStock });
+    const selectedStockData = stocks?.find(s => s.id === selectedStock);
+    
+    if (onStockSelected && selectedStockData) {
+      onStockSelected(selectedStockData);
+    } else {
+      createCountMutation.mutate({ estoqueId: selectedStock });
+    }
   };
 
   return (
@@ -61,8 +68,13 @@ export const SelectStockModal = ({ isOpen, onOpenChange }: SelectStockModalProps
         <DialogHeader>
           <DialogTitle>Selecione o Estoque</DialogTitle>
         </DialogHeader>
-        <div className="py-4 space-y-2">
-          {isLoading && <p>Carregando estoques...</p>}
+        <div className="py-4 space-y-2 max-h-[60vh] overflow-y-auto">
+          {isLoading && <p className="text-center py-4">Carregando estoques...</p>}
+          {!isLoading && (!stocks || stocks.length === 0) && (
+            <div className="text-center py-4 text-gray-500">
+              Nenhum estoque cadastrado. Por favor, cadastre um estoque primeiro.
+            </div>
+          )}
           {stocks?.map((stock) => (
             <Button
               key={stock.id}
@@ -74,10 +86,20 @@ export const SelectStockModal = ({ isOpen, onOpenChange }: SelectStockModalProps
             </Button>
           ))}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleConfirm} disabled={!selectedStock || createCountMutation.isPending}>
-            {createCountMutation.isPending ? 'Iniciando...' : 'Iniciar Contagem'}
+        <DialogFooter className="sm:justify-between">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            disabled={createCountMutation.isPending}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleConfirm} 
+            disabled={!selectedStock || createCountMutation.isPending}
+            className="min-w-[120px]"
+          >
+            {createCountMutation.isPending ? 'Processando...' : 'Confirmar'}
           </Button>
         </DialogFooter>
       </DialogContent>

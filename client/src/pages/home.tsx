@@ -105,7 +105,7 @@ export default function Home() {
             <div className="flex items-center justify-between mt-2">
               <div>
                 <p className="text-lg font-semibold text-gray-900">
-                  {format(new Date(ultimaContagem.data_contagem), "dd/MM/yyyy", { locale: ptBR })}
+                  {format(new Date(ultimaContagem.data), "dd/MM/yyyy", { locale: ptBR })}
                 </p>
                 <p className="text-sm text-gray-500">{ultimaContagem.itens.length} itens contados</p>
               </div>

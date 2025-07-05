@@ -8,7 +8,7 @@ interface Estoque {
   created_at: string;
 }
 
-export function StocksPage() {
+function StocksPage() {
   const [estoques, setEstoques] = useState<Estoque[]>([]);
   const [newEstoqueName, setNewEstoqueName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -89,3 +89,5 @@ export function StocksPage() {
     </div>
   );
 }
+
+export default StocksPage;

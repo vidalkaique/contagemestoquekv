@@ -13,8 +13,15 @@ type DatabaseContagem = {
   finalizada: boolean;
   excel_url: string | null;
   created_at: string;
+  estoque_id: string | null;
+  estoques: Array<{
+    id: string;
+    nome: string;
+    created_at: string;
+  }> | null;
   itens_contagem: Array<{
     id: string;
+    contagem_id: string;
     produto_id: string | null;
     nome_livre: string | null;
     pallets: number;
@@ -22,6 +29,7 @@ type DatabaseContagem = {
     pacotes: number;
     unidades: number;
     total: number;
+    total_pacotes: number;
     created_at: string;
     produtos: {
       id: string;
@@ -30,7 +38,7 @@ type DatabaseContagem = {
       unidades_por_pacote: number;
       pacotes_por_lastro: number;
       lastros_por_pallet: number;
-      quantidade_pacs_por_pallet: number;
+      quantidade_pacs_por_pallet: number | null;
       created_at: string;
     } | null;
   }>;
@@ -48,8 +56,15 @@ export function useUnfinishedCount() {
           finalizada,
           excel_url,
           created_at,
+          estoque_id,
+          estoques (
+            id,
+            nome,
+            created_at
+          ),
           itens_contagem (
             id,
+            contagem_id,
             produto_id,
             nome_livre,
             pallets,
@@ -58,6 +73,7 @@ export function useUnfinishedCount() {
             unidades,
             total,
             total_pacotes,
+            created_at,
             produtos (
               id,
               codigo,
@@ -73,44 +89,66 @@ export function useUnfinishedCount() {
         .eq('finalizada', false)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .single<DatabaseContagem>();
 
       if (error && error.code !== 'PGRST116') throw error;
       if (!data) return null;
 
-      // Convertemos para o tipo final ContagemWithItens
-      return {
+      // Verifica se estoques é um array e pega o primeiro item
+      const estoque = Array.isArray(data.estoques) && data.estoques.length > 0 
+        ? data.estoques[0] 
+        : null;
+
+      // Convert to ContagemWithItens type
+      const contagem: ContagemWithItens = {
         id: data.id,
         data: data.data,
         finalizada: data.finalizada,
+        estoqueId: data.estoque_id,
         excelUrl: data.excel_url,
         createdAt: new Date(data.created_at),
-        itens: (data.itens_contagem || []).map((item: any) => ({
-          id: item.id,
-          contagemId: data.id,
-          produtoId: item.produto_id,
-          nomeLivre: item.nome_livre,
-          pallets: item.pallets,
-          lastros: item.lastros,
-          pacotes: item.pacotes,
-          unidades: item.unidades,
-          total: item.total,
-          totalPacotes: item.total_pacotes,
-          produto: item.produtos ? {
-            id: item.produtos.id,
-            codigo: item.produtos.codigo,
-            nome: item.produtos.nome,
-            unidadesPorPacote: item.produtos.unidades_por_pacote,
-            pacotesPorLastro: item.produtos.pacotes_por_lastro,
-            lastrosPorPallet: item.produtos.lastros_por_pallet,
-            quantidadePacsPorPallet: item.produtos.quantidade_pacs_por_pallet,
-            createdAt: new Date(item.produtos.created_at)
-          } : undefined
-        }))
+        itens: (data.itens_contagem || []).map((item) => {
+          // Garante que produtos seja um único objeto ou null
+          const produto = Array.isArray(item.produtos) && item.produtos.length > 0 
+            ? item.produtos[0] 
+            : item.produtos || null;
+
+          return {
+            id: item.id,
+            contagemId: item.contagem_id,
+            produtoId: item.produto_id,
+            nomeLivre: item.nome_livre,
+            pallets: item.pallets,
+            lastros: item.lastros,
+            pacotes: item.pacotes,
+            unidades: item.unidades,
+            total: item.total,
+            totalPacotes: item.total_pacotes,
+            produto: produto ? {
+              id: produto.id,
+              codigo: produto.codigo,
+              nome: produto.nome,
+              unidadesPorPacote: produto.unidades_por_pacote,
+              pacotesPorLastro: produto.pacotes_por_lastro,
+              lastrosPorPallet: produto.lastros_por_pallet,
+              quantidadePacsPorPallet: produto.quantidade_pacs_por_pallet,
+              createdAt: new Date(produto.created_at)
+            } : null
+          };
+        }),
+        estoque: estoque ? {
+          id: estoque.id,
+          nome: estoque.nome,
+          createdAt: new Date(estoque.created_at)
+        } : null
       };
-    }
+
+      return contagem;
+    },
   });
 }
+
+type ContagemLista = DatabaseContagem;
 
 export function useCounts() {
   return useQuery<ContagemWithItens[]>({ 
@@ -124,8 +162,15 @@ export function useCounts() {
           finalizada,
           excel_url,
           created_at,
+          estoque_id,
+          estoques (
+            id,
+            nome,
+            created_at
+          ),
           itens_contagem (
             id,
+            contagem_id,
             produto_id,
             nome_livre,
             pallets,
@@ -134,6 +179,7 @@ export function useCounts() {
             unidades,
             total,
             total_pacotes,
+            created_at,
             produtos (
               id,
               codigo,
@@ -151,36 +197,61 @@ export function useCounts() {
       if (error) throw error;
       if (!data) return [];
 
-      // Convertemos para o tipo final ContagemWithItens[]
-      return data.map(contagem => ({
-        id: contagem.id,
-        data: contagem.data,
-        finalizada: contagem.finalizada,
-        excelUrl: contagem.excel_url,
-        createdAt: new Date(contagem.created_at),
-        itens: (contagem.itens_contagem || []).map((item: any) => ({
-          id: item.id,
-          contagemId: contagem.id,
-          produtoId: item.produto_id,
-          nomeLivre: item.nome_livre,
-          pallets: item.pallets,
-          lastros: item.lastros,
-          pacotes: item.pacotes,
-          unidades: item.unidades,
-          total: item.total,
-          totalPacotes: item.total_pacotes,
-          produto: item.produtos ? {
-            id: item.produtos.id,
-            codigo: item.produtos.codigo,
-            nome: item.produtos.nome,
-            unidadesPorPacote: item.produtos.unidades_por_pacote,
-            pacotesPorLastro: item.produtos.pacotes_por_lastro,
-            lastrosPorPallet: item.produtos.lastros_por_pallet,
-            quantidadePacsPorPallet: item.produtos.quantidade_pacs_por_pallet,
-            createdAt: new Date(item.produtos.created_at)
-          } : undefined
-        }))
-      }));
+      // Convert to ContagemWithItens[] type
+      return data.map((contagem) => {
+        // Verifica se estoques é um array e pega o primeiro item
+        const estoque = Array.isArray(contagem.estoques) && contagem.estoques.length > 0 
+          ? contagem.estoques[0] 
+          : null;
+
+        const contagemWithItens: ContagemWithItens = {
+          id: contagem.id,
+          data: contagem.data,
+          finalizada: contagem.finalizada,
+          estoqueId: contagem.estoque_id,
+          excelUrl: contagem.excel_url,
+          createdAt: new Date(contagem.created_at),
+          itens: contagem.itens_contagem?.map((item) => {
+            // Garante que produtos seja um único objeto ou null
+            const produto = (() => {
+              if (!item.produtos) return null;
+              if (Array.isArray(item.produtos)) {
+                return item.produtos[0] || null;
+              }
+              return item.produtos;
+            })();
+
+            return {
+              id: item.id,
+              contagemId: item.contagem_id,
+              produtoId: item.produto_id,
+              nomeLivre: item.nome_livre,
+              pallets: item.pallets,
+              lastros: item.lastros,
+              pacotes: item.pacotes,
+              unidades: item.unidades,
+              total: item.total,
+              totalPacotes: item.total_pacotes,
+              produto: produto ? {
+                id: produto.id,
+                codigo: produto.codigo,
+                nome: produto.nome,
+                unidadesPorPacote: 'unidades_por_pacote' in produto ? produto.unidades_por_pacote : 1,
+                pacotesPorLastro: 'pacotes_por_lastro' in produto ? produto.pacotes_por_lastro : 1,
+                lastrosPorPallet: 'lastros_por_pallet' in produto ? produto.lastros_por_pallet : 1,
+                quantidadePacsPorPallet: 'quantidade_pacs_por_pallet' in produto ? produto.quantidade_pacs_por_pallet : null,
+                createdAt: new Date(produto.created_at || new Date().toISOString())
+              } : null
+            };
+          }) || [],
+          estoque: estoque ? {
+            id: estoque.id,
+            nome: estoque.nome,
+            createdAt: new Date(estoque.created_at)
+          } : null
+        };
+        return contagemWithItens;
+      });
     }
   });
 }
@@ -194,30 +265,36 @@ export function useCreateCount() {
         .from('contagens')
         .insert({
           data: data.data,
-          finalizada: data.finalizada || false
+          finalizada: data.finalizada || false,
+          estoque_id: data.estoqueId || null
         })
         .select(`
           id,
           data,
           finalizada,
           excel_url,
-          created_at
+          created_at,
+          estoque_id
         `)
         .single();
 
       if (error) throw error;
       if (!result) throw new Error('Nenhum dado retornado');
 
-      const contagem = result as ContagemRow;
+      const contagem = result as ContagemRow & { estoque_id: string | null };
 
-      return {
+      const novaContagem: ContagemWithItens = {
         id: contagem.id,
         data: contagem.data,
         finalizada: contagem.finalizada,
+        estoqueId: contagem.estoque_id,
         excelUrl: contagem.excel_url,
         createdAt: new Date(contagem.created_at),
-        itens: []
-      } as ContagemWithItens;
+        itens: [],
+        estoque: null
+      };
+      
+      return novaContagem;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contagens"] });
