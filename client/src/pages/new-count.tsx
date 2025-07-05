@@ -134,22 +134,31 @@ export default function NewCount() {
     },
   });
 
-  const calculateProductTotal = (product: ProductItem): number => {
-    if (!product.unidadesPorPacote || !product.pacotesPorLastro || !product.lastrosPorPallet) return 0;
-    const pacotesPorLastro = product.pacotesPorLastro;
-    const lastrosPorPallet = product.lastrosPorPallet;
-    const unidadesPorPacote = product.unidadesPorPacote;
-    const totalFromPallets = product.pallets * lastrosPorPallet * pacotesPorLastro * unidadesPorPacote;
-    const totalFromLastros = product.lastros * pacotesPorLastro * unidadesPorPacote;
-    const totalFromPacotes = product.pacotes * unidadesPorPacote;
-    return totalFromPallets + totalFromLastros + totalFromPacotes + product.unidades;
+    const calculateProductTotal = (product: ProductItem): number => {
+    let totalUnidades = product.unidades || 0;
+    let totalPacotes = product.pacotes || 0;
+
+    // Converte lastros e pallets para pacotes
+    if (product.pacotesPorLastro) {
+      totalPacotes += (product.lastros || 0) * product.pacotesPorLastro;
+      if (product.lastrosPorPallet) {
+        totalPacotes += (product.pallets || 0) * product.lastrosPorPallet * product.pacotesPorLastro;
+      }
+    }
+
+    // Converte o total de pacotes para unidades
+    if (product.unidadesPorPacote) {
+      totalUnidades += totalPacotes * product.unidadesPorPacote;
+    }
+
+    return totalUnidades;
   };
 
   const addItemsToCount = async (newContagemId: string) => {
     try {
       for (const product of products) {
         const isProdutoCadastrado = !product.id.includes('-');
-        const total = isProdutoCadastrado ? calculateProductTotal(product) : (product.pallets || 0) + (product.lastros || 0) + (product.pacotes || 0) + (product.unidades || 0);
+        const total = calculateProductTotal(product);
         await addItemMutation.mutateAsync({
           item: {
             contagemId: newContagemId,
