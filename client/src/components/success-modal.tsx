@@ -19,6 +19,7 @@ interface ItemContagem {
   pacotes: number;
   unidades: number;
   total: number;
+  total_pacotes?: number;
   produtos?: {
     id: string;
     codigo: string;
@@ -55,6 +56,7 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
             pacotes,
             unidades,
             total,
+            total_pacotes,
             produtos (
               id,
               codigo,
@@ -85,7 +87,8 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
         { header: "Lastros", key: "lastros", width: 10 },
         { header: "Pacotes", key: "pacotes", width: 10 },
         { header: "Unidades", key: "unidades", width: 10 },
-        { header: "Total", key: "total", width: 15 },
+        { header: "Total Pacotes", key: "totalPacotes", width: 15 },
+        { header: "Total Unidades", key: "total", width: 18 },
       ];
 
       // Adicionar dados
@@ -98,6 +101,7 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
           lastros: item.lastros || 0,
           pacotes: item.pacotes || 0,
           unidades: item.unidades || 0,
+          totalPacotes: item.total_pacotes || 0,
           total: item.total || 0,
         });
       });
