@@ -38,6 +38,7 @@ export default function NewCount() {
 
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [products, setProducts] = useState<ProductItem[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
 
 
 
@@ -50,6 +51,8 @@ export default function NewCount() {
   };
 
   useEffect(() => {
+    if (isLoaded) return;
+
     if (unfinishedCount) {
       setCountDate(unfinishedCount.data);
       const productsWithTotals = unfinishedCount.itens.map(item => {
@@ -71,7 +74,8 @@ export default function NewCount() {
         };
       });
       setProducts(productsWithTotals);
-    } else {
+      setIsLoaded(true);
+    } else if (!contagemId) {
       const savedCount = getCurrentCount();
       if (savedCount && savedCount.products) {
         setCountDate(savedCount.date);
@@ -80,9 +84,10 @@ export default function NewCount() {
           totalPacotes: p.totalPacotes ?? calculateProductPackages(p),
         }));
         setProducts(productsWithTotals);
+        setIsLoaded(true);
       }
     }
-  }, [unfinishedCount, setCountDate]);
+  }, [unfinishedCount, setCountDate, isLoaded, contagemId]);
 
   useEffect(() => {
     // Salva a contagem no localStorage apenas se for uma nova contagem (sem ID na URL ou contagem não finalizada do banco)
