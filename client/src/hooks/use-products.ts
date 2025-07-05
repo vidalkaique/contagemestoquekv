@@ -84,7 +84,8 @@ export function useCreateProduct() {
         unidades_por_pacote: data.unidadesPorPacote,
         pacotes_por_lastro: data.pacotesPorLastro,
         lastros_por_pallet: data.lastrosPorPallet,
-        quantidade_pacs_por_pallet: data.quantidadePacsPorPallet,
+        // Calcula o valor no momento da inserção para garantir consistência
+        quantidade_pacs_por_pallet: data.pacotesPorLastro * data.lastrosPorPallet,
       };
 
       const { data: newProduct, error } = await supabase
