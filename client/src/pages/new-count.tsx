@@ -39,10 +39,7 @@ export default function NewCount() {
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [products, setProducts] = useState<ProductItem[]>([]);
 
-  const { data: contagem } = useQuery<ContagemWithItens>({
-    queryKey: ["/api/contagens", contagemId],
-    enabled: !!contagemId,
-  });
+
 
   const calculateProductPackages = (product: Omit<ProductItem, 'totalPacotes'>): number => {
     const pacotesPorLastro = product.pacotesPorLastro || 0;
@@ -76,12 +73,23 @@ export default function NewCount() {
       setProducts(productsWithTotals);
     } else {
       const savedCount = getCurrentCount();
-      if (savedCount) {
+      if (savedCount && savedCount.products) {
         setCountDate(savedCount.date);
-        setProducts(savedCount.products);
+        const productsWithTotals = savedCount.products.map((p: any) => ({
+          ...p,
+          totalPacotes: p.totalPacotes ?? calculateProductPackages(p),
+        }));
+        setProducts(productsWithTotals);
       }
     }
   }, [unfinishedCount, setCountDate]);
+
+  useEffect(() => {
+    // Salva a contagem no localStorage apenas se for uma nova contagem (sem ID na URL ou contagem não finalizada do banco)
+    if (products.length > 0 && !contagemId && !unfinishedCount) {
+      saveCurrentCount({ date: countDate, products });
+    }
+  }, [products, countDate, contagemId, unfinishedCount]);
 
   const createCountMutation = useMutation({
     mutationFn: async ({ data, finalizada }: { data: string; finalizada: boolean }) => {

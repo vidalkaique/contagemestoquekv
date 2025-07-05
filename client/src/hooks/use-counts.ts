@@ -57,6 +57,7 @@ export function useUnfinishedCount() {
             pacotes,
             unidades,
             total,
+            total_pacotes,
             produtos (
               id,
               codigo,
@@ -94,6 +95,7 @@ export function useUnfinishedCount() {
           pacotes: item.pacotes,
           unidades: item.unidades,
           total: item.total,
+          totalPacotes: item.total_pacotes,
           produto: item.produtos ? {
             id: item.produtos.id,
             codigo: item.produtos.codigo,
@@ -131,6 +133,7 @@ export function useCounts() {
             pacotes,
             unidades,
             total,
+            total_pacotes,
             produtos (
               id,
               codigo,
@@ -165,6 +168,7 @@ export function useCounts() {
           pacotes: item.pacotes,
           unidades: item.unidades,
           total: item.total,
+          totalPacotes: item.total_pacotes,
           produto: item.produtos ? {
             id: item.produtos.id,
             codigo: item.produtos.codigo,

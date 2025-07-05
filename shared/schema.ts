@@ -84,9 +84,9 @@ export const insertContagemSchema = createInsertSchema(contagens).omit({
 export const insertItemContagemSchema = createInsertSchema(itensContagem).omit({
   id: true,
 }).extend({
-  contagem_id: z.string().uuid(),
-  produto_id: z.string().uuid().optional(),
-  nome_livre: z.string().optional(),
+  contagemId: z.string().uuid(),
+  produtoId: z.string().uuid().optional(),
+  nomeLivre: z.string().optional(),
   pallets: z.number().min(0, "Pallets não pode ser negativo"),
   lastros: z.number().min(0, "Lastros não pode ser negativo"),
   pacotes: z.number().min(0, "Pacotes não pode ser negativo"),
