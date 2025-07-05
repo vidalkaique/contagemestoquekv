@@ -403,7 +403,14 @@ export default function NewCount() {
                         {product.unidadesPorPacote && <div>Un/Pacote: <span className="font-bold">{product.unidadesPorPacote}</span></div>}
                         {product.pacotesPorLastro && <div>Pac/Lastro: <span className="font-bold">{product.pacotesPorLastro}</span></div>}
                         {product.lastrosPorPallet && <div>Lastro/Pallet: <span className="font-bold">{product.lastrosPorPallet}</span></div>}
-                        {product.quantidadePacsPorPallet && <div>Pacotes/Pallet: <span className="font-bold">{product.quantidadePacsPorPallet}</span></div>}
+                                              {/* Exibe pacotes/pallet, calculando se necessário */}
+                      {(product.pacotesPorLastro && product.lastrosPorPallet) && 
+                        <div>
+                          Pacotes/Pallet: <span className="font-bold">
+                            {product.quantidadePacsPorPallet ?? (product.pacotesPorLastro * product.lastrosPorPallet)}
+                          </span>
+                        </div>
+                      }
                       </div>
                     </div>
                   ) : null}

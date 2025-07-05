@@ -142,7 +142,7 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
 
             {/* Sugestões */}
             {showSuggestions && searchTerm && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+              <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-10 max-h-96 overflow-y-auto">
                 {isLoading ? (
                   <div className="p-4 text-center text-gray-500">Buscando produtos...</div>
                 ) : suggestions.length === 0 ? (
