@@ -154,11 +154,48 @@ export default function NewCount() {
     return totalUnidades;
   };
 
+  const calculateTotalPacotes = (product: ProductItem): number => {
+    let totalPacotes = product.pacotes || 0;
+
+    // Converte lastros e pallets para pacotes
+    if (product.pacotesPorLastro) {
+      totalPacotes += (product.lastros || 0) * product.pacotesPorLastro;
+      if (product.lastrosPorPallet) {
+        totalPacotes += (product.pallets || 0) * product.lastrosPorPallet * product.pacotesPorLastro;
+      }
+    }
+
+    return totalPacotes;
+  };
+
   const addItemsToCount = async (newContagemId: string) => {
     try {
       for (const product of products) {
         const isProdutoCadastrado = !product.id.includes('-');
         const total = calculateProductTotal(product);
+        const totalPacotes = calculateTotalPacotes(product);
+
+        console.log("--- DEBUG: Salvando Item ---", {
+          nome: product.nome,
+          id: product.id,
+          isProdutoCadastrado: !product.id.includes('-'),
+          inputs: {
+            pallets: product.pallets,
+            lastros: product.lastros,
+            pacotes: product.pacotes,
+            unidades: product.unidades,
+          },
+          fatores: {
+            unidadesPorPacote: product.unidadesPorPacote,
+            pacotesPorLastro: product.pacotesPorLastro,
+            lastrosPorPallet: product.lastrosPorPallet,
+          },
+          calculado: {
+            totalUnidades: total,
+            totalPacotes: totalPacotes,
+          },
+        });
+
         await addItemMutation.mutateAsync({
           item: {
             contagemId: newContagemId,
