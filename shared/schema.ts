@@ -14,8 +14,15 @@ export const produtos = pgTable("produtos", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const estoques = pgTable("estoques", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: text("nome").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const contagens = pgTable("contagens", {
   id: uuid("id").primaryKey().defaultRandom(),
+  estoqueId: uuid("estoque_id").references(() => estoques.id),
   data: date("data").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   excelUrl: text("excel_url"),

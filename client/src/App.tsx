@@ -9,6 +9,9 @@ import StartCount from "@/pages/start-count";
 import History from "@/pages/history";
 import CountSuccess from "@/pages/count-success";
 import Products from "@/pages/products";
+import Stocks from "@/pages/stocks";
+
+import { Home as HomeIcon, Package, Plus, Warehouse } from "lucide-react";
 
 function Router() {
   return (
@@ -17,6 +20,8 @@ function Router() {
       <Route path="/start-count" component={StartCount} />
       <Route path="/count/:id" component={NewCount} />
       <Route path="/count/:id/success" component={CountSuccess} />
+      <Route path="/stocks" component={Stocks} />
+      
       <Route path="/history" component={History} />
       <Route path="/products" component={Products} />
       <Route>

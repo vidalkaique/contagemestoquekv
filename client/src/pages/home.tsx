@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ClipboardList, Plus, History, LineChart, Package, ChevronRight } from "lucide-react";
+import { ClipboardList, Plus, History, LineChart, Package, ChevronRight, Warehouse } from "lucide-react";
 import type { ContagemWithItens } from "@shared/schema";
 
 export default function Home() {
@@ -44,6 +44,67 @@ export default function Home() {
             <ChevronRight className="text-gray-400" size={20} />
           </div>
         </a>
+
+
+
+        <button 
+          onClick={() => setLocation("/products")}>
+          <div className="p-3 mr-4 text-green-500 bg-green-100 rounded-full">
+            <Package />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-900">Gestão de Produtos</p>
+            <p className="text-sm text-gray-500">Cadastrar produtos e conversões</p>
+          </div>
+        </button>
+
+        <button 
+          onClick={() => setLocation("/stocks")}
+          className="w-full bg-white border border-gray-200 text-gray-700 rounded-xl py-4 px-6 flex items-center justify-between shadow-sm hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center">
+            <div className="p-3 mr-4 text-blue-500 bg-blue-100 rounded-full">
+              <Warehouse />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900 text-left">Gestão de Estoques</p>
+              <p className="text-sm text-gray-500 text-left">Cadastrar e gerenciar estoques</p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-gray-400" />
+        </button>
+
+        <button 
+          onClick={() => setLocation("/products")}
+          className="w-full bg-white border border-gray-200 text-gray-700 rounded-xl py-4 px-6 flex items-center justify-between shadow-sm hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center">
+            <div className="p-3 mr-4 text-green-500 bg-green-100 rounded-full">
+              <Package className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900 text-left">Gestão de Produtos</p>
+              <p className="text-sm text-gray-500 text-left">Cadastrar produtos e conversões</p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-gray-400" />
+        </button>
+
+        <button 
+          onClick={() => setLocation("/stocks")}
+          className="w-full bg-white border border-gray-200 text-gray-700 rounded-xl py-4 px-6 flex items-center justify-between shadow-sm hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center">
+            <div className="p-3 mr-4 text-blue-500 bg-blue-100 rounded-full">
+              <Warehouse className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900 text-left">Gestão de Estoques</p>
+              <p className="text-sm text-gray-500 text-left">Cadastrar e gerenciar estoques</p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-gray-400" />
+        </button>
 
         <button 
           onClick={() => setLocation("/history")}
