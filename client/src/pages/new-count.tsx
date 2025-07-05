@@ -135,9 +135,9 @@ export default function NewCount() {
         const total = isProdutoCadastrado ? calculateProductTotal(product) : (product.pallets || 0) + (product.lastros || 0) + (product.pacotes || 0) + (product.unidades || 0);
         await addItemMutation.mutateAsync({
           item: {
-            contagem_id: newContagemId,
-            produto_id: isProdutoCadastrado ? product.id : undefined,
-            nome_livre: !isProdutoCadastrado ? product.nome : undefined,
+            contagemId: newContagemId,
+            produtoId: isProdutoCadastrado ? product.id : undefined,
+            nomeLivre: !isProdutoCadastrado ? product.nome : undefined,
             pallets: product.pallets,
             lastros: product.lastros,
             pacotes: product.pacotes,
@@ -201,7 +201,7 @@ export default function NewCount() {
             <ArrowLeft />
           </Button>
           <h1 className="text-2xl font-bold ml-2">
-            {contagemId ? `Contagem #${contagem?.id}` : "Nova Contagem"}
+            {contagemId ? `Contagem #${contagemId}` : "Nova Contagem"}
           </h1>
         </div>
 
