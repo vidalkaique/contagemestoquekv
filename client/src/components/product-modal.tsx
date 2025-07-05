@@ -103,9 +103,9 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg w-full max-w-lg max-h-[90vh] overflow-hidden">
-        <div className="flex justify-between items-center p-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">
+      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex justify-between items-center p-5 border-b border-gray-200">
+          <h3 className="text-xl font-semibold text-gray-900">
             Adicionar Produto
           </h3>
           <Button
@@ -114,11 +114,11 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg"
           >
-            <X size={20} />
+            <X size={24} />
           </Button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 flex-1 overflow-y-auto">
           {/* Busca de Produtos */}
           <div className="relative">
             <Label className="block text-sm font-medium text-gray-700 mb-2">
@@ -135,7 +135,7 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
                   setSelectedProduct(null);
                 }}
                 onFocus={() => setShowSuggestions(true)}
-                className="pl-10"
+                className="pl-10 h-12 text-base"
               />
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             </div>
@@ -172,28 +172,28 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
 
           {/* Produto Selecionado */}
           {selectedProduct && (
-            <div className="bg-gray-50 p-3 rounded-lg space-y-3">
+            <div className="bg-gray-50 p-5 rounded-lg space-y-4">
               <div>
                 <h4 className="font-medium">{selectedProduct.nome}</h4>
                 <p className="text-sm text-gray-500">Código: {selectedProduct.codigo}</p>
               </div>
               
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-2 gap-4 text-base">
                 <div>
                   <Label>Unidades por Pacote</Label>
-                  <div className="font-medium">{selectedProduct.unidadesPorPacote || 1}</div>
+                  <div className="font-medium text-lg">{selectedProduct.unidadesPorPacote || 1}</div>
                 </div>
                 <div>
                   <Label>Pacotes por Lastro</Label>
-                  <div className="font-medium">{selectedProduct.pacotesPorLastro || 1}</div>
+                  <div className="font-medium text-lg">{selectedProduct.pacotesPorLastro || 1}</div>
                 </div>
                 <div>
                   <Label>Lastros por Pallet</Label>
-                  <div className="font-medium">{selectedProduct.lastrosPorPallet || 1}</div>
+                  <div className="font-medium text-lg">{selectedProduct.lastrosPorPallet || 1}</div>
                 </div>
                 <div>
                   <Label>Total por Pallet</Label>
-                  <div className="font-medium text-emerald-600">
+                  <div className="font-medium text-lg text-emerald-600">
                     {(selectedProduct.unidadesPorPacote || 1) *
                       (selectedProduct.pacotesPorLastro || 1) *
                       (selectedProduct.lastrosPorPallet || 1)}
@@ -208,48 +208,60 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="block text-sm font-medium text-gray-700 mb-2">
-                    Pallets
-                  </Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={formData.pallets}
-                    onChange={(e) => setFormData(prev => ({ ...prev, pallets: Math.max(0, parseInt(e.target.value) || 0) }))}
-                  />
+                  <div className="space-y-1">
+                    <Label className="text-base">Pallets</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={formData.pallets}
+                      onChange={(e) =>
+                        setFormData({ ...formData, pallets: parseInt(e.target.value) || 0 })
+                      }
+                      className="h-12 text-base"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <Label className="block text-sm font-medium text-gray-700 mb-2">
-                    Lastros
-                  </Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={formData.lastros}
-                    onChange={(e) => setFormData(prev => ({ ...prev, lastros: Math.max(0, parseInt(e.target.value) || 0) }))}
-                  />
+                  <div className="space-y-1">
+                    <Label className="text-base">Lastros</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={formData.lastros}
+                      onChange={(e) =>
+                        setFormData({ ...formData, lastros: parseInt(e.target.value) || 0 })
+                      }
+                      className="h-12 text-base"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <Label className="block text-sm font-medium text-gray-700 mb-2">
-                    Pacotes
-                  </Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={formData.pacotes}
-                    onChange={(e) => setFormData(prev => ({ ...prev, pacotes: Math.max(0, parseInt(e.target.value) || 0) }))}
-                  />
+                  <div className="space-y-1">
+                    <Label className="text-base">Pacotes</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={formData.pacotes}
+                      onChange={(e) =>
+                        setFormData({ ...formData, pacotes: parseInt(e.target.value) || 0 })
+                      }
+                      className="h-12 text-base"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <Label className="block text-sm font-medium text-gray-700 mb-2">
-                    Unidades
-                  </Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={formData.unidades}
-                    onChange={(e) => setFormData(prev => ({ ...prev, unidades: Math.max(0, parseInt(e.target.value) || 0) }))}
-                  />
+                  <div className="space-y-1">
+                    <Label className="text-base">Unidades</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={formData.unidades}
+                      onChange={(e) =>
+                        setFormData({ ...formData, unidades: parseInt(e.target.value) || 0 })
+                      }
+                      className="h-12 text-base"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -262,19 +274,19 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
             </>
           )}
 
-          <div className="flex space-x-3 pt-4">
+          <div className="flex justify-end space-x-4 pt-6">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
-              className="flex-1"
+              className="h-12 px-6 text-base"
             >
               Cancelar
             </Button>
             <Button
               type="submit"
+              className="bg-primary text-white hover:bg-primary/90 h-12 px-6 text-base"
               disabled={!selectedProduct}
-              className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               Adicionar
             </Button>
