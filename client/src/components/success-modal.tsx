@@ -275,24 +275,20 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
       });
 
       // Adicionar totais
-      const totalPallets = (contagem.itens_contagem || []).reduce((sum, item) => sum + (item.pallets || 0), 0);
-      const totalLastros = (contagem.itens_contagem || []).reduce((sum, item) => sum + (item.lastros || 0), 0);
-      const totalPacotes = (contagem.itens_contagem || []).reduce((sum, item) => sum + (item.pacotes || 0), 0);
-      const totalUnidades = (contagem.itens_contagem || []).reduce((sum, item) => sum + (item.unidades || 0), 0);
       const totalGeralPacotes = (contagem.itens_contagem || []).reduce((sum, item) => sum + (item.total_pacotes || 0), 0);
       const totalGeralUnidades = (contagem.itens_contagem || []).reduce((sum, item) => sum + (item.total || 0), 0);
       
       // Linha em branco
       worksheet.addRow([]);
       
-      // Linha de totais
+      // Linha de totais - apenas totais de pacotes e unidades
       const totalRow = worksheet.addRow([
         'TOTAIS:',
         '',
-        totalPallets,
-        totalLastros,
-        totalPacotes,
-        totalUnidades,
+        '', // Pallets
+        '', // Lastros
+        '', // Pacotes
+        '', // Unidades
         totalGeralPacotes,
         totalGeralUnidades
       ]);
@@ -308,15 +304,8 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
         }
       });
       
-      // Adicionar linha em branco
+      // Adicionar linha em branco final
       worksheet.addRow([]);
-      
-      // Adicionar rodapé com assinatura
-      const assinaturaRow = worksheet.addRow(['']);
-      const assinaturaCell = assinaturaRow.getCell(1);
-      assinaturaCell.value = 'Feito por: Kaique Vidal';
-      assinaturaCell.font = { italic: true, color: { argb: 'FF808080' } };
-      worksheet.mergeCells(`A${assinaturaRow.number}:H${assinaturaRow.number}`);
       
       // Adicionar linha em branco final
       worksheet.addRow([]);
