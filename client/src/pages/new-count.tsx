@@ -345,7 +345,14 @@ export default function NewCount() {
         lastros: product.lastros ?? 0,
         pacotes: product.pacotes ?? 0,
         unidades: product.unidades ?? 0,
-        totalPacotes: product.totalPacotes ?? 0,
+        totalPacotes: product.totalPacotes ?? calculateTotalPacotes({
+          ...product,
+          pallets: product.pallets ?? 0,
+          lastros: product.lastros ?? 0,
+          pacotes: product.pacotes ?? 0,
+          unidades: product.unidades ?? 0,
+          totalPacotes: 0,
+        }),
       };
 
       // Verifica se o produto já existe na lista

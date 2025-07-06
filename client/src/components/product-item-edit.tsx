@@ -44,7 +44,12 @@ export function ProductItemEdit({ product, onSave, onRemove }: ProductItemEditPr
   }, [product]);
 
   // Calcula o total de pacotes
-  const calculateTotalPacotes = (customFormData = formData) => {
+  // Calcula total de pacotes dependendo se estamos editando ou apenas exibindo
+  const calculateTotalPacotes = (customFormData = (isEditing ? formData : {
+    pallets: product.pallets,
+    lastros: product.lastros,
+    pacotes: product.pacotes,
+  })) => {
     let total = customFormData.pacotes || 0;
     
     // Adiciona pacotes dos lastros
