@@ -520,13 +520,7 @@ export default function NewCount() {
       } else {
         console.log("Criando nova contagem...");
         
-        // Obtém o ID do usuário autenticado
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError || !session?.user?.id) {
-          console.error("Erro ao obter sessão do usuário:", sessionError);
-          throw new Error("Não foi possível verificar sua autenticação. Faça login novamente.");
-        }
+
         
         // Cria uma nova contagem
         const { data: contagem, error: createError } = await supabase
@@ -535,7 +529,7 @@ export default function NewCount() {
             data: formattedDate,
             finalizada: true,
             estoque_id: 1, // TODO: Implementar seleção de estoque
-            usuario_id: session.user.id,
+
 
           }])
           .select()
