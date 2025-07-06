@@ -124,6 +124,10 @@ export function useUnfinishedCount() {
             unidades: item.unidades,
             total: item.total,
             totalPacotes: item.total_pacotes,
+            unidadesPorPacote: produto?.unidades_por_pacote,
+            pacotesPorLastro: produto?.pacotes_por_lastro,
+            lastrosPorPallet: produto?.lastros_por_pallet,
+            quantidadePacsPorPallet: produto?.quantidade_pacs_por_pallet ?? undefined,
             produto: produto ? {
               id: produto.id,
               codigo: produto.codigo,
@@ -232,6 +236,10 @@ export function useCounts() {
               unidades: item.unidades,
               total: item.total,
               totalPacotes: item.total_pacotes,
+              unidadesPorPacote: produto ? ('unidades_por_pacote' in produto ? produto.unidades_por_pacote : undefined) : undefined,
+              pacotesPorLastro: produto ? ('pacotes_por_lastro' in produto ? produto.pacotes_por_lastro : undefined) : undefined,
+              lastrosPorPallet: produto ? ('lastros_por_pallet' in produto ? produto.lastros_por_pallet : undefined) : undefined,
+              quantidadePacsPorPallet: produto ? ('quantidade_pacs_por_pallet' in produto ? produto.quantidade_pacs_por_pallet : undefined) : undefined,
               produto: produto ? {
                 id: produto.id,
                 codigo: produto.codigo,
