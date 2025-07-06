@@ -528,7 +528,7 @@ export default function NewCount() {
           .insert([{
             data: formattedDate,
             finalizada: true,
-            estoque_id: 1, // TODO: Implementar seleção de estoque
+            estoque_id: unfinishedCount?.estoque?.id ?? null,
 
 
           }])
