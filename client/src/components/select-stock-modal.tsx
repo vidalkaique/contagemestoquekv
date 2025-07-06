@@ -176,7 +176,7 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
         role="dialog"
         aria-labelledby="stock-selector-title"
         aria-modal="true"
-        className="flex flex-col max-h-[85vh]"
+        
       >
         <DialogHeader>
           <div className="flex items-center justify-between">
@@ -198,7 +198,7 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
             </Button>
           </div>
         </DialogHeader>
-        <div className="flex-grow flex items-center justify-center overflow-y-auto">
+        <div className="py-4 max-h-[60vh] overflow-y-auto">
           {/* Lista de estoques */}
           <div 
             className="w-full max-w-md space-y-3 px-4 py-2"
