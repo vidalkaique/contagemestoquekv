@@ -123,8 +123,17 @@ export default function StartCount() {
         onStockSelected={(stock) => {
           setSelectedStock(stock);
           setIsStockModalOpen(false);
-          // Chama handleStartNewCount novamente após selecionar o estoque
-          setTimeout(handleStartNewCount, 100);
+          // Após selecionar o estoque, inicia diretamente a criação da contagem
+          if (countDate) {
+            // Fuso horário UTC às 12h para evitar problemas de timezone
+            const [y, m, d] = countDate.split('-').map(Number);
+            const utcDate = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+            createCountMutation.mutate({
+              data: utcDate.toISOString(),
+              finalizada: false,
+              estoqueId: stock.id,
+            });
+          }
         }}
       />
       {/* Header */}
