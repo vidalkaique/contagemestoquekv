@@ -121,15 +121,23 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
 
       console.log('Criando nova contagem para o estoque:', estoqueId);
       
+      // Obter o ID do usuário logado (se houver autenticação)
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const contagemData: any = {
+        estoque_id: estoqueId,
+        data: new Date().toISOString(),
+        finalizada: false
+      };
+      
+      // Adicionar user_id apenas se o usuário estiver autenticado
+      if (user?.id) {
+        contagemData.user_id = user.id;
+      }
+      
       const { data: contagem, error } = await supabase
         .from('contagens')
-        .insert([
-          { 
-            estoque_id: estoqueId,
-            data: new Date().toISOString(),
-            finalizada: false
-          }
-        ])
+        .insert([contagemData])
         .select('id, estoque_id')
         .single();
 
@@ -174,12 +182,18 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
         id="stock-selector-dialog"
         role="dialog"
         aria-labelledby="stock-selector-title"
+        aria-describedby="stock-selector-description"
         aria-modal="true"
-        
+        className="max-w-md w-full sm:max-w-[425px]"
       >
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle id="stock-selector-title">Selecione o Estoque</DialogTitle>
+            <div>
+              <DialogTitle id="stock-selector-title">Selecione o Estoque</DialogTitle>
+              <p id="stock-selector-description" className="text-sm text-muted-foreground mt-1">
+                Escolha um estoque para iniciar uma nova contagem
+              </p>
+            </div>
             <Button 
               variant="ghost" 
               size="icon" 

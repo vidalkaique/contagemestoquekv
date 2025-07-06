@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation, useParams } from "wouter";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Check, Trash2, Package } from "lucide-react";
+import { ArrowLeft, Plus, Check, Trash2, Package, Search, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ProductModal from "@/components/product-modal";
 import { supabase } from "@/lib/supabase";
 import { saveCurrentCount, getCurrentCount, clearCurrentCount } from "@/lib/localStorage";
@@ -20,7 +22,7 @@ interface ProductItem {
   lastros: number;
   pacotes: number;
   unidades: number;
-  totalPacotes: number; 
+  totalPacotes: number;
   unidadesPorPacote?: number;
   pacotesPorLastro?: number;
   lastrosPorPallet?: number;
@@ -39,8 +41,8 @@ export default function NewCount() {
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
-
-
+  const [searchQuery, setSearchQuery] = useState("");
+  const addButtonRef = useRef<HTMLButtonElement>(null);
 
   const calculateProductPackages = (product: Omit<ProductItem, 'totalPacotes'>): number => {
     const pacotesPorLastro = product.pacotesPorLastro || 0;
@@ -90,7 +92,6 @@ export default function NewCount() {
   }, [unfinishedCount, setCountDate, isLoaded, contagemId]);
 
   useEffect(() => {
-    // Salva a contagem no localStorage apenas se for uma nova contagem (sem ID na URL ou contagem não finalizada do banco)
     if (products.length > 0 && !contagemId && !unfinishedCount) {
       saveCurrentCount({ date: countDate, products });
     }
@@ -111,12 +112,11 @@ export default function NewCount() {
     },
     onError: () => {
       toast({ title: "Erro", description: "Erro ao criar contagem", variant: "destructive" });
-    },
+    }
   });
 
   const addItemMutation = useMutation({
     mutationFn: async ({ item }: { item: InsertItemContagem }) => {
-      // Converte para snake_case conforme as colunas reais do banco de dados
       const dbItem: any = {
         contagem_id: item.contagemId,
         produto_id: item.produtoId,
@@ -131,14 +131,13 @@ export default function NewCount() {
       const { data, error } = await supabase.from('itens_contagem').insert(dbItem).select().single();
       if (error) throw error;
       return data;
-    },
+    }
   });
 
-    const calculateProductTotal = (product: ProductItem): number => {
+  const calculateProductTotal = (product: ProductItem): number => {
     let totalUnidades = product.unidades || 0;
     let totalPacotes = product.pacotes || 0;
 
-    // Converte lastros e pallets para pacotes
     if (product.pacotesPorLastro) {
       totalPacotes += (product.lastros || 0) * product.pacotesPorLastro;
       if (product.lastrosPorPallet) {
@@ -146,7 +145,6 @@ export default function NewCount() {
       }
     }
 
-    // Converte o total de pacotes para unidades
     if (product.unidadesPorPacote) {
       totalUnidades += totalPacotes * product.unidadesPorPacote;
     }
@@ -157,7 +155,6 @@ export default function NewCount() {
   const calculateTotalPacotes = (product: ProductItem): number => {
     let totalPacotes = product.pacotes || 0;
 
-    // Converte lastros e pallets para pacotes
     if (product.pacotesPorLastro) {
       totalPacotes += (product.lastros || 0) * product.pacotesPorLastro;
       if (product.lastrosPorPallet) {
@@ -199,7 +196,7 @@ export default function NewCount() {
     }
   };
 
-  const handleAddProduct = (productData: Omit<ProductItem, 'totalPacotes'>) => {
+  const handleAddProduct = useCallback((productData: Omit<ProductItem, 'totalPacotes'>) => {
     const totalPacotes = calculateProductPackages(productData);
     const newProduct: ProductItem = { ...productData, totalPacotes };
     const newProducts = [...products, newProduct];
@@ -208,17 +205,54 @@ export default function NewCount() {
       saveCurrentCount({ date: countDate || "", products: newProducts });
     }
     setIsProductModalOpen(false);
-    toast({ title: "Produto adicionado", description: `${productData.nome} foi adicionado à contagem` });
-  };
+    
+    toast({
+      title: "✅ Produto adicionado",
+      description: (
+        <div className="flex flex-col gap-1">
+          <span className="font-medium">{productData.nome}</span>
+          <div className="flex gap-2 text-sm text-muted-foreground">
+            <span>Pallets: {productData.pallets || 0}</span>
+            <span>Lastros: {productData.lastros || 0}</span>
+            <span>Pacotes: {productData.pacotes || 0}</span>
+          </div>
+        </div>
+      ),
+      duration: 2000
+    });
+  }, [products, countDate, contagemId]);
 
-  const handleRemoveProduct = (index: number) => {
+  const handleRemoveProduct = useCallback((index: number) => {
+    const productToRemove = products[index];
     const newProducts = products.filter((_, i) => i !== index);
     setProducts(newProducts);
     if (!contagemId) {
       saveCurrentCount({ date: countDate || "", products: newProducts });
     }
-    toast({ title: "Produto removido", description: "O produto foi removido da contagem.", variant: "destructive" });
-  };
+    
+    toast({
+      title: "🗑️ Produto removido",
+      description: `${productToRemove.nome} foi removido da contagem`,
+      variant: "destructive",
+      action: (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => {
+            const restoredProducts = [...products];
+            setProducts(restoredProducts);
+            if (!contagemId) {
+              saveCurrentCount({ date: countDate || "", products: restoredProducts });
+            }
+            toast({ title: "✅ Ação desfeita", description: "O produto foi restaurado." });
+          }}
+        >
+          Desfazer
+        </Button>
+      ),
+      duration: 5000
+    });
+  }, [products, countDate, contagemId]);
 
   const handleFinalizeCount = async () => {
     if (!countDate) {
@@ -227,7 +261,6 @@ export default function NewCount() {
     }
     
     if (contagemId) {
-      // Se já temos um ID de contagem, apenas atualizamos para finalizada
       const { error } = await supabase
         .from('contagens')
         .update({ finalizada: true, data: countDate })
@@ -239,102 +272,242 @@ export default function NewCount() {
         return;
       }
       
-      // Adiciona os itens e redireciona
       await addItemsToCount(contagemId);
     } else {
-      // Se não temos um ID (fluxo antigo), mantemos o comportamento atual
       createCountMutation.mutate({ data: countDate, finalizada: true });
     }
   };
 
-  const handleDateChange = (newDate: string) => {
+  const handleDateChange = useCallback((newDate: string) => {
     setCountDate(newDate);
     if (!contagemId) {
       saveCurrentCount({ date: newDate, products: products });
     }
-  };
+  }, [contagemId, products, setCountDate]);
+
+  const filteredProducts = searchQuery
+    ? products.filter((product) => 
+        product.nome.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : products;
 
   return (
-    <>
-      <div className="p-4 max-w-2xl mx-auto">
-        <div className="flex items-center mb-4">
-          <Button variant="ghost" size="icon" onClick={() => setLocation("/")}>
-            <ArrowLeft />
-          </Button>
-          <h1 className="text-2xl font-bold ml-2">
-            {contagemId ? `Contagem #${contagemId}` : "Nova Contagem"}
-          </h1>
-        </div>
-
-        <div className="mb-4">
-          <Label htmlFor="count-date">Data da Contagem</Label>
-          <Input id="count-date" type="date" value={countDate} onChange={(e) => handleDateChange(e.target.value)} className="mt-1" />
-        </div>
-
-        <Button onClick={() => setIsProductModalOpen(true)} className="w-full mb-4">
-          <Plus className="mr-2" size={20} />
-          Adicionar Produto
+    <div className="container mx-auto p-4 max-w-4xl">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <Button variant="outline" onClick={() => setLocation("/")} className="w-full sm:w-auto">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
         </Button>
 
-        {products.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">
-            <Package size={48} className="mx-auto mb-2" />
-            <p>Nenhum produto adicionado ainda.</p>
-            <p className="text-sm">Clique em "Adicionar Produto" para começar.</p>
+        <div className="w-full sm:w-64 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Buscar produtos..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 w-full"
+          />
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6"
+              onClick={() => setSearchQuery("")}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+
+        <div className="w-full sm:w-auto flex items-center gap-2">
+          <div className="text-right">
+            <Label htmlFor="count-date" className="block text-sm font-medium text-gray-700 mb-1">
+              Data da Contagem
+            </Label>
+            <Input
+              id="count-date"
+              type="date"
+              value={countDate}
+              onChange={(e) => handleDateChange(e.target.value)}
+              className="w-full sm:w-48"
+            />
           </div>
-        ) : (
-          <div className="space-y-3">
-            {products.map((product, index) => (
-              <div key={product.id} className="bg-white p-4 rounded-lg border">
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  ref={addButtonRef}
+                  onClick={() => setIsProductModalOpen(true)}
+                  className="mt-6 h-10"
+                >
+                  <Plus className="mr-2 h-4 w-4" /> Adicionar
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Pressione <Badge variant="outline" className="mx-1">Ctrl</Badge> + <Badge variant="outline" className="mx-1">Enter</Badge> para adicionar rapidamente</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </div>
+
+      {filteredProducts.length === 0 ? (
+        <div className="text-center py-12">
+          <Package className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">
+            {searchQuery ? 'Nenhum produto encontrado' : 'Nenhum produto adicionado'}
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {searchQuery 
+              ? 'Tente ajustar sua busca ou adicione um novo produto.'
+              : 'Comece adicionando seu primeiro produto à contagem.'}
+          </p>
+          <div className="mt-6">
+            <Button onClick={() => setIsProductModalOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> 
+              {searchQuery ? 'Adicionar Novo Produto' : 'Adicionar Produto'}
+            </Button>
+            {searchQuery && (
+              <Button 
+                variant="outline" 
+                className="ml-2"
+                onClick={() => setSearchQuery('')}
+              >
+                <X className="mr-2 h-4 w-4" /> Limpar busca
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+            <div>
+              <h2 className="text-lg font-semibold">Produtos</h2>
+              <p className="text-sm text-muted-foreground">
+                {products.length} {products.length === 1 ? 'produto' : 'produtos'} na contagem
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {searchQuery && (
+                <p className="text-sm text-muted-foreground">
+                  {filteredProducts.length} de {products.length} produtos encontrados
+                </p>
+              )}
+              <Button 
+                onClick={() => setIsProductModalOpen(true)}
+                className="hidden sm:flex"
+              >
+                <Plus className="mr-2 h-4 w-4" /> Adicionar Produto
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {filteredProducts.map((product, index) => (
+              <div key={`${product.id}-${index}`} className="border rounded-lg p-4">
                 <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-lg flex-1 pr-2">{product.nome}</h3>
-                  <Button variant="ghost" size="icon" onClick={() => handleRemoveProduct(index)}>
-                    <Trash2 className="text-red-500" size={20} />
+                  <div>
+                    <h3 className="font-medium">{product.nome}</h3>
+                    {product.quantidadePacsPorPallet && (
+                      <p className="text-sm text-muted-foreground">
+                        {product.quantidadePacsPorPallet} pacotes/pallet
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                    onClick={() => handleRemoveProduct(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 text-sm">
-                  <div><span className="text-gray-500">Pallets:</span><span className="font-medium ml-1">{product.pallets}</span></div>
-                  <div><span className="text-gray-500">Lastros:</span><span className="font-medium ml-1">{product.lastros}</span></div>
-                  <div><span className="text-gray-500">Pacotes:</span><span className="font-medium ml-1">{product.pacotes}</span></div>
-                  <div><span className="text-gray-500">Unidades:</span><span className="font-medium ml-1">{product.unidades}</span></div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Pallets</p>
+                    <p className="font-medium">{product.pallets || 0}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Lastros</p>
+                    <p className="font-medium">{product.lastros || 0}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Pacotes</p>
+                    <p className="font-medium">{product.pacotes || 0}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Unidades</p>
+                    <p className="font-medium">{product.unidades || 0}</p>
+                  </div>
                 </div>
 
-                {(product.unidadesPorPacote || product.pacotesPorLastro || product.lastrosPorPallet || product.quantidadePacsPorPallet) && (
-                  <div className="border-t pt-3 mt-3 text-xs text-gray-600">
-                    <p className="font-semibold mb-2">Detalhes do Produto:</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {product.unidadesPorPacote && <div>Un/Pacote: <span className="font-bold">{product.unidadesPorPacote}</span></div>}
-                      {product.pacotesPorLastro && <div>Pac/Lastro: <span className="font-bold">{product.pacotesPorLastro}</span></div>}
-                      {product.lastrosPorPallet && <div>Lastro/Pallet: <span className="font-bold">{product.lastrosPorPallet}</span></div>}
-                      {(product.pacotesPorLastro && product.lastrosPorPallet) && 
-                        <div>Pacotes/Pallet: <span className="font-bold">{product.quantidadePacsPorPallet ?? (product.pacotesPorLastro * product.lastrosPorPallet)}</span></div>
-                      }
+                <div className="mt-4 pt-4 border-t">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-amber-50 p-3 rounded-lg">
+                      <p className="text-sm font-medium text-amber-800">Total Pacotes</p>
+                      <p className="text-lg font-bold text-amber-900">
+                        {calculateTotalPacotes(product).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="bg-green-50 p-3 rounded-lg">
+                      <p className="text-sm font-medium text-green-800">Total Unidades</p>
+                      <p className="text-lg font-bold text-green-900">
+                        {calculateProductTotal(product).toLocaleString()}
+                      </p>
                     </div>
                   </div>
-                )}
-                
-                {(calculateProductTotal(product) > 0 || product.totalPacotes > 0) && (
-                  <div className="bg-red-50 p-3 rounded-lg mt-3 text-center">
-                    <div className="text-sm font-medium text-red-900">Total Unidades: <span className="font-bold">{calculateProductTotal(product).toLocaleString()}</span></div>
-                    <div className="text-sm font-medium text-red-900 mt-1">Total Pacotes: <span className="font-bold">{product.totalPacotes.toLocaleString()}</span></div>
-                  </div>
-                )}
+                </div>
               </div>
             ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {products.length > 0 && (
-          <div className="pt-4">
-            <Button onClick={handleFinalizeCount} disabled={createCountMutation.isPending} className="w-full bg-emerald-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-emerald-600 transition-colors">
-              {createCountMutation.isPending ? "Finalizando..." : <><Check className="mr-2" size={20} />Finalizar Contagem</>}
+      {products.length > 0 && (
+        <div className="sticky bottom-0 bg-white border-t pt-4 pb-6 -mx-4 px-4">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="text-sm text-muted-foreground">
+              {products.length} {products.length === 1 ? 'produto' : 'produtos'} na contagem • 
+              {filteredProducts.length < products.length && (
+                <>
+                  {' '}Mostrando {filteredProducts.length} de {products.length} produtos
+                </>
+              )}
+            </div>
+            <Button 
+              onClick={handleFinalizeCount} 
+              disabled={!countDate || createCountMutation.isPending}
+              className="w-full sm:w-auto"
+              size="lg"
+            >
+              {createCountMutation.isPending ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Finalizando...
+                </>
+              ) : (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  Finalizar Contagem
+                </>
+              )}
             </Button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      <ProductModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} onAddProduct={handleAddProduct} />
-    </>
+      <ProductModal
+        isOpen={isProductModalOpen}
+        onClose={() => setIsProductModalOpen(false)}
+        onAddProduct={handleAddProduct}
+      />
+    </div>
   );
 }
