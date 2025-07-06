@@ -248,43 +248,42 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
                 <AnimatePresence mode="wait">
                   <div className="space-y-3">
                     {stocks.map((stock, index) => (
-                        <motion.div
-                          key={stock.id}
+                      <motion.div
+                        key={stock.id}
+                        id={`stock-${stock.id}`}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ 
+                          opacity: 1, 
+                          y: 0,
+                          scale: focusedIndex === index ? 1.01 : 1,
+                          transition: { 
+                            delay: index * 0.05,
+                            scale: { duration: 0.1 }
+                          }
+                        }}
+                      >
+                        <Button
                           id={`stock-${stock.id}`}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ 
-                            opacity: 1, 
-                            y: 0,
-                            scale: focusedIndex === index ? 1.01 : 1,
-                            transition: { 
-                              delay: index * 0.05,
-                              scale: { duration: 0.1 }
-                            }
-                          }}
+                          variant={focusedIndex === index || selectedStock === stock.id ? 'default' : 'outline'}
+                          className={`w-full justify-start transition-all duration-200 relative ${focusedIndex === index || selectedStock === stock.id ? 'border-primary shadow-sm' : 'hover:border-primary/50'}`}
+                          onClick={() => setSelectedStock(stock.id)}
+                          onMouseEnter={() => setFocusedIndex(index)}
+                          onFocus={() => setFocusedIndex(index)}
+                          aria-selected={selectedStock === stock.id}
+                          role="option"
+                          tabIndex={focusedIndex === index ? 0 : -1}
                         >
-                          <Button
-                            id={`stock-${stock.id}`}
-                            variant={focusedIndex === index || selectedStock === stock.id ? 'default' : 'outline'}
-                            className={`w-full justify-start transition-all duration-200 relative ${focusedIndex === index || selectedStock === stock.id ? 'border-primary shadow-sm' : 'hover:border-primary/50'}`}
-                            onClick={() => setSelectedStock(stock.id)}
-                            onMouseEnter={() => setFocusedIndex(index)}
-                            onFocus={() => setFocusedIndex(index)}
-                            aria-selected={selectedStock === stock.id}
-                            role="option"
-                            tabIndex={focusedIndex === index ? 0 : -1}
-                          >
-                            <Package className="mr-2 h-4 w-4 flex-shrink-0" />
-                            <span className="truncate">{stock.nome}</span>
-                            {focusedIndex === index && (
-                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs opacity-60">
-                                {index + 1}/{stocks?.length || 0}
-                              </span>
-                            )}
-                          </Button>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
+                          <Package className="mr-2 h-4 w-4 flex-shrink-0" />
+                          <span className="truncate">{stock.nome}</span>
+                          {focusedIndex === index && (
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs opacity-60">
+                              {index + 1}/{stocks?.length || 0}
+                            </span>
+                          )}
+                        </Button>
+                      </motion.div>
+                    ))}
+                  </div>
                 </AnimatePresence>
               </div>
             )}
