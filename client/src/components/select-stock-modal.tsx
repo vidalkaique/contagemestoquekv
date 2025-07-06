@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import type { Estoque, NovaContagem } from '@shared/schema';
-import { Loader2, Search, RotateCw, Package, Plus } from 'lucide-react';
+import { Loader2, RotateCw, Package, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface SelectStockModalProps {
@@ -18,7 +18,6 @@ interface SelectStockModalProps {
 export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: SelectStockModalProps) => {
   const [, setLocation] = useLocation();
   const [selectedStock, setSelectedStock] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [focusedIndex, setFocusedIndex] = useState(0);
 
   const { data: stocks, isLoading, error: stocksError, refetch } = useQuery<Estoque[]>({
@@ -45,64 +44,29 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
     },
   });
 
-  // Filtrar estoques com base no termo de busca
-  const filteredStocks = useMemo(() => {
-    if (!stocks) return [];
-    if (!searchTerm.trim()) return stocks;
-    
-    const term = searchTerm.toLowerCase().trim();
-    return stocks.filter(stock => 
-      stock.nome.toLowerCase().includes(term) ||
-      stock.id.toLowerCase().includes(term)
-    );
-  }, [stocks, searchTerm]);
-  
-  // Efeito para selecionar automaticamente o primeiro estoque quando a lista for carregada
-  // Atualizar o índice focado quando os estoques forem carregados
+  // Selecionar automaticamente o primeiro estoque quando a lista for carregada
   useEffect(() => {
-    if (stocks && stocks.length > 0) {
-      if (!selectedStock) {
-        setSelectedStock(stocks[0].id);
-        setFocusedIndex(0);
-      } else {
-        const index = stocks.findIndex(s => s.id === selectedStock);
-        if (index >= 0) setFocusedIndex(index);
-      }
+    if (stocks && stocks.length > 0 && !selectedStock) {
+      setSelectedStock(stocks[0].id);
+      setFocusedIndex(0);
     }
   }, [stocks, selectedStock]);
   
-  // Ajustar seleção se o estoque selecionado for filtrado
-  useEffect(() => {
-    if (selectedStock && filteredStocks.length > 0 && 
-        !filteredStocks.some(s => s.id === selectedStock)) {
-      setSelectedStock(filteredStocks[0].id);
-      setFocusedIndex(0);
-    } else if (filteredStocks.length > 0 && !selectedStock) {
-      setSelectedStock(filteredStocks[0].id);
-      setFocusedIndex(0);
-    } else if (filteredStocks.length === 0) {
-      setSelectedStock(null);
-      setFocusedIndex(-1);
-    }
-  }, [filteredStocks, selectedStock]);
-  
   // Navegação por teclado
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !stocks || stocks.length === 0) return;
     
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!filteredStocks || filteredStocks.length === 0) return;
-      
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
         const direction = e.key === 'ArrowDown' ? 1 : -1;
-        const newIndex = Math.max(0, Math.min(filteredStocks.length - 1, focusedIndex + direction));
+        const newIndex = Math.max(0, Math.min(stocks.length - 1, focusedIndex + direction));
         
         if (newIndex !== focusedIndex) {
           setFocusedIndex(newIndex);
-          setSelectedStock(filteredStocks[newIndex].id);
+          setSelectedStock(stocks[newIndex].id);
           // Rolar o item para a visualização
-          const element = document.getElementById(`stock-${filteredStocks[newIndex].id}`);
+          const element = document.getElementById(`stock-${stocks[newIndex].id}`);
           element?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           // Focar no elemento para leitores de tela
           element?.setAttribute('tabindex', '-1');
@@ -113,19 +77,19 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
         handleConfirm();
       } else if (e.key === 'Escape') {
         onOpenChange(false);
-      } else if (e.key === 'Tab' && filteredStocks.length > 0) {
+      } else if (e.key === 'Tab' && stocks.length > 0) {
         // Se o foco estiver no último botão e o usuário pressionar Tab, voltar para o primeiro item
         const activeElement = document.activeElement;
         const lastButton = document.querySelector('#stock-selector-dialog [data-last-button]');
         
         if (e.shiftKey && activeElement === document.querySelector('#stock-selector-dialog button')) {
           e.preventDefault();
-          const element = document.getElementById(`stock-${filteredStocks[filteredStocks.length - 1].id}`);
+          const element = document.getElementById(`stock-${stocks[stocks.length - 1].id}`);
           element?.setAttribute('tabindex', '0');
           element?.focus();
         } else if (!e.shiftKey && activeElement === lastButton) {
           e.preventDefault();
-          const element = document.getElementById(`stock-${filteredStocks[0].id}`);
+          const element = document.getElementById(`stock-${stocks[0].id}`);
           element?.setAttribute('tabindex', '0');
           element?.focus();
         }
@@ -134,7 +98,7 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, filteredStocks, focusedIndex, selectedStock]);
+  }, [isOpen, stocks, focusedIndex, selectedStock]);
 
   // Log de erros na busca de estoques
   useEffect(() => {
@@ -234,44 +198,10 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
             </Button>
           </div>
         </DialogHeader>
-        <div className="py-4 space-y-3 max-h-[60vh] flex flex-col">
-          {/* Barra de pesquisa */}
-          <div className="px-1 pb-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar estoque..."
-                className="w-full rounded-md border border-input bg-background pl-10 pr-4 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                disabled={isLoading || !stocks?.length}
-              />
-            </div>
-          </div>
-          
-          {/* Contador de resultados */}
-          <div className="px-1 text-xs text-muted-foreground flex justify-between items-center">
-            {!isLoading && stocks && (
-              <span>
-                Mostrando {filteredStocks.length} de {stocks.length} estoque{stocks.length !== 1 ? 's' : ''}
-              </span>
-            )}
-            {searchTerm && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setSearchTerm('')}
-                className="h-6 text-xs"
-              >
-                Limpar busca
-              </Button>
-            )}
-          </div>
-          
+        <div className="py-4 flex flex-col items-center justify-center min-h-[300px]">
           {/* Lista de estoques */}
           <div 
-            className="flex-1 overflow-y-auto pr-1 mt-1" 
+            className="w-full max-w-md space-y-3"
             role="listbox" 
             aria-label="Lista de estoques"
             aria-orientation="vertical"
@@ -314,36 +244,10 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
                 </div>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <AnimatePresence mode="wait">
-                  {filteredStocks.length === 0 ? (
-                    <motion.div 
-                      key="no-results"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="flex flex-col items-center justify-center py-8 space-y-4"
-                    >
-                      <div className="bg-gray-100 p-3 rounded-full">
-                        <Search className="h-6 w-6 text-gray-400" />
-                      </div>
-                      <div className="text-center">
-                        <h4 className="font-medium text-gray-900">Nenhum resultado encontrado</h4>
-                        <p className="text-sm text-gray-500 mt-1">
-                          Não encontramos estoques que correspondam a "{searchTerm}"
-                        </p>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => setSearchTerm('')}
-                      >
-                        Limpar busca
-                      </Button>
-                    </motion.div>
-                  ) : (
-                    <div className="space-y-2">
-                      {filteredStocks.map((stock, index) => (
+                  <div className="space-y-3">
+                    {stocks.map((stock, index) => (
                         <motion.div
                           key={stock.id}
                           id={`stock-${stock.id}`}
@@ -373,7 +277,7 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
                             <span className="truncate">{stock.nome}</span>
                             {focusedIndex === index && (
                               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs opacity-60">
-                                {index + 1}/{filteredStocks.length}
+                                {index + 1}/{stocks?.length || 0}
                               </span>
                             )}
                           </Button>
