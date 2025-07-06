@@ -161,17 +161,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Botão para mostrar/esconder histórico */}
-        {countHistory.length > 0 && (
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            className="w-full flex items-center justify-center text-sm text-gray-500 hover:text-gray-700 mt-4"
-          >
-            <History className="w-4 h-4 mr-2" />
-            {showHistory ? 'Ocultar histórico' : 'Mostrar histórico de contagens'}
-            <ChevronRight className={`w-4 h-4 ml-1 transition-transform ${showHistory ? 'transform rotate-90' : ''}`} />
-          </button>
-        )}
+
 
         <button
           onClick={() => setLocation("/history")}

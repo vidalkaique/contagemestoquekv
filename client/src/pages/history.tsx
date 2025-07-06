@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
-import { useCounts } from "@/hooks/use-counts";
+
 import { supabase } from "@/lib/supabase";
-// import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ArrowLeft, Download, Search } from "lucide-react";
@@ -42,7 +42,9 @@ export default function History() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: contagens = [], isLoading } = useCounts();
+  const { data: contagens = [], isLoading } = useQuery<ContagemWithItens[]>({
+    queryKey: ["/api/contagens"],
+  });
 
   const filteredContagens = contagens?.filter(contagem => {
     if (!searchQuery.trim()) return true;
