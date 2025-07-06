@@ -126,7 +126,6 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
         .insert([
           { 
             estoque_id: estoqueId,
-            usuario_id: (await supabase.auth.getUser()).data.user?.id,
             data: new Date().toISOString(),
             finalizada: false
           }
