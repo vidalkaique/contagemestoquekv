@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -46,7 +46,7 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
   });
 
   // Filtrar estoques com base no termo de busca
-  const filteredStocks = React.useMemo(() => {
+  const filteredStocks = useMemo(() => {
     if (!stocks) return [];
     if (!searchTerm.trim()) return stocks;
     
@@ -260,7 +260,7 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
             {searchTerm && (
               <Button 
                 variant="ghost" 
-                size="xs" 
+                size="sm" 
                 onClick={() => setSearchTerm('')}
                 className="h-6 text-xs"
               >

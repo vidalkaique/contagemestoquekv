@@ -269,7 +269,8 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
       // Ajustar automaticamente a altura das linhas com base no conteúdo
       worksheet.eachRow((row, rowNumber) => {
         if (rowNumber > 3) { // Pular cabeçalhos
-          row.height = undefined; // Auto-ajustar altura
+          // Definir uma altura padrão em vez de undefined
+          row.height = 20; // Altura padrão em pontos
         }
       });
 
