@@ -456,6 +456,8 @@ export default function NewCount() {
    * e marcando a contagem como finalizada
    */
   const handleFinalizeCount = async (): Promise<void> => {
+    // ID que será usado na tela de sucesso
+    let successRedirectId: string | undefined;
     // Se o ID atual é de um draft local, trata como nova contagem
     const isDraftId = currentCountId?.startsWith('draft-');
     // Valida se existem produtos na contagem
@@ -483,6 +485,7 @@ export default function NewCount() {
       // Se já tiver um ID de contagem, atualiza a existente
       if (currentCountId && !isDraftId) {
         console.log(`Atualizando contagem existente: ${currentCountId}`);
+        successRedirectId = currentCountId;
         
         // Atualiza os dados básicos da contagem
         const { error: updateError } = await supabase
@@ -550,13 +553,17 @@ export default function NewCount() {
         await addItemsToCount(contagem.id);
         
         console.log("Contagem criada e finalizada com sucesso!");
+        
+        // Guarda o ID para redirecionamento pós-sucesso
+        successRedirectId = contagem.id;
       }
       
       // Limpa o estado local
       clearCurrentCount();
       
-      // Redireciona para a tela de sucesso
-      setLocation('/count/success');
+      // Define rota de sucesso
+      const targetId = successRedirectId || currentCountId;
+      setLocation(targetId ? `/count/${targetId}/success` : '/');
       
     } catch (error) {
       console.error("Erro ao finalizar contagem:", error);

@@ -87,27 +87,26 @@ export function useUnfinishedCount() {
           )
         `)
         .eq('finalizada', false)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single<DatabaseContagem>();
+        .limit(1);
 
       if (error && error.code !== 'PGRST116') throw error;
-      if (!data) return null;
+      if (!data || data.length === 0) return null;
+      const first = data[0] as DatabaseContagem;
 
       // Verifica se estoques é um array e pega o primeiro item
-      const estoque = Array.isArray(data.estoques) && data.estoques.length > 0 
-        ? data.estoques[0] 
+      const estoque = Array.isArray(first.estoques) && first.estoques.length > 0 
+        ? first.estoques[0] 
         : null;
 
       // Convert to ContagemWithItens type
       const contagem: ContagemWithItens = {
-        id: data.id,
-        data: data.data,
-        finalizada: data.finalizada,
-        estoqueId: data.estoque_id,
-        excelUrl: data.excel_url,
-        createdAt: new Date(data.created_at),
-        itens: (data.itens_contagem || []).map((item) => {
+        id: first.id,
+        data: first.data,
+        finalizada: first.finalizada,
+        estoqueId: first.estoque_id,
+        excelUrl: first.excel_url,
+        createdAt: new Date(first.created_at),
+        itens: (first.itens_contagem || []).map((item) => {
           // Garante que produtos seja um único objeto ou null
           const produto = Array.isArray(item.produtos) && item.produtos.length > 0 
             ? item.produtos[0] 
@@ -272,7 +271,7 @@ export function useCreateCount() {
       const { data: result, error } = await supabase
         .from('contagens')
         .insert({
-          data: data.data,
+          data: first.data,
           finalizada: data.finalizada || false,
           estoque_id: data.estoqueId || null
         })
