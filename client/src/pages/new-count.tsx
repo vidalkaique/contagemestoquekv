@@ -1,21 +1,17 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Search, Check, Trash2, Package, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Check, Trash2, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ProductModal from "@/components/product-modal";
-import { ProductItemEdit } from "@/components/product-item-edit";
 import { supabase } from "@/lib/supabase";
 import { saveCurrentCount, getCurrentCount, clearCurrentCount } from "@/lib/localStorage";
 import type { InsertContagem, InsertItemContagem, ContagemWithItens } from "@shared/schema";
 import { useCountDate } from "@/hooks/use-count-date";
 import { useUnfinishedCount } from "@/hooks/use-counts";
-import { useDebounce } from "@/hooks/use-debounce";
 
 interface ProductItem {
   id: string;
@@ -43,9 +39,6 @@ export default function NewCount() {
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  const [activeTab, setActiveTab] = useState("todos");
 
 
 
@@ -209,48 +202,13 @@ export default function NewCount() {
   const handleAddProduct = (productData: Omit<ProductItem, 'totalPacotes'>) => {
     const totalPacotes = calculateProductPackages(productData);
     const newProduct: ProductItem = { ...productData, totalPacotes };
-    
-    // Verifica se o produto já existe na lista
-    const existingProductIndex = products.findIndex(p => p.id === productData.id);
-    
-    let newProducts;
-    if (existingProductIndex >= 0) {
-      // Se o produto já existe, atualiza as quantidades
-      newProducts = [...products];
-      const existingProduct = newProducts[existingProductIndex];
-      newProducts[existingProductIndex] = {
-        ...existingProduct,
-        pallets: existingProduct.pallets + productData.pallets,
-        lastros: existingProduct.lastros + productData.lastros,
-        pacotes: existingProduct.pacotes + productData.pacotes,
-        unidades: existingProduct.unidades + productData.unidades,
-        totalPacotes: calculateProductPackages({
-          ...existingProduct,
-          pallets: existingProduct.pallets + productData.pallets,
-          lastros: existingProduct.lastros + productData.lastros,
-          pacotes: existingProduct.pacotes + productData.pacotes,
-          unidades: existingProduct.unidades + productData.unidades,
-        })
-      };
-      
-      toast({ 
-        title: "Quantidade atualizada", 
-        description: `Quantidade de ${productData.nome} foi atualizada.` 
-      });
-    } else {
-      // Se é um novo produto, adiciona à lista
-      newProducts = [...products, newProduct];
-      toast({ 
-        title: "Produto adicionado", 
-        description: `${productData.nome} foi adicionado à contagem` 
-      });
-    }
-    
+    const newProducts = [...products, newProduct];
     setProducts(newProducts);
     if (!contagemId) {
       saveCurrentCount({ date: countDate || "", products: newProducts });
     }
     setIsProductModalOpen(false);
+    toast({ title: "Produto adicionado", description: `${productData.nome} foi adicionado à contagem` });
   };
 
   const handleRemoveProduct = (index: number) => {
@@ -296,268 +254,87 @@ export default function NewCount() {
     }
   };
 
-  // Filtra produtos com base no termo de busca
-  const filteredProducts = useMemo(() => {
-    if (!debouncedSearchTerm) return products;
-    const searchLower = debouncedSearchTerm.toLowerCase();
-    return products.filter(product => 
-      product.nome.toLowerCase().includes(searchLower) ||
-      (product.id && product.id.toLowerCase().includes(searchLower))
-    );
-  }, [products, debouncedSearchTerm]);
-
-  // Calcula totais gerais
-  const totalUnidades = useMemo(() => {
-    return products.reduce((sum, product) => sum + calculateProductTotal(product), 0);
-  }, [products]);
-
-  const totalPacotes = useMemo(() => {
-    return products.reduce((sum, product) => sum + (product.totalPacotes || 0), 0);
-  }, [products]);
-
-  const updateProduct = (index: number, updatedProduct: ProductItem) => {
-    const newProducts = [...products];
-    newProducts[index] = updatedProduct;
-    setProducts(newProducts);
-    if (!contagemId) {
-      saveCurrentCount({ date: countDate || "", products: newProducts });
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="p-4 max-w-4xl mx-auto">
-        <div className="flex flex-col space-y-4 mb-6">
-          <div className="flex items-center">
-            <Button variant="ghost" size="icon" onClick={() => setLocation("/")}>
-              <ArrowLeft />
-            </Button>
-            <h1 className="text-2xl font-bold ml-2">
-              {contagemId ? `Contagem #${contagemId}` : "Nova Contagem"}
-            </h1>
-          </div>
-          
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                <Input
-                  type="text"
-                  placeholder="Buscar produtos..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-10"
-                />
-              </div>
-            </div>
-            <div className="w-full md:w-64">
-              <Input 
-                type="date" 
-                value={countDate} 
-                onChange={(e) => handleDateChange(e.target.value)} 
-                className="h-10"
-              />
-            </div>
-          </div>
+    <>
+      <div className="p-4 max-w-2xl mx-auto">
+        <div className="flex items-center mb-4">
+          <Button variant="ghost" size="icon" onClick={() => setLocation("/")}>
+            <ArrowLeft />
+          </Button>
+          <h1 className="text-2xl font-bold ml-2">
+            {contagemId ? `Contagem #${contagemId}` : "Nova Contagem"}
+          </h1>
         </div>
 
-        <Tabs 
-          value={activeTab} 
-          onValueChange={setActiveTab}
-          className="w-full"
-        >
-          <div className="flex justify-between items-center mb-4">
-            <TabsList>
-              <TabsTrigger value="todos">Todos</TabsTrigger>
-              <TabsTrigger value="completo">Completo</TabsTrigger>
-              <TabsTrigger value="rapido">Rápido</TabsTrigger>
-            </TabsList>
-            
-            <Button 
-              onClick={() => setIsProductModalOpen(true)} 
-              className="ml-4"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Adicionar Produto
-            </Button>
-          </div>
+        <div className="mb-4">
+          <Label htmlFor="count-date">Data da Contagem</Label>
+          <Input id="count-date" type="date" value={countDate} onChange={(e) => handleDateChange(e.target.value)} className="mt-1" />
+        </div>
 
-          <TabsContent value="todos" className="space-y-4">
-            {filteredProducts.length === 0 ? (
-              <Card>
-                <CardContent className="pt-6 text-center">
-                  <Package className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-1">Nenhum produto encontrado</h3>
-                  <p className="text-sm text-gray-500">
-                    {searchTerm 
-                      ? "Nenhum produto corresponde à sua busca." 
-                      : "Adicione produtos para começar a contagem."}
-                  </p>
-                  <Button 
-                    onClick={() => setIsProductModalOpen(true)} 
-                    variant="outline" 
-                    size="sm" 
-                    className="mt-4"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Adicionar Produto
+        <Button onClick={() => setIsProductModalOpen(true)} className="w-full mb-4">
+          <Plus className="mr-2" size={20} />
+          Adicionar Produto
+        </Button>
+
+        {products.length === 0 ? (
+          <div className="text-center text-gray-500 py-8">
+            <Package size={48} className="mx-auto mb-2" />
+            <p>Nenhum produto adicionado ainda.</p>
+            <p className="text-sm">Clique em "Adicionar Produto" para começar.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {products.map((product, index) => (
+              <div key={product.id} className="bg-white p-4 rounded-lg border">
+                <div className="flex justify-between items-start">
+                  <h3 className="font-semibold text-lg flex-1 pr-2">{product.nome}</h3>
+                  <Button variant="ghost" size="icon" onClick={() => handleRemoveProduct(index)}>
+                    <Trash2 className="text-red-500" size={20} />
                   </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {filteredProducts.map((product, index) => (
-                  <ProductItemEdit
-                    key={product.id}
-                    product={product}
-                    onSave={(updatedProduct) => {
-                      updateProduct(
-                        products.findIndex(p => p.id === updatedProduct.id),
-                        updatedProduct
-                      );
-                    }}
-                    onRemove={() => handleRemoveProduct(index)}
-                  />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="completo">
-            <div className="space-y-3">
-              {filteredProducts.length > 0 ? (
-                filteredProducts.map((product, index) => (
-                  <ProductItemEdit
-                    key={product.id}
-                    product={product}
-                    onSave={(updatedProduct) => {
-                      updateProduct(
-                        products.findIndex(p => p.id === updatedProduct.id),
-                        updatedProduct
-                      );
-                    }}
-                    onRemove={() => handleRemoveProduct(index)}
-                  />
-                ))
-              ) : (
-                <Card>
-                  <CardContent className="pt-6 text-center">
-                    <Package className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-1">Nenhum produto encontrado</h3>
-                    <p className="text-sm text-gray-500">
-                      {searchTerm 
-                        ? "Nenhum produto corresponde à sua busca." 
-                        : "Adicione produtos para começar a contagem."}
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="rapido">
-            <Card>
-              <CardHeader>
-                <CardTitle>Modo Rápido</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Digite o código de barras ou nome do produto e pressione Enter
-                </p>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                    <Input
-                      type="text"
-                      placeholder="Digite o código ou nome do produto..."
-                      className="pl-10 h-12 text-base"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                          // Aqui você pode adicionar a lógica para adicionar rapidamente um produto
-                          // por exemplo, abrindo o modal com o termo de busca preenchido
-                          setSearchTerm(e.currentTarget.value);
-                          setIsProductModalOpen(true);
-                          e.currentTarget.value = '';
-                        }
-                      }}
-                    />
-                  </div>
-                  
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-medium mb-2">Atalhos Rápidos</h4>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="flex items-center">
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs mr-2">F1</kbd>
-                        <span>Novo Produto</span>
-                      </div>
-                      <div className="flex items-center">
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs mr-2">Esc</kbd>
-                        <span>Cancelar</span>
-                      </div>
-                      <div className="flex items-center">
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs mr-2">↑↓</kbd>
-                        <span>Navegar</span>
-                      </div>
-                      <div className="flex items-center">
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs mr-2">Enter</kbd>
-                        <span>Selecionar</span>
-                      </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 text-sm">
+                  <div><span className="text-gray-500">Pallets:</span><span className="font-medium ml-1">{product.pallets}</span></div>
+                  <div><span className="text-gray-500">Lastros:</span><span className="font-medium ml-1">{product.lastros}</span></div>
+                  <div><span className="text-gray-500">Pacotes:</span><span className="font-medium ml-1">{product.pacotes}</span></div>
+                  <div><span className="text-gray-500">Unidades:</span><span className="font-medium ml-1">{product.unidades}</span></div>
+                </div>
+
+                {(product.unidadesPorPacote || product.pacotesPorLastro || product.lastrosPorPallet || product.quantidadePacsPorPallet) && (
+                  <div className="border-t pt-3 mt-3 text-xs text-gray-600">
+                    <p className="font-semibold mb-2">Detalhes do Produto:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {product.unidadesPorPacote && <div>Un/Pacote: <span className="font-bold">{product.unidadesPorPacote}</span></div>}
+                      {product.pacotesPorLastro && <div>Pac/Lastro: <span className="font-bold">{product.pacotesPorLastro}</span></div>}
+                      {product.lastrosPorPallet && <div>Lastro/Pallet: <span className="font-bold">{product.lastrosPorPallet}</span></div>}
+                      {(product.pacotesPorLastro && product.lastrosPorPallet) && 
+                        <div>Pacotes/Pallet: <span className="font-bold">{product.quantidadePacsPorPallet ?? (product.pacotesPorLastro * product.lastrosPorPallet)}</span></div>
+                      }
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        <div className="sticky bottom-0 bg-white border-t py-4 mt-6 -mx-4 px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="text-sm text-gray-600">
-              <div>Total de itens: <span className="font-medium">{products.length}</span></div>
-              <div>Total de pacotes: <span className="font-medium">{totalPacotes.toLocaleString()}</span></div>
-              <div>Total de unidades: <span className="font-medium">{totalUnidades.toLocaleString()}</span></div>
-            </div>
-            
-            <div className="flex space-x-3 w-full md:w-auto">
-              <Button 
-                variant="outline" 
-                onClick={() => setLocation("/")}
-                className="flex-1 md:flex-none"
-              >
-                Voltar
-              </Button>
-              
-              <Button 
-                onClick={handleFinalizeCount} 
-                disabled={createCountMutation.isPending || products.length === 0}
-                className="flex-1 md:flex-none bg-emerald-500 hover:bg-emerald-600 text-white"
-              >
-                {createCountMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Finalizando...
-                  </>
-                ) : (
-                  <>
-                    <Check className="mr-2 h-4 w-4" />
-                    Finalizar Contagem
-                  </>
                 )}
-              </Button>
-            </div>
+                
+                {(calculateProductTotal(product) > 0 || product.totalPacotes > 0) && (
+                  <div className="bg-red-50 p-3 rounded-lg mt-3 text-center">
+                    <div className="text-sm font-medium text-red-900">Total Unidades: <span className="font-bold">{calculateProductTotal(product).toLocaleString()}</span></div>
+                    <div className="text-sm font-medium text-red-900 mt-1">Total Pacotes: <span className="font-bold">{product.totalPacotes.toLocaleString()}</span></div>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
-        </div>
+        )}
+
+        {products.length > 0 && (
+          <div className="pt-4">
+            <Button onClick={handleFinalizeCount} disabled={createCountMutation.isPending} className="w-full bg-emerald-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-emerald-600 transition-colors">
+              {createCountMutation.isPending ? "Finalizando..." : <><Check className="mr-2" size={20} />Finalizar Contagem</>}
+            </Button>
+          </div>
+        )}
       </div>
 
-      <ProductModal 
-        isOpen={isProductModalOpen} 
-        onClose={() => {
-          setIsProductModalOpen(false);
-          setSearchTerm("");
-        }} 
-        onAddProduct={handleAddProduct} 
-        initialSearchTerm={searchTerm}
-      />
-    </div>
+      <ProductModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} onAddProduct={handleAddProduct} />
+    </>
   );
 }
