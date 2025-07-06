@@ -44,30 +44,57 @@ export function ProductItemEdit({ product, onSave, onRemove }: ProductItemEditPr
   }, [product]);
 
   // Calcula o total de pacotes
-  const calculateTotalPacotes = () => {
-    let total = formData.pacotes;
+  const calculateTotalPacotes = (customFormData = formData) => {
+    let total = customFormData.pacotes || 0;
+    
+    // Adiciona pacotes dos lastros
     if (product.pacotesPorLastro) {
-      total += formData.lastros * product.pacotesPorLastro;
+      total += (customFormData.lastros || 0) * product.pacotesPorLastro;
+      
+      // Adiciona pacotes dos pallets
       if (product.lastrosPorPallet) {
-        total += formData.pallets * product.lastrosPorPallet * product.pacotesPorLastro;
+        total += (customFormData.pallets || 0) * product.lastrosPorPallet * product.pacotesPorLastro;
       }
     }
+    
+    console.log('Calculando totalPacotes:', {
+      pacotes: customFormData.pacotes,
+      lastros: customFormData.lastros,
+      pallets: customFormData.pallets,
+      pacotesPorLastro: product.pacotesPorLastro,
+      lastrosPorPallet: product.lastrosPorPallet,
+      totalCalculado: total
+    });
+    
     return total;
   };
 
   // Calcula o total de unidades
   const calculateTotalUnidades = () => {
     const totalPacotes = calculateTotalPacotes();
-    return formData.unidades + (product.unidadesPorPacote ? totalPacotes * product.unidadesPorPacote : 0);
+    const total = formData.unidades + (product.unidadesPorPacote ? totalPacotes * product.unidadesPorPacote : 0);
+    
+    console.log('Calculando totalUnidades:', {
+      unidades: formData.unidades,
+      totalPacotes,
+      unidadesPorPacote: product.unidadesPorPacote,
+      totalCalculado: total
+    });
+    
+    return total;
   };
 
   const handleSave = () => {
     const totalPacotes = calculateTotalPacotes();
-    onSave({
+    const updatedProduct = {
       ...product,
       ...formData,
       totalPacotes,
-    });
+    };
+    
+    console.log('Salvando produto:', updatedProduct);
+    
+    onSave(updatedProduct);
     setIsEditing(false);
     toast({
       title: "Atualizado",
@@ -131,10 +158,10 @@ export function ProductItemEdit({ product, onSave, onRemove }: ProductItemEditPr
           </div>
         )}
         
-        {(calculateTotalUnidades() > 0 || product.totalPacotes > 0) && (
+        {(calculateTotalUnidades() > 0 || calculateTotalPacotes() > 0) && (
           <div className="bg-red-50 p-3 rounded-lg mt-3 text-center">
             <div className="text-sm font-medium text-red-900">Total Unidades: <span className="font-bold">{calculateTotalUnidades().toLocaleString()}</span></div>
-            <div className="text-sm font-medium text-red-900 mt-1">Total Pacotes: <span className="font-bold">{product.totalPacotes.toLocaleString()}</span></div>
+            <div className="text-sm font-medium text-red-900 mt-1">Total Pacotes: <span className="font-bold">{calculateTotalPacotes().toLocaleString()}</span></div>
           </div>
         )}
       </div>

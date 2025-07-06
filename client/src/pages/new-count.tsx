@@ -125,11 +125,25 @@ export default function NewCount() {
     }
 
     try {
+      console.log(`Iniciando salvamento de ${products.length} itens para a contagem ${newContagemId}`);
+      
       // Itera sobre cada produto e adiciona à contagem
       for (const product of products) {
         const isProdutoCadastrado = !product.id.startsWith('free-');
         const total = calculateProductTotal(product);
         const totalPacotes = calculateTotalPacotes(product);
+
+        console.log('Salvando item:', {
+          produto: product.nome,
+          total,
+          totalPacotes,
+          pallets: product.pallets,
+          lastros: product.lastros,
+          pacotes: product.pacotes,
+          unidades: product.unidades,
+          pacotesPorLastro: product.pacotesPorLastro,
+          lastrosPorPallet: product.lastrosPorPallet
+        });
 
         // Validações básicas
         if (total <= 0) {
@@ -137,18 +151,25 @@ export default function NewCount() {
           continue; // Pula itens com quantidade inválida
         }
 
-        // Adiciona o item à contagem
-        await addItemMutation.mutateAsync({
-          contagemId: newContagemId,
-          produtoId: isProdutoCadastrado ? product.id : undefined,
-          nomeLivre: !isProdutoCadastrado ? product.nome : undefined,
-          pallets: product.pallets ?? 0,
-          lastros: product.lastros ?? 0,
-          pacotes: product.pacotes ?? 0,
-          unidades: product.unidades ?? 0,
-          total: total,
-          totalPacotes: totalPacotes,
-        });
+        try {
+          // Adiciona o item à contagem
+          await addItemMutation.mutateAsync({
+            contagemId: newContagemId,
+            produtoId: isProdutoCadastrado ? product.id : undefined,
+            nomeLivre: !isProdutoCadastrado ? product.nome : undefined,
+            pallets: product.pallets ?? 0,
+            lastros: product.lastros ?? 0,
+            pacotes: product.pacotes ?? 0,
+            unidades: product.unidades ?? 0,
+            total: total,
+            totalPacotes: totalPacotes,
+          });
+          
+          console.log(`Item ${product.nome} salvo com sucesso!`);
+        } catch (error) {
+          console.error(`Erro ao salvar item ${product.nome}:`, error);
+          throw error; // Propaga o erro para ser tratado no catch externo
+        }
       }
 
       // Limpa o estado local após salvar
@@ -237,14 +258,31 @@ export default function NewCount() {
    */
   const addItemMutation = useMutation({
     mutationFn: async (item: Omit<InsertItemContagem, 'id' | 'created_at'>) => {
+      console.log('Iniciando mutação para adicionar item:', {
+        produto: item.nomeLivre || `ID: ${item.produtoId}`,
+        totalPacotes: item.totalPacotes,
+        total: item.total,
+        pallets: item.pallets,
+        lastros: item.lastros,
+        pacotes: item.pacotes,
+        unidades: item.unidades
+      });
+      
       // Validações básicas
       if (!item.contagemId) {
-        throw new Error("ID da contagem não fornecido");
+        const errorMsg = "ID da contagem não fornecido";
+        console.error(errorMsg);
+        throw new Error(errorMsg);
       }
       
       if (!item.produtoId && !item.nomeLivre) {
-        throw new Error("É necessário informar um produto ou um nome livre");
+        const errorMsg = "É necessário informar um produto ou um nome livre";
+        console.error(errorMsg);
+        throw new Error(errorMsg);
       }
+      
+      // Garante que totalPacotes seja um número válido
+      const totalPacotes = Number(item.totalPacotes) || 0;
       
       // Converte para snake_case conforme as colunas reais do banco de dados
       const dbItem = {
@@ -255,9 +293,11 @@ export default function NewCount() {
         lastros: item.lastros || 0,
         pacotes: item.pacotes || 0,
         unidades: item.unidades || 0,
-        total: item.total,
-        total_pacotes: item.totalPacotes || 0,
+        total: item.total || 0,
+        total_pacotes: totalPacotes,
       };
+      
+      console.log('Inserindo no banco de dados:', dbItem);
       
       // Insere o item no banco de dados
       const { data, error } = await supabase
@@ -267,14 +307,21 @@ export default function NewCount() {
         .single();
         
       if (error) {
-        console.error("Erro ao adicionar item:", error);
+        console.error("Erro ao adicionar item no Supabase:", {
+          error,
+          dbItem,
+          supabaseError: error.details || error.hint || error.message
+        });
         throw new Error(`Falha ao adicionar item: ${error.message}`);
       }
       
       if (!data) {
-        throw new Error("Nenhum dado retornado ao adicionar item");
+        const errorMsg = "Nenhum dado retornado ao adicionar item";
+        console.error(errorMsg);
+        throw new Error(errorMsg);
       }
       
+      console.log('Item adicionado com sucesso:', data);
       return data;
     },
   });
