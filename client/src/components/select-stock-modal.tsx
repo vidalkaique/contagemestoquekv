@@ -174,12 +174,25 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
         id="stock-selector-dialog"
         role="dialog"
         aria-labelledby="stock-selector-title"
+        aria-describedby="stock-selector-description"
         aria-modal="true"
-        
+        className="max-w-md w-full sm:max-w-[425px]"
+        onOpenAutoFocus={(e) => {
+          // Previne o foco automático no primeiro elemento interativo
+          e.preventDefault();
+          // Foca no primeiro item da lista ou no botão de recarregar se não houver itens
+          const firstFocusable = document.querySelector<HTMLElement>('[role="option"], button');
+          firstFocusable?.focus();
+        }}
       >
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle id="stock-selector-title">Selecione o Estoque</DialogTitle>
+            <div>
+              <DialogTitle id="stock-selector-title">Selecione o Estoque</DialogTitle>
+              <p id="stock-selector-description" className="text-sm text-muted-foreground mt-1">
+                Escolha um estoque para iniciar uma nova contagem
+              </p>
+            </div>
             <Button 
               variant="ghost" 
               size="icon" 
@@ -268,9 +281,17 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
                           onClick={() => setSelectedStock(stock.id)}
                           onMouseEnter={() => setFocusedIndex(index)}
                           onFocus={() => setFocusedIndex(index)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setSelectedStock(stock.id);
+                            }
+                          }}
                           aria-selected={selectedStock === stock.id}
                           role="option"
                           tabIndex={focusedIndex === index ? 0 : -1}
+                          aria-posinset={index + 1}
+                          aria-setsize={stocks?.length || 0}
                         >
                           <Package className="mr-2 h-4 w-4 flex-shrink-0" />
                           <span className="truncate">{stock.nome}</span>
