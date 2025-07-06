@@ -73,7 +73,7 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
           data,
           finalizada,
           estoque_id,
-          estoques:estoques!inner(
+          estoques:estoques(
             id,
             nome
           )
