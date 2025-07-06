@@ -99,12 +99,16 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
         throw new Error('Erro ao buscar dados da contagem');
       }
 
-      const contagem = contagemData as unknown as Contagem;
+      // Log para depuração - verificar estrutura dos dados retornados
+      console.log('Dados da contagem retornados:', contagemData);
+      console.log('Erro (se houver):', error);
 
-      if (error || !contagem) {
+      if (error || !contagemData) {
         console.error('Erro ao buscar dados da contagem:', error);
         throw new Error('Erro ao buscar dados da contagem');
       }
+
+      const contagem = contagemData as unknown as Contagem;
 
       // Criar workbook
       const workbook = new Workbook();
@@ -117,16 +121,24 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
       worksheet.mergeCells('A1:H1');
       
       // Adicionar informações do estoque e data
-      const estoqueNome = contagem.estoques && Array.isArray(contagem.estoques) 
-        ? contagem.estoques[0]?.nome || 'N/A'
-        : (contagem.estoques as any)?.nome || 'N/A';
+      const estoqueNome = contagem.estoques?.nome || contagem.estoque_id || 'N/A';
       
-      const dataContagem = contagem.data ? new Date(contagem.data) : new Date();
+      // Formatar a data corretamente
+      let dataFormatada = 'Data não disponível';
+      try {
+        const dataContagem = contagem.data ? new Date(contagem.data) : new Date();
+        dataFormatada = dataContagem.toLocaleDateString('pt-BR');
+      } catch (error) {
+        console.error('Erro ao formatar data:', error);
+      }
+      
+      console.log('Nome do estoque:', estoqueNome);
+      console.log('Data formatada:', dataFormatada);
       
       const estoqueInfo = worksheet.addRow([
         `Estoque: ${estoqueNome}`,
         '', '', '', '', '', '',
-        `Data: ${dataContagem.toLocaleDateString('pt-BR')}`
+        `Data: ${dataFormatada}`
       ]);
       estoqueInfo.font = { bold: true };
       worksheet.mergeCells('A2:D2');
