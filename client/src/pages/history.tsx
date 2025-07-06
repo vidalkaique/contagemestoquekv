@@ -1,6 +1,7 @@
 import { useLocation } from "wouter";
+import { useCounts } from "@/hooks/use-counts";
 import { supabase } from "@/lib/supabase";
-import { useQuery } from "@tanstack/react-query";
+// import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ArrowLeft, Download, Search } from "lucide-react";
@@ -41,9 +42,7 @@ export default function History() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: contagens, isLoading } = useQuery<ContagemWithItens[]>({
-    queryKey: ["/api/contagens"],
-  });
+  const { data: contagens = [], isLoading } = useCounts();
 
   const filteredContagens = contagens?.filter(contagem => {
     if (!searchQuery.trim()) return true;
@@ -222,16 +221,29 @@ export default function History() {
                     <p className="font-medium text-gray-900">
                       {contagem.itens.length} produtos
                     </p>
-                    <p className="text-xs text-emerald-600">Concluída</p>
+                    {contagem.finalizada ? (
+                      <p className="text-xs text-emerald-600">Concluída</p>
+                    ) : (
+                      <p className="text-xs text-yellow-600">Em andamento</p>
+                    )}
                   </div>
                 </div>
-                <Button
-                  onClick={() => handleDownloadExcel(contagem.id)}
-                  className="w-full bg-primary/10 text-primary py-2 px-3 rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors"
-                >
-                  <Download className="mr-2" size={16} />
-                  Baixar Excel
-                </Button>
+                {contagem.finalizada ? (
+                  <Button
+                    onClick={() => handleDownloadExcel(contagem.id)}
+                    className="w-full bg-primary/10 text-primary py-2 px-3 rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors"
+                  >
+                    <Download className="mr-2" size={16} />
+                    Baixar Excel
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => setLocation(`/count/${contagem.id}`)}
+                    className="w-full bg-yellow-100 text-yellow-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-yellow-200 transition-colors"
+                  >
+                    Continuar Contagem
+                  </Button>
+                )}
               </div>
             ))}
           </div>
