@@ -91,7 +91,7 @@ export function useUnfinishedCount() {
 
       if (error && error.code !== 'PGRST116') throw error;
       if (!data || data.length === 0) return null;
-      const first = data[0] as DatabaseContagem;
+      const first = data[0];
 
       // Verifica se estoques é um array e pega o primeiro item
       const estoque = Array.isArray(first.estoques) && first.estoques.length > 0 
@@ -108,9 +108,12 @@ export function useUnfinishedCount() {
         createdAt: new Date(first.created_at),
         itens: (first.itens_contagem || []).map((item) => {
           // Garante que produtos seja um único objeto ou null
-          const produto = Array.isArray(item.produtos) && item.produtos.length > 0 
+          const produtoEntry = Array.isArray(item.produtos) && item.produtos.length > 0 
             ? item.produtos[0] 
-            : item.produtos || null;
+            : (item.produtos as any) || null;
+          const prodAny = produtoEntry as any;
+          // Mantém compatibilidade com código legado
+          const produto = prodAny;
 
           return {
             id: item.id,
@@ -123,19 +126,19 @@ export function useUnfinishedCount() {
             unidades: item.unidades,
             total: item.total,
             totalPacotes: item.total_pacotes,
-            unidadesPorPacote: produto?.unidades_por_pacote,
-            pacotesPorLastro: produto?.pacotes_por_lastro,
-            lastrosPorPallet: produto?.lastros_por_pallet,
-            quantidadePacsPorPallet: produto?.quantidade_pacs_por_pallet ?? undefined,
+            unidadesPorPacote: prodAny?.unidades_por_pacote,
+            pacotesPorLastro: prodAny?.pacotes_por_lastro,
+            lastrosPorPallet: prodAny?.lastros_por_pallet,
+            quantidadePacsPorPallet: prodAny?.quantidade_pacs_por_pallet ?? undefined,
             produto: produto ? {
               id: produto.id,
               codigo: produto.codigo,
               nome: produto.nome,
-              unidadesPorPacote: produto.unidades_por_pacote,
-              pacotesPorLastro: produto.pacotes_por_lastro,
-              lastrosPorPallet: produto.lastros_por_pallet,
-              quantidadePacsPorPallet: produto.quantidade_pacs_por_pallet,
-              createdAt: new Date(produto.created_at)
+              unidadesPorPacote: prodAny.unidades_por_pacote,
+              pacotesPorLastro: prodAny.pacotes_por_lastro,
+              lastrosPorPallet: prodAny.lastros_por_pallet,
+              quantidadePacsPorPallet: prodAny.quantidade_pacs_por_pallet,
+              createdAt: prodAny.created_at ? new Date(prodAny.created_at) : new Date()
             } : null
           };
         }),
@@ -267,13 +270,13 @@ export function useCreateCount() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (data: InsertContagem) => {
+    mutationFn: async (payload: InsertContagem) => {
       const { data: result, error } = await supabase
         .from('contagens')
         .insert({
-          data: first.data,
-          finalizada: data.finalizada || false,
-          estoque_id: data.estoqueId || null
+          data: payload.data,
+          finalizada: payload.finalizada || false,
+          estoque_id: payload.estoqueId || null
         })
         .select(`
           id,
