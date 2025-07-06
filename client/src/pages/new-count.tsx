@@ -456,6 +456,8 @@ export default function NewCount() {
    * e marcando a contagem como finalizada
    */
   const handleFinalizeCount = async (): Promise<void> => {
+    // Se o ID atual é de um draft local, trata como nova contagem
+    const isDraftId = currentCountId?.startsWith('draft-');
     // Valida se existem produtos na contagem
     if (!products.length) {
       toast({
@@ -479,7 +481,7 @@ export default function NewCount() {
     
     try {
       // Se já tiver um ID de contagem, atualiza a existente
-      if (currentCountId) {
+      if (currentCountId && !isDraftId) {
         console.log(`Atualizando contagem existente: ${currentCountId}`);
         
         // Atualiza os dados básicos da contagem
@@ -487,8 +489,7 @@ export default function NewCount() {
           .from('contagens')
           .update({ 
             data: formattedDate,
-            finalizada: true,
-            updated_at: new Date().toISOString()
+            finalizada: true
           })
           .eq('id', currentCountId);
         
@@ -535,8 +536,7 @@ export default function NewCount() {
             finalizada: true,
             estoque_id: 1, // TODO: Implementar seleção de estoque
             usuario_id: session.user.id,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+
           }])
           .select()
           .single();
