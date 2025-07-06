@@ -488,7 +488,7 @@ export default function NewCount() {
           .update({ 
             data: formattedDate,
             finalizada: true,
-            atualizado_em: new Date().toISOString()
+            updated_at: new Date().toISOString()
           })
           .eq('id', currentCountId);
         
@@ -535,8 +535,8 @@ export default function NewCount() {
             finalizada: true,
             estoque_id: 1, // TODO: Implementar seleção de estoque
             usuario_id: session.user.id,
-            criado_em: new Date().toISOString(),
-            atualizado_em: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           }])
           .select()
           .single();
