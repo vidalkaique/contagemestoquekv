@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ProductModal from "@/components/product-modal";
 import { supabase } from "@/lib/supabase";
-import { saveCurrentCount, getCurrentCount, clearCurrentCount } from "@/lib/localStorage";
+import { saveCurrentCount, getCurrentCount, clearCurrentCount, saveToCountHistory, getCountHistory, type CurrentCount } from "@/lib/localStorage";
 import type { InsertContagem, InsertItemContagem, ContagemWithItens } from "@shared/schema";
 import { useCountDate } from "@/hooks/use-count-date";
 import { useUnfinishedCount } from "@/hooks/use-counts";
@@ -34,223 +34,548 @@ export default function NewCount() {
   const queryClient = useQueryClient();
   const { countDate, setCountDate } = useCountDate();
   
+  // Carrega a contagem não finalizada, se existir
   const { data: unfinishedCount } = useUnfinishedCount();
 
-  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  // Estados do componente
+  const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
   const [products, setProducts] = useState<ProductItem[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState<boolean>(false);
+  const [currentCountId, setCurrentCountId] = useState<string | undefined>(undefined);
 
 
 
+  /**
+   * Calcula o total de pacotes com base nos pallets, lastros e pacotes avulsos
+   * @param product Produto sem o campo totalPacotes
+   * @returns Número total de pacotes
+   */
   const calculateProductPackages = (product: Omit<ProductItem, 'totalPacotes'>): number => {
-    const pacotesPorLastro = product.pacotesPorLastro || 0;
-    const lastrosPorPallet = product.lastrosPorPallet || 0;
+    const pacotesPorLastro = product.pacotesPorLastro ?? 0;
+    const lastrosPorPallet = product.lastrosPorPallet ?? 0;
+    
+    // Calcula pacotes vindos de pallets inteiros
     const totalFromPallets = product.pallets * lastrosPorPallet * pacotesPorLastro;
+    
+    // Calcula pacotes vindos de lastros avulsos
     const totalFromLastros = product.lastros * pacotesPorLastro;
+    
+    // Soma com pacotes avulsos
     return totalFromPallets + totalFromLastros + product.pacotes;
   };
 
-  useEffect(() => {
-    if (isLoaded) return;
-
-    if (unfinishedCount) {
-      setCountDate(unfinishedCount.data);
-      const productsWithTotals = unfinishedCount.itens.map(item => {
-        const productData = {
-          id: item.produto?.id || crypto.randomUUID(),
-          nome: item.produto?.nome || item.nomeLivre || "",
-          pallets: item.pallets,
-          lastros: item.lastros,
-          pacotes: item.pacotes,
-          unidades: item.unidades,
-          unidadesPorPacote: item.produto?.unidadesPorPacote,
-          pacotesPorLastro: item.produto?.pacotesPorLastro,
-          lastrosPorPallet: item.produto?.lastrosPorPallet,
-          quantidadePacsPorPallet: item.produto?.quantidadePacsPorPallet ?? undefined,
-        };
-        return {
-          ...productData,
-          totalPacotes: calculateProductPackages(productData)
-        };
-      });
-      setProducts(productsWithTotals);
-      setIsLoaded(true);
-    } else if (!contagemId) {
-      const savedCount = getCurrentCount();
-      if (savedCount && savedCount.products) {
-        setCountDate(savedCount.date);
-        const productsWithTotals = savedCount.products.map((p: any) => ({
-          ...p,
-          totalPacotes: p.totalPacotes ?? calculateProductPackages(p),
-        }));
-        setProducts(productsWithTotals);
-        setIsLoaded(true);
-      }
-    }
-  }, [unfinishedCount, setCountDate, isLoaded, contagemId]);
-
-  useEffect(() => {
-    // Salva a contagem no localStorage apenas se for uma nova contagem (sem ID na URL ou contagem não finalizada do banco)
-    if (products.length > 0 && !contagemId && !unfinishedCount) {
-      saveCurrentCount({ date: countDate, products });
-    }
-  }, [products, countDate, contagemId, unfinishedCount]);
-
-  const createCountMutation = useMutation({
-    mutationFn: async ({ data, finalizada }: { data: string; finalizada: boolean }) => {
-      const { data: contagem, error } = await supabase
-        .from('contagens')
-        .insert([{ data, finalizada }])
-        .select()
-        .single();
-      if (error) throw error;
-      return contagem;
-    },
-    onSuccess: (contagem) => {
-      addItemsToCount(contagem.id);
-    },
-    onError: () => {
-      toast({ title: "Erro", description: "Erro ao criar contagem", variant: "destructive" });
-    },
-  });
-
-  const addItemMutation = useMutation({
-    mutationFn: async ({ item }: { item: InsertItemContagem }) => {
-      // Converte para snake_case conforme as colunas reais do banco de dados
-      const dbItem: any = {
-        contagem_id: item.contagemId,
-        produto_id: item.produtoId,
-        nome_livre: item.nomeLivre,
-        pallets: item.pallets,
-        lastros: item.lastros,
-        pacotes: item.pacotes,
-        unidades: item.unidades,
-        total: item.total,
-        total_pacotes: item.totalPacotes,
-      };
-      const { data, error } = await supabase.from('itens_contagem').insert(dbItem).select().single();
-      if (error) throw error;
-      return data;
-    },
-  });
-
-    const calculateProductTotal = (product: ProductItem): number => {
-    let totalUnidades = product.unidades || 0;
-    let totalPacotes = product.pacotes || 0;
-
-    // Converte lastros e pallets para pacotes
-    if (product.pacotesPorLastro) {
-      totalPacotes += (product.lastros || 0) * product.pacotesPorLastro;
-      if (product.lastrosPorPallet) {
-        totalPacotes += (product.pallets || 0) * product.lastrosPorPallet * product.pacotesPorLastro;
-      }
-    }
-
-    // Converte o total de pacotes para unidades
+  /**
+   * Calcula o total de unidades de um produto, considerando pallets, lastros, pacotes e unidades avulsas
+   * @param product Produto a ser calculado
+   * @returns Número total de unidades
+   */
+  const calculateProductTotal = (product: ProductItem): number => {
+    // Inicia com as unidades avulsas
+    let totalUnidades = product.unidades ?? 0;
+    
+    // Calcula o total de pacotes primeiro
+    const totalPacotes = calculateTotalPacotes(product);
+    
+    // Se houver conversão de pacotes para unidades, aplica
     if (product.unidadesPorPacote) {
       totalUnidades += totalPacotes * product.unidadesPorPacote;
     }
-
+    
     return totalUnidades;
   };
 
+  /**
+   * Calcula o total de pacotes de um produto, considerando pallets, lastros e pacotes avulsos
+   * @param product Produto a ser calculado
+   * @returns Número total de pacotes
+   */
   const calculateTotalPacotes = (product: ProductItem): number => {
-    let totalPacotes = product.pacotes || 0;
-
-    // Converte lastros e pallets para pacotes
-    if (product.pacotesPorLastro) {
-      totalPacotes += (product.lastros || 0) * product.pacotesPorLastro;
-      if (product.lastrosPorPallet) {
-        totalPacotes += (product.pallets || 0) * product.lastrosPorPallet * product.pacotesPorLastro;
-      }
+    // Inicia com os pacotes avulsos
+    let totalPacotes = product.pacotes ?? 0;
+    
+    // Se não houver conversão definida, retorna apenas os pacotes avulsos
+    if (!product.pacotesPorLastro) {
+      return totalPacotes;
     }
-
+    
+    // Adiciona pacotes de lastros avulsos
+    totalPacotes += (product.lastros ?? 0) * product.pacotesPorLastro;
+    
+    // Se houver conversão de pallets, adiciona os pacotes dos pallets
+    if (product.lastrosPorPallet) {
+      totalPacotes += (product.pallets ?? 0) * product.lastrosPorPallet * product.pacotesPorLastro;
+    }
+    
     return totalPacotes;
   };
 
-  const addItemsToCount = async (newContagemId: string) => {
+  /**
+   * Adiciona itens a uma contagem existente ou a uma nova contagem
+   * @param newContagemId ID da contagem à qual os itens serão adicionados
+   */
+  const addItemsToCount = async (newContagemId: string): Promise<void> => {
+    if (!newContagemId) {
+      console.error("ID da contagem não fornecido");
+      toast({
+        title: "Erro",
+        description: "ID da contagem inválido.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
+      // Itera sobre cada produto e adiciona à contagem
       for (const product of products) {
         const isProdutoCadastrado = !product.id.startsWith('free-');
         const total = calculateProductTotal(product);
         const totalPacotes = calculateTotalPacotes(product);
 
+        // Validações básicas
+        if (total <= 0) {
+          console.warn(`Produto ${product.nome} tem quantidade total inválida:`, total);
+          continue; // Pula itens com quantidade inválida
+        }
+
+        // Adiciona o item à contagem
         await addItemMutation.mutateAsync({
-          item: {
-            contagemId: newContagemId,
-            produtoId: isProdutoCadastrado ? product.id : undefined,
-            nomeLivre: !isProdutoCadastrado ? product.nome : undefined,
-            pallets: product.pallets,
-            lastros: product.lastros,
-            pacotes: product.pacotes,
-            unidades: product.unidades,
-            total: total,
-            totalPacotes: product.totalPacotes,
-          },
+          contagemId: newContagemId,
+          produtoId: isProdutoCadastrado ? product.id : undefined,
+          nomeLivre: !isProdutoCadastrado ? product.nome : undefined,
+          pallets: product.pallets ?? 0,
+          lastros: product.lastros ?? 0,
+          pacotes: product.pacotes ?? 0,
+          unidades: product.unidades ?? 0,
+          total: total,
+          totalPacotes: totalPacotes,
         });
       }
+
+      // Limpa o estado local após salvar
       clearCurrentCount();
-      queryClient.invalidateQueries({ queryKey: ["/api/contagens"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/contagens/unfinished"] });
+      
+      // Atualiza as queries relacionadas
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["contagens"] }),
+        queryClient.invalidateQueries({ queryKey: ["contagens-unfinished"] })
+      ]);
+      
+      // Redireciona para a tela de sucesso
       setLocation(`/count/${newContagemId}/success`);
+      
     } catch (error) {
       console.error("Erro ao adicionar itens:", error);
-      toast({ title: "Erro", description: "Falha ao salvar os itens da contagem.", variant: "destructive" });
+      toast({ 
+        title: "Erro ao salvar itens", 
+        description: "Não foi possível salvar os itens da contagem. Tente novamente.", 
+        variant: "destructive" 
+      });
     }
   };
 
-  const handleAddProduct = (productData: Omit<ProductItem, 'totalPacotes'>) => {
-    const totalPacotes = calculateProductPackages(productData);
-    const newProduct: ProductItem = { ...productData, totalPacotes };
-    const newProducts = [...products, newProduct];
-    setProducts(newProducts);
-    if (!contagemId) {
-      saveCurrentCount({ date: countDate || "", products: newProducts });
+  /**
+   * Cria uma nova contagem no banco de dados
+   */
+  const createCountMutation = useMutation({
+    mutationFn: async ({ data, finalizada }: { data: string; finalizada: boolean }) => {
+      // Valida a data de entrada
+      if (!data) {
+        throw new Error("Data da contagem não fornecida");
+      }
+
+      // Garante que a data está no formato correto (YYYY-MM-DD)
+      const formattedDate = new Date(data).toISOString().split('T')[0];
+      
+      // Insere a nova contagem no banco de dados
+      const { data: contagem, error } = await supabase
+        .from('contagens')
+        .insert([{ 
+          data: formattedDate,
+          finalizada,
+          estoque_id: 1, // TODO: Implementar seleção de estoque
+          usuario_id: (await supabase.auth.getSession()).data.session?.user.id || null
+        }])
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Erro ao criar contagem no banco de dados:", error);
+        throw new Error(`Falha ao criar contagem: ${error.message}`);
+      }
+      
+      if (!contagem) {
+        throw new Error("Nenhum dado retornado ao criar contagem");
+      }
+      
+      return contagem;
+    },
+    onSuccess: (contagem) => {
+      // Adiciona os itens à contagem recém-criada
+      if (contagem?.id) {
+        addItemsToCount(contagem.id);
+      } else {
+        console.error("ID da contagem não encontrado no retorno");
+        toast({
+          title: "Erro",
+          description: "Não foi possível obter o ID da contagem criada.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      console.error("Erro ao criar contagem:", error);
+      toast({ 
+        title: "Erro ao criar contagem", 
+        description: error.message || "Ocorreu um erro ao tentar criar a contagem. Tente novamente.",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  /**
+   * Adiciona um item a uma contagem existente
+   */
+  const addItemMutation = useMutation({
+    mutationFn: async (item: Omit<InsertItemContagem, 'id' | 'created_at'>) => {
+      // Validações básicas
+      if (!item.contagemId) {
+        throw new Error("ID da contagem não fornecido");
+      }
+      
+      if (!item.produtoId && !item.nomeLivre) {
+        throw new Error("É necessário informar um produto ou um nome livre");
+      }
+      
+      // Converte para snake_case conforme as colunas reais do banco de dados
+      const dbItem = {
+        contagem_id: item.contagemId,
+        produto_id: item.produtoId || null,
+        nome_livre: item.nomeLivre || null,
+        pallets: item.pallets || 0,
+        lastros: item.lastros || 0,
+        pacotes: item.pacotes || 0,
+        unidades: item.unidades || 0,
+        total: item.total,
+        total_pacotes: item.totalPacotes || 0,
+      };
+      
+      // Insere o item no banco de dados
+      const { data, error } = await supabase
+        .from('itens_contagem')
+        .insert(dbItem)
+        .select()
+        .single();
+        
+      if (error) {
+        console.error("Erro ao adicionar item:", error);
+        throw new Error(`Falha ao adicionar item: ${error.message}`);
+      }
+      
+      if (!data) {
+        throw new Error("Nenhum dado retornado ao adicionar item");
+      }
+      
+      return data;
+    },
+  });
+
+  /**
+   * Adiciona um novo produto à lista de produtos da contagem atual
+   * @param product Produto a ser adicionado
+   * @returns O produto adicionado com valores padrão
+   */
+  const handleAddProduct = (product: Omit<ProductItem, 'totalPacotes'> & { totalPacotes?: number }): ProductItem => {
+    try {
+      // Validações iniciais
+      if (!product || !product.id || !product.nome) {
+        throw new Error("Dados do produto inválidos");
+      }
+
+      // Cria o produto com valores padrão
+      const productWithDefaults: ProductItem = {
+        ...product,
+        pallets: product.pallets ?? 0,
+        lastros: product.lastros ?? 0,
+        pacotes: product.pacotes ?? 0,
+        unidades: product.unidades ?? 0,
+        totalPacotes: product.totalPacotes ?? 0,
+      };
+
+      // Verifica se o produto já existe na lista
+      const productIndex = products.findIndex(p => p.id === product.id);
+      let updatedProducts: ProductItem[];
+      
+      if (productIndex >= 0) {
+        // Atualiza o produto existente
+        updatedProducts = [...products];
+        updatedProducts[productIndex] = productWithDefaults;
+      } else {
+        // Adiciona o novo produto
+        updatedProducts = [...products, productWithDefaults];
+      }
+      
+      // Atualiza o estado
+      setProducts(updatedProducts);
+      
+      // Prepara os dados para salvar no localStorage
+      const currentCount: CurrentCount = {
+        id: currentCountId || `draft-${Date.now()}`,
+        date: new Date(countDate).toISOString().split('T')[0],
+        products: updatedProducts,
+        lastUpdated: new Date().toISOString()
+      };
+      
+      // Atualiza o ID da contagem se ainda não existir
+      if (!currentCountId) {
+        setCurrentCountId(currentCount.id);
+      }
+      
+      // Persiste os dados
+      saveCurrentCount(currentCount);
+      saveToCountHistory(currentCount);
+      
+      return productWithDefaults;
+      
+    } catch (error) {
+      console.error("Erro ao adicionar produto:", error);
+      toast({
+        title: "Erro ao adicionar produto",
+        description: error instanceof Error ? error.message : "Não foi possível adicionar o produto à contagem.",
+        variant: "destructive",
+      });
+      throw error; // Propaga o erro para o chamador, se necessário
     }
-    setIsProductModalOpen(false);
-    toast({ title: "Produto adicionado", description: `${productData.nome} foi adicionado à contagem` });
   };
 
-  const handleRemoveProduct = (index: number) => {
-    const newProducts = products.filter((_, i) => i !== index);
-    setProducts(newProducts);
-    if (!contagemId) {
-      saveCurrentCount({ date: countDate || "", products: newProducts });
+  /**
+   * Remove um produto da lista de produtos da contagem atual
+   * @param index Índice do produto a ser removido
+   * @returns O produto removido ou undefined se o índice for inválido
+   */
+  const handleRemoveProduct = (index: number): ProductItem | undefined => {
+    try {
+      // Valida o índice
+      if (index < 0 || index >= products.length) {
+        console.warn(`Índice inválido ao remover produto: ${index}`);
+        return undefined;
+      }
+
+      // Cria uma cópia do array de produtos e remove o item
+      const updatedProducts = [...products];
+      const [removedProduct] = updatedProducts.splice(index, 1);
+      
+      // Atualiza o estado
+      setProducts(updatedProducts);
+      
+      // Prepara os dados para salvar no localStorage
+      const currentCount: CurrentCount = {
+        id: currentCountId || `draft-${Date.now()}`,
+        date: new Date(countDate).toISOString().split('T')[0],
+        products: updatedProducts,
+        lastUpdated: new Date().toISOString()
+      };
+      
+      // Atualiza o ID da contagem se ainda não existir
+      if (!currentCountId) {
+        setCurrentCountId(currentCount.id);
+      }
+      
+      // Persiste os dados
+      saveCurrentCount(currentCount);
+      saveToCountHistory(currentCount);
+      
+      return removedProduct;
+      
+    } catch (error) {
+      console.error("Erro ao remover produto:", error);
+      toast({
+        title: "Erro ao remover produto",
+        description: "Não foi possível remover o produto da contagem.",
+        variant: "destructive",
+      });
+      return undefined;
     }
-    toast({ title: "Produto removido", description: "O produto foi removido da contagem.", variant: "destructive" });
   };
 
-  const handleFinalizeCount = async () => {
-    if (!countDate) {
-      toast({ title: "Data não selecionada", description: "Por favor, selecione a data da contagem.", variant: "destructive" });
+  /**
+   * Finaliza a contagem atual, salvando todos os itens no banco de dados
+   * e marcando a contagem como finalizada
+   */
+  const handleFinalizeCount = async (): Promise<void> => {
+    // Valida se existem produtos na contagem
+    if (!products.length) {
+      toast({
+        title: "Contagem vazia",
+        description: "Adicione pelo menos um produto antes de finalizar a contagem.",
+        variant: "destructive",
+      });
       return;
     }
     
-    if (contagemId) {
-      // Se já temos um ID de contagem, apenas atualizamos para finalizada
-      const { error } = await supabase
-        .from('contagens')
-        .update({ finalizada: true, data: countDate })
-        .eq('id', contagemId);
-      
-      if (error) {
-        console.error('Erro ao finalizar contagem:', error);
-        toast({ title: "Erro", description: "Falha ao finalizar a contagem.", variant: "destructive" });
-        return;
+    // Valida a data da contagem
+    const formattedDate = new Date(countDate).toISOString().split('T')[0];
+    if (!formattedDate || isNaN(new Date(formattedDate).getTime())) {
+      toast({
+        title: "Data inválida",
+        description: "A data da contagem é inválida. Verifique e tente novamente.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      // Se já tiver um ID de contagem, atualiza a existente
+      if (currentCountId) {
+        console.log(`Atualizando contagem existente: ${currentCountId}`);
+        
+        // Atualiza os dados básicos da contagem
+        const { error: updateError } = await supabase
+          .from('contagens')
+          .update({ 
+            data: formattedDate,
+            finalizada: true,
+            atualizado_em: new Date().toISOString()
+          })
+          .eq('id', currentCountId);
+        
+        if (updateError) {
+          console.error("Erro ao atualizar contagem:", updateError);
+          throw new Error(`Falha ao atualizar contagem: ${updateError.message}`);
+        }
+        
+        console.log(`Removendo itens antigos da contagem: ${currentCountId}`);
+        
+        // Remove os itens antigos da contagem
+        const { error: deleteError } = await supabase
+          .from('itens_contagem')
+          .delete()
+          .eq('contagem_id', currentCountId);
+        
+        if (deleteError) {
+          console.error("Erro ao remover itens antigos:", deleteError);
+          throw new Error(`Falha ao remover itens antigos: ${deleteError.message}`);
+        }
+        
+        console.log(`Adicionando ${products.length} itens à contagem`);
+        
+        // Adiciona os itens atualizados à contagem
+        await addItemsToCount(currentCountId);
+        
+        console.log("Contagem finalizada com sucesso!");
+      } else {
+        console.log("Criando nova contagem...");
+        
+        // Obtém o ID do usuário autenticado
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session?.user?.id) {
+          console.error("Erro ao obter sessão do usuário:", sessionError);
+          throw new Error("Não foi possível verificar sua autenticação. Faça login novamente.");
+        }
+        
+        // Cria uma nova contagem
+        const { data: contagem, error: createError } = await supabase
+          .from('contagens')
+          .insert([{
+            data: formattedDate,
+            finalizada: true,
+            estoque_id: 1, // TODO: Implementar seleção de estoque
+            usuario_id: session.user.id,
+            criado_em: new Date().toISOString(),
+            atualizado_em: new Date().toISOString()
+          }])
+          .select()
+          .single();
+        
+        if (createError) {
+          console.error("Erro ao criar contagem:", createError);
+          throw new Error(`Falha ao criar contagem: ${createError.message}`);
+        }
+        
+        if (!contagem?.id) {
+          throw new Error("Não foi possível obter o ID da contagem criada.");
+        }
+        
+        console.log(`Nova contagem criada com ID: ${contagem.id}`);
+        
+        // Adiciona os itens à nova contagem
+        await addItemsToCount(contagem.id);
+        
+        console.log("Contagem criada e finalizada com sucesso!");
       }
       
-      // Adiciona os itens e redireciona
-      await addItemsToCount(contagemId);
-    } else {
-      // Se não temos um ID (fluxo antigo), mantemos o comportamento atual
-      createCountMutation.mutate({ data: countDate, finalizada: true });
+      // Limpa o estado local
+      clearCurrentCount();
+      
+      // Redireciona para a tela de sucesso
+      setLocation('/count/success');
+      
+    } catch (error) {
+      console.error("Erro ao finalizar contagem:", error);
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Ocorreu um erro inesperado ao finalizar a contagem.";
+      
+      toast({
+        title: "Erro ao finalizar contagem",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      
+      // Rejeita a promessa para que o chamador saiba que houve um erro
+      throw error;
     }
   };
 
-  const handleDateChange = (newDate: string) => {
+  /**
+   * Atualiza a data da contagem e salva no localStorage se for uma contagem nova
+   * @param newDate Nova data no formato YYYY-MM-DD
+   */
+  const handleDateChange = (newDate: string): void => {
+    // Valida o formato da data
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+      console.warn("Formato de data inválido:", newDate);
+      return;
+    }
+    
+    // Atualiza a data no estado local
     setCountDate(newDate);
-    if (!contagemId) {
-      saveCurrentCount({ date: newDate, products: products });
+    
+    // Se for uma contagem existente, não precisamos fazer nada mais
+    if (contagemId) {
+      return;
+    }
+    
+    try {
+      // Cria ou atualiza a contagem atual no localStorage
+      const currentCount: CurrentCount = { 
+        id: currentCountId || `draft-${Date.now()}`,
+        date: newDate, 
+        products: products,
+        lastUpdated: new Date().toISOString()
+      };
+      
+      // Atualiza o ID da contagem se ainda não existir
+      if (!currentCountId) {
+        setCurrentCountId(currentCount.id);
+      }
+      
+      // Salva no localStorage
+      saveCurrentCount(currentCount);
+      
+    } catch (error) {
+      console.error("Erro ao salvar contagem no localStorage:", error);
+      
+      // Mostra uma mensagem de erro não intrusiva
+      toast({
+        title: "Aviso",
+        description: "Não foi possível salvar a alteração de data. Sua contagem não foi perdida.",
+        variant: "destructive",
+      });
+      
+      // Reverte para a data anterior em caso de erro
+      setCountDate(countDate);
     }
   };
 
@@ -300,24 +625,38 @@ export default function NewCount() {
                   <div><span className="text-gray-500">Unidades:</span><span className="font-medium ml-1">{product.unidades}</span></div>
                 </div>
 
-                {(product.unidadesPorPacote || product.pacotesPorLastro || product.lastrosPorPallet || product.quantidadePacsPorPallet) && (
+                {(product.unidadesPorPacote !== undefined || product.pacotesPorLastro !== undefined || product.lastrosPorPallet !== undefined || product.quantidadePacsPorPallet !== undefined) && (
                   <div className="border-t pt-3 mt-3 text-xs text-gray-600">
                     <p className="font-semibold mb-2">Detalhes do Produto:</p>
                     <div className="grid grid-cols-2 gap-2">
-                      {product.unidadesPorPacote && <div>Un/Pacote: <span className="font-bold">{product.unidadesPorPacote}</span></div>}
-                      {product.pacotesPorLastro && <div>Pac/Lastro: <span className="font-bold">{product.pacotesPorLastro}</span></div>}
-                      {product.lastrosPorPallet && <div>Lastro/Pallet: <span className="font-bold">{product.lastrosPorPallet}</span></div>}
-                      {(product.pacotesPorLastro && product.lastrosPorPallet) && 
-                        <div>Pacotes/Pallet: <span className="font-bold">{product.quantidadePacsPorPallet ?? (product.pacotesPorLastro * product.lastrosPorPallet)}</span></div>
-                      }
+                      {product.unidadesPorPacote !== undefined && (
+                        <div>Un/Pacote: <span className="font-bold">{product.unidadesPorPacote}</span></div>
+                      )}
+                      {product.pacotesPorLastro !== undefined && (
+                        <div>Pac/Lastro: <span className="font-bold">{product.pacotesPorLastro}</span></div>
+                      )}
+                      {product.lastrosPorPallet !== undefined && (
+                        <div>Lastro/Pallet: <span className="font-bold">{product.lastrosPorPallet}</span></div>
+                      )}
+                      {(product.pacotesPorLastro !== undefined && product.lastrosPorPallet !== undefined) && (
+                        <div>
+                          Pacotes/Pallet: <span className="font-bold">
+                            {product.quantidadePacsPorPallet ?? (product.pacotesPorLastro * product.lastrosPorPallet)}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
                 
-                {(calculateProductTotal(product) > 0 || product.totalPacotes > 0) && (
+                {(calculateProductTotal(product) > 0 || (product.totalPacotes ?? 0) > 0) && (
                   <div className="bg-red-50 p-3 rounded-lg mt-3 text-center">
-                    <div className="text-sm font-medium text-red-900">Total Unidades: <span className="font-bold">{calculateProductTotal(product).toLocaleString()}</span></div>
-                    <div className="text-sm font-medium text-red-900 mt-1">Total Pacotes: <span className="font-bold">{product.totalPacotes.toLocaleString()}</span></div>
+                    <div className="text-sm font-medium text-red-900">
+                      Total Unidades: <span className="font-bold">{calculateProductTotal(product).toLocaleString()}</span>
+                    </div>
+                    <div className="text-sm font-medium text-red-900 mt-1">
+                      Total Pacotes: <span className="font-bold">{(product.totalPacotes ?? 0).toLocaleString()}</span>
+                    </div>
                   </div>
                 )}
               </div>
