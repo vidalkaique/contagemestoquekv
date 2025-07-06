@@ -220,12 +220,31 @@ export default function NewCount() {
     toast({ title: "Produto removido", description: "O produto foi removido da contagem.", variant: "destructive" });
   };
 
-  const handleFinalizeCount = () => {
+  const handleFinalizeCount = async () => {
     if (!countDate) {
       toast({ title: "Data não selecionada", description: "Por favor, selecione a data da contagem.", variant: "destructive" });
       return;
     }
-    createCountMutation.mutate({ data: countDate, finalizada: true });
+    
+    if (contagemId) {
+      // Se já temos um ID de contagem, apenas atualizamos para finalizada
+      const { error } = await supabase
+        .from('contagens')
+        .update({ finalizada: true, data: countDate })
+        .eq('id', contagemId);
+      
+      if (error) {
+        console.error('Erro ao finalizar contagem:', error);
+        toast({ title: "Erro", description: "Falha ao finalizar a contagem.", variant: "destructive" });
+        return;
+      }
+      
+      // Adiciona os itens e redireciona
+      await addItemsToCount(contagemId);
+    } else {
+      // Se não temos um ID (fluxo antigo), mantemos o comportamento atual
+      createCountMutation.mutate({ data: countDate, finalizada: true });
+    }
   };
 
   const handleDateChange = (newDate: string) => {

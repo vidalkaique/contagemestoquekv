@@ -38,6 +38,7 @@ interface Estoque {
 interface Contagem {
   id: string;
   data: string;
+  finalizada: boolean;
   estoque_id: string;
   estoques: {
     id: string;
@@ -51,6 +52,7 @@ interface Contagem {
       unidades_por_pacote: number;
       pacotes_por_lastro: number;
       lastros_por_pallet: number;
+      quantidade_pacs_por_pallet: number | null;
     } | null;
   }>;
 }
@@ -61,73 +63,104 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
   const handleDownloadExcel = async () => {
     try {
       // Buscar dados da contagem de forma autenticada
+      console.log('Buscando contagem com ID:', countId);
+      
+      // Primeiro, buscar a contagem principal com o estoque relacionado
       const { data: contagemData, error } = await supabase
         .from('contagens')
         .select(`
           id,
           data,
+          finalizada,
           estoque_id,
-          estoques:estoques!contagens_estoque_id_fkey(
+          estoques:estoques!inner(
             id,
             nome
-          ),
-          itens_contagem!contagem_id(
-            id,
-            produto_id,
-            nome_livre,
-            pallets,
-            lastros,
-            pacotes,
-            unidades,
-            total,
-            total_pacotes,
-            produtos:produtos!itens_contagem_produto_id_fkey(
-              id,
-              codigo,
-              nome,
-              unidades_por_pacote,
-              pacotes_por_lastro,
-              lastros_por_pallet
-            )
           )
         `)
         .eq('id', countId)
         .single();
-
+      
       if (error) {
-        console.error('Erro ao buscar dados da contagem:', error);
-        throw new Error('Erro ao buscar dados da contagem');
+        console.error('Erro ao buscar contagem:', error);
+        throw new Error('Erro ao buscar os dados da contagem');
       }
-
-      // Log para depuração - verificar estrutura dos dados retornados
-      console.log('Dados da contagem retornados:', contagemData);
-      console.log('Erro (se houver):', error);
-
-      if (error || !contagemData) {
-        console.error('Erro ao buscar dados da contagem:', error);
-        throw new Error('Erro ao buscar dados da contagem');
+      
+      if (!contagemData) {
+        throw new Error('Contagem não encontrada');
       }
-
-      const contagem = contagemData as unknown as Contagem;
-
+      
+      console.log('Dados da contagem:', contagemData);
+      
+      // Depois, buscar os itens da contagem com os produtos relacionados
+      const { data: itensData, error: itensError } = await supabase
+        .from('itens_contagem')
+        .select(`
+          id,
+          produto_id,
+          nome_livre,
+          pallets,
+          lastros,
+          pacotes,
+          unidades,
+          total,
+          total_pacotes,
+          produtos:produtos!left(
+            id,
+            codigo,
+            nome,
+            unidades_por_pacote,
+            pacotes_por_lastro,
+            lastros_por_pallet,
+            quantidade_pacs_por_pallet
+          )
+        `)
+        .eq('contagem_id', countId);
+        
+      if (itensError) {
+        console.error('Erro ao buscar itens da contagem:', itensError);
+        throw new Error('Erro ao buscar os itens da contagem');
+      }
+      
+      // Combinar os dados
+      const contagemCompleta = {
+        ...contagemData,
+        itens_contagem: itensData || []
+      };
+      
+      console.log('Contagem completa:', contagemCompleta);
+      
+      // Converter para o tipo Contagem esperado
+      const contagem = contagemCompleta as unknown as Contagem;
+      
       // Criar workbook
       const workbook = new Workbook();
       const worksheet = workbook.addWorksheet("Contagem");
 
+      // Configurar propriedades da planilha
+      worksheet.properties.defaultColWidth = 15;
+      
       // Adicionar título
       const titleRow = worksheet.addRow(['CONTAGEM DE ESTOQUE']);
-      titleRow.font = { bold: true, size: 18 };
-      titleRow.alignment = { horizontal: 'center' };
+      titleRow.font = { bold: true, size: 18, color: { argb: 'FF2F5496' } };
+      titleRow.alignment = { horizontal: 'center', vertical: 'middle' };
+      titleRow.height = 30;
       worksheet.mergeCells('A1:H1');
       
       // Adicionar informações do estoque e data
-      const estoqueNome = contagem.estoques?.nome || contagem.estoque_id || 'N/A';
+      const estoqueNome = contagem.estoques?.nome || contagem.estoque_id || 'NÃO INFORMADO';
       
       // Formatar a data corretamente
-      let dataFormatada = 'Data não disponível';
+      let dataFormatada = 'NÃO INFORMADA';
       try {
         const dataContagem = contagem.data ? new Date(contagem.data) : new Date();
-        dataFormatada = dataContagem.toLocaleDateString('pt-BR');
+        dataFormatada = dataContagem.toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
       } catch (error) {
         console.error('Erro ao formatar data:', error);
       }
@@ -135,47 +168,73 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
       console.log('Nome do estoque:', estoqueNome);
       console.log('Data formatada:', dataFormatada);
       
+      // Adicionar informações do estoque
       const estoqueInfo = worksheet.addRow([
         `Estoque: ${estoqueNome}`,
         '', '', '', '', '', '',
         `Data: ${dataFormatada}`
       ]);
+      
+      // Estilizar informações do estoque
       estoqueInfo.font = { bold: true };
+      estoqueInfo.alignment = { horizontal: 'left' };
       worksheet.mergeCells('A2:D2');
       worksheet.mergeCells('G2:H2');
       
       // Adicionar linha em branco
       worksheet.addRow([]);
 
-      // Configurar colunas
-      const headerRow = worksheet.addRow([
-        "Código", "Produto", "Pallets", "Lastros", "Pacotes", "Unidades", "Total Pacotes", "Total Unidades"
-      ]);
+      // Configurar cabeçalhos das colunas
+      const headerTitles = [
+        "CÓDIGO", 
+        "PRODUTO", 
+        "PALLETS", 
+        "LASTROS", 
+        "PACOTES", 
+        "UNIDADES", 
+        "TOTAL PACOTES", 
+        "TOTAL UNIDADES"
+      ];
+      
+      const headerRow = worksheet.addRow(headerTitles);
       
       // Estilizar cabeçalho
-      headerRow.font = { bold: true };
+      headerRow.font = { 
+        bold: true, 
+        color: { argb: 'FFFFFFFF' },
+        size: 12
+      };
+      
       headerRow.fill = {
         type: "pattern",
         pattern: "solid",
-        fgColor: { argb: "FFE0E0E0" },
+        fgColor: { argb: "FF2F5496" },
       };
+      
+      headerRow.alignment = { 
+        horizontal: 'center',
+        vertical: 'middle',
+        wrapText: true
+      };
+      
+      headerRow.height = 25;
       
       // Configurar largura das colunas
       worksheet.columns = [
-        { key: "codigo", width: 15 },
-        { key: "nome", width: 30 },
-        { key: "pallets", width: 10 },
-        { key: "lastros", width: 10 },
-        { key: "pacotes", width: 10 },
-        { key: "unidades", width: 10 },
-        { key: "totalPacotes", width: 15 },
-        { key: "total", width: 15 },
+        { key: "codigo", width: 15, style: { alignment: { horizontal: 'left' } } },
+        { key: "nome", width: 40, style: { alignment: { horizontal: 'left' } } },
+        { key: "pallets", width: 10, style: { alignment: { horizontal: 'center' } } },
+        { key: "lastros", width: 10, style: { alignment: { horizontal: 'center' } } },
+        { key: "pacotes", width: 10, style: { alignment: { horizontal: 'center' } } },
+        { key: "unidades", width: 10, style: { alignment: { horizontal: 'center' } } },
+        { key: "totalPacotes", width: 15, style: { alignment: { horizontal: 'center' } } },
+        { key: "total", width: 15, style: { alignment: { horizontal: 'center' } } },
       ];
 
       // Adicionar dados
       (contagem.itens_contagem || []).forEach((item: any) => {
         const produto = Array.isArray(item.produtos) ? item.produtos[0] : item.produtos;
-        worksheet.addRow({
+        const row = worksheet.addRow({
           codigo: produto?.codigo || "N/A",
           nome: produto?.nome || item.nome_livre || "N/A",
           pallets: item.pallets || 0,
@@ -185,9 +244,80 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
           totalPacotes: item.total_pacotes || 0,
           total: item.total || 0,
         });
+        
+        // Estilizar a linha de dados
+        row.alignment = {
+          vertical: 'middle',
+          wrapText: true
+        };
+        
+        // Formatar células numéricas
+        const formatNumber = (cell: any) => {
+          if (typeof cell.value === 'number') {
+            cell.numFmt = '#,##0';
+          }
+        };
+        
+        // Aplicar formatação apenas para colunas numéricas
+        const numCols = ['pallets', 'lastros', 'pacotes', 'unidades', 'totalPacotes', 'total'];
+        numCols.forEach((col, idx) => {
+          const cell = row.getCell(idx + 1);
+          formatNumber(cell);
+        });
+      });
+      
+      // Ajustar automaticamente a altura das linhas com base no conteúdo
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 3) { // Pular cabeçalhos
+          row.height = undefined; // Auto-ajustar altura
+        }
       });
 
-      // Adicionar linha em branco antes do final
+      // Adicionar totais
+      const totalPallets = (contagem.itens_contagem || []).reduce((sum, item) => sum + (item.pallets || 0), 0);
+      const totalLastros = (contagem.itens_contagem || []).reduce((sum, item) => sum + (item.lastros || 0), 0);
+      const totalPacotes = (contagem.itens_contagem || []).reduce((sum, item) => sum + (item.pacotes || 0), 0);
+      const totalUnidades = (contagem.itens_contagem || []).reduce((sum, item) => sum + (item.unidades || 0), 0);
+      const totalGeralPacotes = (contagem.itens_contagem || []).reduce((sum, item) => sum + (item.total_pacotes || 0), 0);
+      const totalGeralUnidades = (contagem.itens_contagem || []).reduce((sum, item) => sum + (item.total || 0), 0);
+      
+      // Linha em branco
+      worksheet.addRow([]);
+      
+      // Linha de totais
+      const totalRow = worksheet.addRow([
+        'TOTAIS:',
+        '',
+        totalPallets,
+        totalLastros,
+        totalPacotes,
+        totalUnidades,
+        totalGeralPacotes,
+        totalGeralUnidades
+      ]);
+      
+      // Estilizar linha de totais
+      totalRow.font = { bold: true, color: { argb: 'FF2F5496' } };
+      totalRow.eachCell((cell) => {
+        if (cell.value) {
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FF2F5496' } },
+            bottom: { style: 'thin', color: { argb: 'FF2F5496' } }
+          };
+        }
+      });
+      
+      // Adicionar linha em branco
+      worksheet.addRow([]);
+      
+      // Adicionar rodapé com assinatura
+      const assinaturaRow = worksheet.addRow(['']);
+      const assinaturaCell = assinaturaRow.getCell(1);
+      assinaturaCell.value = 'Feito por: Kaique Vidal';
+      assinaturaCell.font = { italic: true, color: { argb: 'FF808080' } };
+      worksheet.mergeCells(`A${assinaturaRow.number}:H${assinaturaRow.number}`);
+      
+      // Adicionar linha em branco final
       worksheet.addRow([]);
 
       // Gerar e baixar o arquivo
