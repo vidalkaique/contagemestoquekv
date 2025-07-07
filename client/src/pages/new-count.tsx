@@ -40,10 +40,16 @@ export default function NewCount() {
   // Estados do componente
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
   const [products, setProducts] = useState<ProductItem[]>([]);
-  const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [currentCountId, setCurrentCountId] = useState<string | undefined>(undefined);
 
-
+  // Define o ID da contagem atual com base no parâmetro da rota ou na contagem não finalizada carregada
+  useEffect(() => {
+    if (contagemId) {
+      setCurrentCountId(contagemId);
+    } else if (unfinishedCount?.id) {
+      setCurrentCountId(unfinishedCount.id);
+    }
+  }, [contagemId, unfinishedCount]);
 
   /**
    * Calcula o total de pacotes com base nos pallets, lastros e pacotes avulsos
