@@ -73,17 +73,7 @@ export function useUnfinishedCount() {
             unidades,
             total,
             total_pacotes,
-            created_at,
-            produtos (
-              id,
-              codigo,
-              nome,
-              unidades_por_pacote,
-              pacotes_por_lastro,
-              lastros_por_pallet,
-              quantidade_pacs_por_pallet,
-              created_at
-            )
+            created_at
           )
         `)
         .eq('finalizada', false)
@@ -185,17 +175,7 @@ export function useCounts() {
             unidades,
             total,
             total_pacotes,
-            created_at,
-            produtos (
-              id,
-              codigo,
-              nome,
-              unidades_por_pacote,
-              pacotes_por_lastro,
-              lastros_por_pallet,
-              quantidade_pacs_por_pallet,
-              created_at
-            )
+            created_at
           )
         `)
         
@@ -217,49 +197,15 @@ export function useCounts() {
           estoqueId: contagem.estoque_id,
           excelUrl: contagem.excel_url,
           createdAt: new Date(contagem.created_at),
-          itens: contagem.itens_contagem?.map((item) => {
-            // Garante que produtos seja um único objeto ou null
-            const produto = (() => {
-              if (!item.produtos) return null;
-              if (Array.isArray(item.produtos)) {
-                return item.produtos[0] || null;
-              }
-              return item.produtos;
-            })();
-
-            return {
-              id: item.id,
-              contagemId: item.contagem_id,
-              produtoId: item.produto_id,
-              nomeLivre: item.nome_livre,
-              pallets: item.pallets,
-              lastros: item.lastros,
-              pacotes: item.pacotes,
-              unidades: item.unidades,
-              total: item.total,
-              totalPacotes: item.total_pacotes,
-              unidadesPorPacote: produto ? ('unidades_por_pacote' in produto ? produto.unidades_por_pacote : undefined) : undefined,
-              pacotesPorLastro: produto ? ('pacotes_por_lastro' in produto ? produto.pacotes_por_lastro : undefined) : undefined,
-              lastrosPorPallet: produto ? ('lastros_por_pallet' in produto ? produto.lastros_por_pallet : undefined) : undefined,
-              quantidadePacsPorPallet: produto ? ('quantidade_pacs_por_pallet' in produto ? produto.quantidade_pacs_por_pallet : undefined) : undefined,
-              produto: produto ? {
-                id: produto.id,
-                codigo: produto.codigo,
-                nome: produto.nome,
-                unidadesPorPacote: 'unidades_por_pacote' in produto ? produto.unidades_por_pacote : 1,
-                pacotesPorLastro: 'pacotes_por_lastro' in produto ? produto.pacotes_por_lastro : 1,
-                lastrosPorPallet: 'lastros_por_pallet' in produto ? produto.lastros_por_pallet : 1,
-                quantidadePacsPorPallet: 'quantidade_pacs_por_pallet' in produto ? produto.quantidade_pacs_por_pallet : null,
-                createdAt: new Date(produto.created_at || new Date().toISOString())
-              } : null
-            };
-          }) || [],
+          itens: [],
           estoque: estoque ? {
             id: estoque.id,
             nome: estoque.nome,
             createdAt: new Date(estoque.created_at)
           } : null
         };
+
+
         return contagemWithItens;
       });
 
