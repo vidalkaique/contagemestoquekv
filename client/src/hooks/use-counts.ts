@@ -96,7 +96,7 @@ export function useUnfinishedCount() {
         estoqueId: first.estoque_id,
         excelUrl: first.excel_url,
         createdAt: new Date(first.created_at),
-        itens: (first.itens_contagem || []).map((item) => {
+        itens: ((first as any).itens_contagem || []).map((item: any) => {
           // Garante que produtos seja um único objeto ou null
           const produtoEntry = Array.isArray(item.produtos) && item.produtos.length > 0 
             ? item.produtos[0] 
