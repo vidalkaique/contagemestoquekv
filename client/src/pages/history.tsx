@@ -49,6 +49,8 @@ export default function History() {
     const dateStr = format(new Date(contagem.data), "dd/MM/yyyy", { locale: ptBR });
     return dateStr.includes(searchQuery);
   });
+  
+  // Logs de depuração removidos para produção
 
   const handleDownloadExcel = async (contagemId: string, excelUrl?: string | null) => {
     try {
@@ -269,46 +271,69 @@ export default function History() {
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredContagens?.map((contagem) => (
-              <div key={contagem.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="font-medium text-gray-900">
-                      {format(new Date(contagem.data), "dd/MM/yyyy", { locale: ptBR })}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {format(new Date(contagem.createdAt), "HH:mm", { locale: ptBR })}
-                    </p>
+            {filteredContagens?.map((contagem) => {
+              // Log detalhado para cada contagem sendo renderizada
+              console.log(`\n=== RENDERIZANDO CONTAGEM ${contagem.id} ===`);
+              console.log(`- Data: ${contagem.data}`);
+              console.log(`- Finalizada: ${contagem.finalizada}`);
+              console.log(`- Número de itens: ${contagem.itens?.length || 0}`);
+              
+              if (contagem.itens && contagem.itens.length > 0) {
+                console.log('  Itens encontrados:');
+                contagem.itens.forEach((item, index) => {
+                  console.log(`  Item ${index + 1}:`);
+                  console.log(`  - ID: ${item.id}`);
+                  console.log(`  - Produto ID: ${item.produtoId || 'N/A'}`);
+                  console.log(`  - Nome Livre: ${item.nomeLivre || 'N/A'}`);
+                  console.log(`  - Total: ${item.total}`);
+                  console.log(`  - Total Pacotes: ${item.totalPacotes}`);
+                });
+              } else {
+                console.log('  Nenhum item encontrado nesta contagem');
+              }
+              
+              return (
+                <div key={contagem.id} className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="font-medium text-gray-900">
+                        {format(new Date(contagem.data), "dd/MM/yyyy", { locale: ptBR })}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {format(new Date(contagem.createdAt), "HH:mm", { locale: ptBR })}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-gray-900">
+                        {contagem.itens?.length || 0} produtos
+                      </p>
+                      {contagem.finalizada ? (
+                        <p className="text-xs text-emerald-600">Concluída</p>
+                      ) : (
+                        <p className="text-xs text-yellow-600">Em andamento</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium text-gray-900">
-                      {contagem.itens.length} produtos
-                    </p>
-                    {contagem.finalizada ? (
-                      <p className="text-xs text-emerald-600">Concluída</p>
-                    ) : (
-                      <p className="text-xs text-yellow-600">Em andamento</p>
-                    )}
-                  </div>
+                  {contagem.finalizada ? (
+                    <Button
+                      onClick={() => handleDownloadExcel(contagem.id, contagem.excelUrl)}
+                      className="w-full bg-primary/10 text-primary py-2 px-3 rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors"
+                    >
+                      <Download className="mr-2" size={16} />
+                      {contagem.excelUrl ? 'Abrir Excel' : 'Gerar Excel'}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => setLocation(`/count/${contagem.id}`)}
+                      className="w-full bg-yellow-100 text-yellow-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-yellow-200 transition-colors"
+                    >
+                      Continuar Contagem
+                    </Button>
+                  )}
                 </div>
-                {contagem.finalizada ? (
-                  <Button
-                    onClick={() => handleDownloadExcel(contagem.id, contagem.excelUrl)}
-                    className="w-full bg-primary/10 text-primary py-2 px-3 rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors"
-                  >
-                    <Download className="mr-2" size={16} />
-                    {contagem.excelUrl ? 'Abrir Excel' : 'Gerar Excel'}
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => setLocation(`/count/${contagem.id}`)}
-                    className="w-full bg-yellow-100 text-yellow-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-yellow-200 transition-colors"
-                  >
-                    Continuar Contagem
-                  </Button>
-                )}
-              </div>
-            ))}
+              );
+            })}
+
           </div>
         )}
       </div>

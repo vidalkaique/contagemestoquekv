@@ -150,6 +150,31 @@ export function useCounts() {
   return useQuery<ContagemWithItens[]>({ 
     queryKey: ["contagens"],
     queryFn: async () => {
+      console.log('Iniciando consulta ao banco de dados...');
+      console.log('Iniciando consulta ao banco de dados para buscar contagens...');
+      
+      // Primeiro, buscar apenas as contagens para verificar quantas existem
+      const { data: contagensBasicas, error: erroContagens } = await supabase
+        .from('contagens')
+        .select('id, data, finalizada, created_at')
+        .order('created_at', { ascending: false });
+      
+      console.log('Contagens básicas encontradas:', contagensBasicas?.length || 0);
+      
+      if (erroContagens) {
+        console.error('Erro ao buscar contagens básicas:', erroContagens);
+        throw erroContagens;
+      }
+      
+      // Se não houver contagens, retornar array vazio
+      if (!contagensBasicas || contagensBasicas.length === 0) {
+        console.log('Nenhuma contagem encontrada no banco de dados');
+        return [];
+      }
+      
+      console.log('Buscando detalhes completos para', contagensBasicas.length, 'contagens...');
+      
+      // Agora buscar os detalhes completos em lotes para evitar sobrecarga
       const { data, error } = await supabase
         .from('contagens')
         .select(`
@@ -163,20 +188,156 @@ export function useCounts() {
             id,
             nome,
             created_at
+          ),
+          itens_contagem(
+            id,
+            produto_id,
+            nome_livre,
+            pallets,
+            lastros,
+            pacotes,
+            unidades,
+            total,
+            total_pacotes,
+            created_at,
+            produtos(
+              id,
+              codigo,
+              nome,
+              unidades_por_pacote,
+              pacotes_por_lastro,
+              lastros_por_pallet,
+              quantidade_pacs_por_pallet,
+              created_at
+            )
           )
         `)
-        .order('created_at', { ascending: false })
+        .in('id', contagensBasicas.map(c => c.id))
+        .order('created_at', { ascending: false });
         
-
+      console.log('Consulta ao banco de dados concluída. Número de contagens retornadas:', data?.length || 0);
+      
+      if (data && data.length > 0) {
+        console.log('Exemplo de contagem retornada (primeira):', {
+          id: data[0].id,
+          data: data[0].data,
+          finalizada: data[0].finalizada,
+          numItens: Array.isArray(data[0].itens_contagem) ? data[0].itens_contagem.length : 0,
+          temEstoque: !!data[0].estoques
+        });
+      }
+      
+      console.log('Dados retornados do banco:', data);
+      if (error) {
+        console.error('Erro ao buscar contagens:', error);
+        throw error;
+      }
+      
+      // Verificar se há dados retornados
+      if (!data || data.length === 0) {
+        console.log('Nenhum dado de contagem retornado do banco de dados');
+        return [];
+      }
+      
+      // Verificar o primeiro item dos dados retornados para depuração
+      console.log('=== DETALHES DA PRIMEIRA CONTAGEM RETORNADA ===');
+      console.log('ID:', data[0].id);
+      console.log('Data:', data[0].data);
+      console.log('Finalizada:', data[0].finalizada);
+      console.log('Número de itens_contagem:', 
+        Array.isArray(data[0].itens_contagem) ? data[0].itens_contagem.length : 'não é array');
+      
+      if (Array.isArray(data[0].itens_contagem) && data[0].itens_contagem.length > 0) {
+        console.log('Primeiro item_contagem:', data[0].itens_contagem[0]);
+        console.log('Produto do primeiro item_contagem:', data[0].itens_contagem[0].produtos);
+      }
+      console.log('==============================================');
+      
       if (error) throw error;
       if (!data) return [];
 
+      // Log detalhado antes do mapeamento
+      console.log('=== INÍCIO DO MAPEAMENTO DAS CONTAGENS ===');
+      console.log('Total de contagens a processar:', data.length);
+      
       // Convert to ContagemWithItens[] type
-      const resultArray = data.map((contagem) => {
+      const resultArray = data.map((contagem, contagemIndex) => {
+        console.log(`\n=== PROCESSANDO CONTAGEM ${contagemIndex + 1}/${data.length} ===`);
+        console.log('ID da contagem:', contagem.id);
+        console.log('Data da contagem:', contagem.data);
+        console.log('Finalizada:', contagem.finalizada);
+        
         // Verifica se estoques é um array e pega o primeiro item
         const estoque = Array.isArray(contagem.estoques) && contagem.estoques.length > 0 
           ? contagem.estoques[0] 
           : null;
+
+        console.log('Estoque encontrado:', estoque ? 
+          `ID: ${estoque.id}, Nome: ${estoque.nome}` : 'Nenhum estoque associado');
+
+        // Mapear itens da contagem
+        console.log('\nItens da contagem (bruto):', contagem.itens_contagem);
+        
+        const itens = Array.isArray(contagem.itens_contagem) 
+          ? contagem.itens_contagem.map((item, index) => {
+              console.log(`\n--- Processando item ${index + 1}/${contagem.itens_contagem.length} ---`);
+              console.log('Dados brutos do item:', item);
+              
+              // Verifica se produtos é um array e pega o primeiro item, caso contrário, usa o próprio valor
+              const produtos = Array.isArray(item.produtos) ? item.produtos[0] : item.produtos;
+              
+              console.log('Dados brutos do produto:', produtos);
+              
+              const produtoMapeado = produtos ? {
+                id: produtos.id,
+                codigo: produtos.codigo,
+                nome: produtos.nome,
+                unidadesPorPacote: produtos.unidades_por_pacote,
+                pacotesPorLastro: produtos.pacotes_por_lastro,
+                lastrosPorPallet: produtos.lastros_por_pallet,
+                quantidadePacsPorPallet: produtos.quantidade_pacs_por_pallet || undefined,
+                createdAt: new Date(produtos.created_at)
+              } : null;
+              
+              console.log('Produto mapeado:', produtoMapeado);
+              
+              const itemMapeado = {
+                id: item.id,
+                contagemId: contagem.id,
+                produtoId: item.produto_id,
+                nomeLivre: item.nome_livre || undefined,
+                pallets: item.pallets,
+                lastros: item.lastros,
+                pacotes: item.pacotes,
+                unidades: item.unidades,
+                total: item.total,
+                totalPacotes: item.total_pacotes,
+                produto: produtoMapeado
+              };
+              
+              console.log('Item mapeado final:', itemMapeado);
+              return itemMapeado;
+            }) 
+          : [];
+          
+        console.log(`\n=== RESUMO DA CONTAGEM ${contagem.id} ===`);
+        console.log(`Total de itens na contagem: ${itens.length}`);
+        console.log(`Itens:`, itens);
+        
+        if (itens.length > 0) {
+          console.log('Primeiro item da contagem:', itens[0]);
+          
+          // Verificar se o produto está definido corretamente no primeiro item
+          if (itens[0].produto) {
+            console.log('Produto do primeiro item está definido:', itens[0].produto);
+          } else {
+            console.warn('AVISO: Produto do primeiro item está indefinido ou nulo');
+            console.log('Dados completos do primeiro item:', itens[0]);
+          }
+        } else {
+          console.warn('AVISO: Nenhum item encontrado para esta contagem');
+          console.log('Dados completos da contagem (para depuração):', contagem);
+        }
 
         const contagemWithItens: ContagemWithItens = {
           id: contagem.id,
@@ -185,7 +346,7 @@ export function useCounts() {
           estoqueId: contagem.estoque_id,
           excelUrl: contagem.excel_url,
           createdAt: new Date(contagem.created_at),
-          itens: [],
+          itens: itens,
           estoque: estoque ? {
             id: estoque.id,
             nome: estoque.nome,
@@ -199,6 +360,53 @@ export function useCounts() {
 
       // sort locally by createdAt desc
       resultArray.sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime());
+      
+      // Log detalhado do resultado final
+      console.log('\n=== RESULTADO FINAL DAS CONTAGENS ===');
+      console.log(`Total de contagens processadas: ${resultArray.length}`);
+      
+      if (resultArray.length > 0) {
+        console.log('\n=== DETALHES DA PRIMEIRA CONTAGEM NO RESULTADO FINAL ===');
+        console.log('ID:', resultArray[0].id);
+        console.log('Data:', resultArray[0].data);
+        console.log('Finalizada:', resultArray[0].finalizada);
+        console.log('Número de itens:', resultArray[0].itens?.length || 0);
+        
+        if (resultArray[0].itens && resultArray[0].itens.length > 0) {
+          console.log('\nPrimeiro item da primeira contagem:');
+          console.log('- ID:', resultArray[0].itens[0].id);
+          console.log('- Produto ID:', resultArray[0].itens[0].produtoId);
+          console.log('- Nome Livre:', resultArray[0].itens[0].nomeLivre);
+          console.log('- Quantidade Total:', resultArray[0].itens[0].total);
+          
+          if (resultArray[0].itens[0].produto) {
+            console.log('\nProduto associado ao primeiro item:');
+            console.log('  - ID:', resultArray[0].itens[0].produto.id);
+            console.log('  - Código:', resultArray[0].itens[0].produto.codigo);
+            console.log('  - Nome:', resultArray[0].itens[0].produto.nome);
+          } else {
+            console.warn('\nAVISO: Nenhum produto associado ao primeiro item');
+          }
+        } else {
+          console.warn('\nAVISO: Nenhum item encontrado na primeira contagem');
+        }
+        
+        console.log('\n=== RESUMO DAS PRIMEIRAS 3 CONTAGENS ===');
+        resultArray.slice(0, 3).forEach((contagem, index) => {
+          console.log(`\nContagem ${index + 1}:`);
+          console.log('- ID:', contagem.id);
+          console.log('- Data:', contagem.data);
+          console.log('- Finalizada:', contagem.finalizada);
+          console.log('- Número de itens:', contagem.itens?.length || 0);
+          
+          if (contagem.itens && contagem.itens.length > 0) {
+            console.log(`- Primeiro item: ID=${contagem.itens[0].id}, Total=${contagem.itens[0].total}`);
+          }
+        });
+      }
+      
+      console.log('\n=== FIM DO PROCESSAMENTO DAS CONTAGENS ===\n');
+      
       return resultArray;
     }
   });
