@@ -199,33 +199,6 @@ export default function Home() {
           <ChevronRight className="w-5 h-5 text-gray-400" />
         </button>
       </div>
-
-      <div className="pt-4">
-        {ultimaContagem ? (
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <h2 className="text-sm font-medium text-gray-500">Última contagem</h2>
-            <div className="flex items-center justify-between mt-2">
-              <div>
-                <p className="text-lg font-semibold text-gray-900">
-                  {format(new Date(ultimaContagem.data), "dd/MM/yyyy", { locale: ptBR })}
-                </p>
-                <p className="text-sm text-gray-500">{ultimaContagem.itens.length} itens contados</p>
-              </div>
-              <div className="p-3 text-green-500 bg-green-100 rounded-full">
-                <LineChart className="w-6 h-6" />
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-white p-4 rounded-lg shadow-sm text-center">
-            <h2 className="text-sm font-medium text-gray-500">Última contagem</h2>
-            <div className="flex items-center justify-center mt-2 space-x-2">
-                <p className="text-gray-700">Nenhuma contagem</p>
-            </div>
-            <p className="text-sm text-gray-500 mt-1">Crie sua primeira contagem</p>
-          </div>
-        )}
-      </div>
     </div>
 
       <SelectStockModal isOpen={isModalOpen} onOpenChange={setIsModalOpen} />
