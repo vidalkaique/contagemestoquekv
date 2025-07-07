@@ -293,11 +293,11 @@ export default function History() {
                 </div>
                 {contagem.finalizada ? (
                   <Button
-                    onClick={() => handleDownloadExcel(contagem.id, contagem.excel_url)}
+                    onClick={() => handleDownloadExcel(contagem.id, contagem.excelUrl)}
                     className="w-full bg-primary/10 text-primary py-2 px-3 rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors"
                   >
                     <Download className="mr-2" size={16} />
-                    {contagem.excel_url ? 'Abrir Excel' : 'Gerar Excel'}
+                    {contagem.excelUrl ? 'Abrir Excel' : 'Gerar Excel'}
                   </Button>
                 ) : (
                   <Button
