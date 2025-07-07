@@ -174,8 +174,18 @@ export function useCounts() {
       
       console.log('Buscando detalhes completos para', contagensBasicas.length, 'contagens...');
       
+      // Verificar se há IDs válidos para buscar
+      const idsContagens = contagensBasicas.map(c => c.id).filter(Boolean);
+      
+      if (idsContagens.length === 0) {
+        console.log('Nenhum ID de contagem válido encontrado');
+        return [];
+      }
+      
+      console.log('IDs das contagens a serem buscadas:', idsContagens);
+      
       // Agora buscar os detalhes completos em lotes para evitar sobrecarga
-      const { data, error } = await supabase
+      let query = supabase
         .from('contagens')
         .select(`
           id,
@@ -184,7 +194,7 @@ export function useCounts() {
           excel_url,
           created_at,
           estoque_id,
-          estoques!inner(
+          estoques(
             id,
             nome,
             created_at
@@ -212,8 +222,10 @@ export function useCounts() {
             )
           )
         `)
-        .in('id', contagensBasicas.map(c => c.id))
+        .in('id', idsContagens)
         .order('created_at', { ascending: false });
+        
+      const { data, error } = await query;
         
       console.log('Consulta ao banco de dados concluída. Número de contagens retornadas:', data?.length || 0);
       
