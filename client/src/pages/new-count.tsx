@@ -461,6 +461,111 @@ export default function NewCount() {
    * Finaliza a contagem atual, salvando todos os itens no banco de dados
    * e marcando a contagem como finalizada
    */
+  // Função para gerar e salvar o Excel no Supabase Storage
+  const generateAndSaveExcel = async (countId: string, countData: any, items: any[]): Promise<string> => {
+    const { Workbook } = await import('exceljs');
+    
+    // Criar workbook
+    const workbook = new Workbook();
+    const worksheet = workbook.addWorksheet("Contagem");
+    
+    // Configurar propriedades da planilha
+    worksheet.properties.defaultColWidth = 15;
+    
+    // Adicionar título
+    const titleRow = worksheet.addRow(['CONTAGEM DE ESTOQUE']);
+    titleRow.font = { bold: true, size: 18, color: { argb: 'FF2F5496' } };
+    titleRow.alignment = { horizontal: 'center', vertical: 'middle' };
+    titleRow.height = 30;
+    worksheet.mergeCells('A1:H1');
+    
+    // Formatar a data
+    let dataFormatada = 'NÃO INFORMADA';
+    try {
+      const dataContagem = countData.data ? new Date(countData.data) : new Date();
+      dataFormatada = dataContagem.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Erro ao formatar data:', error);
+    }
+    
+    // Adicionar informações do estoque e data
+    const estoqueNome = countData.estoques?.nome || countData.estoque_id || 'NÃO INFORMADO';
+    const estoqueInfo = worksheet.addRow([
+      `Estoque: ${estoqueNome}`,
+      '', '', '', '', '', '',
+      `Data: ${dataFormatada}`
+    ]);
+    
+    // Estilizar informações do estoque
+    estoqueInfo.font = { bold: true };
+    estoqueInfo.alignment = { horizontal: 'left' };
+    worksheet.mergeCells('A2:D2');
+    worksheet.mergeCells('G2:H2');
+    
+    // Adicionar linha em branco
+    worksheet.addRow([]);
+    
+    // Cabeçalhos
+    const headerTitles = [
+      "CÓDIGO", "PRODUTO", "PALLETS", "LASTROS", "PACOTES", "UNIDADES", "TOTAL", "TOTAL PACOTES"
+    ];
+    
+    const headerRow = worksheet.addRow(headerTitles);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF2F5496' }
+    };
+    
+    // Adicionar dados
+    items.forEach((item: any) => {
+      const produto = item.produtos || {};
+      worksheet.addRow([
+        produto.codigo || item.nome_livre || 'N/A',
+        produto.nome || 'Produto não cadastrado',
+        item.pallets,
+        item.lastros,
+        item.pacotes,
+        item.unidades,
+        item.total,
+        item.total_pacotes || 0
+      ]);
+    });
+    
+    // Gerar o arquivo Excel
+    const buffer = await workbook.xlsx.writeBuffer();
+    const fileName = `contagem_${countId}_${new Date().getTime()}.xlsx`;
+    const filePath = `contagens/${countId}/${fileName}`;
+    
+    // Fazer upload para o Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from('contagens')
+      .upload(filePath, buffer, {
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        upsert: true,
+        cacheControl: '3600'
+      });
+    
+    if (uploadError) {
+      console.error('Erro ao fazer upload do Excel:', uploadError);
+      throw new Error('Erro ao salvar o arquivo Excel');
+    }
+    
+    // Obter URL pública do arquivo
+    const { data: { publicUrl } } = supabase.storage
+      .from('contagens')
+      .getPublicUrl(filePath);
+    
+    return publicUrl;
+  };
+
   const handleFinalizeCount = async (): Promise<void> => {
     // Resolve o ID da contagem usando, na ordem: estado, parâmetro da rota ou contagem não finalizada
     const resolvedCountId = currentCountId || contagemId || unfinishedCount?.id;
@@ -469,6 +574,9 @@ export default function NewCount() {
     let successRedirectId: string | undefined;
     // Se o ID é de um draft local ou não existe, trata como nova contagem
     const isDraftId = resolvedCountId?.startsWith('draft-') || !resolvedCountId;
+    
+    // Dados para geração do Excel
+    let excelUrl: string | null = null;
     // Valida se existem produtos na contagem
     if (!products.length) {
       toast({
@@ -496,12 +604,33 @@ export default function NewCount() {
         console.log(`Atualizando contagem existente: ${resolvedCountId}`);
         successRedirectId = resolvedCountId;
         
+        // Prepara os dados para o Excel
+        const contagemData = {
+          id: resolvedCountId,
+          data: formattedDate,
+          estoques: unfinishedCount?.estoque ? {
+            id: unfinishedCount.estoque.id,
+            nome: unfinishedCount.estoque.nome
+          } : null,
+          estoque_id: unfinishedCount?.estoque?.id || null
+        };
+        
+        // Gera e salva o Excel
+        try {
+          excelUrl = await generateAndSaveExcel(resolvedCountId, contagemData, products);
+          console.log('Excel gerado e salvo com sucesso:', excelUrl);
+        } catch (error) {
+          console.error('Erro ao gerar Excel:', error);
+          // Não interrompe o fluxo se falhar a geração do Excel
+        }
+        
         // Atualiza os dados básicos da contagem
         const { error: updateError } = await supabase
           .from('contagens')
           .update({ 
             data: formattedDate,
-            finalizada: true
+            finalizada: true,
+            excel_url: excelUrl
           })
           .eq('id', resolvedCountId);
         
@@ -532,17 +661,13 @@ export default function NewCount() {
       } else {
         console.log("Criando nova contagem...");
         
-
-        
         // Cria uma nova contagem
         const { data: contagem, error: createError } = await supabase
           .from('contagens')
           .insert([{
             data: formattedDate,
             finalizada: true,
-            estoque_id: unfinishedCount?.estoque?.id ?? null,
-
-
+            estoque_id: unfinishedCount?.estoque?.id || null,
           }])
           .select()
           .single();
@@ -557,6 +682,36 @@ export default function NewCount() {
         }
         
         console.log(`Nova contagem criada com ID: ${contagem.id}`);
+        
+        // Prepara os dados para o Excel
+        const contagemData = {
+          ...contagem,
+          estoques: unfinishedCount?.estoque ? {
+            id: unfinishedCount.estoque.id,
+            nome: unfinishedCount.estoque.nome
+          } : null,
+          estoque_id: unfinishedCount?.estoque?.id || null
+        };
+        
+        // Gera e salva o Excel
+        try {
+          excelUrl = await generateAndSaveExcel(contagem.id, contagemData, products);
+          console.log('Excel gerado e salvo com sucesso para nova contagem:', excelUrl);
+          
+          // Atualiza a contagem com a URL do Excel
+          const { error: updateError } = await supabase
+            .from('contagens')
+            .update({ excel_url: excelUrl })
+            .eq('id', contagem.id);
+            
+          if (updateError) {
+            console.error('Erro ao atualizar URL do Excel:', updateError);
+            // Não interrompe o fluxo
+          }
+        } catch (error) {
+          console.error('Erro ao gerar Excel para nova contagem:', error);
+          // Não interrompe o fluxo se falhar a geração do Excel
+        }
         
         // Adiciona os itens à nova contagem
         await addItemsToCount(contagem.id);
