@@ -186,62 +186,95 @@ export function useCounts() {
       
       // Função para buscar contagens em lotes menores para evitar problemas com a cláusula IN
       const buscarContagensEmLotes = async (ids: string[]) => {
-        const TAMANHO_LOTE = 10; // Número de IDs por lote
+        const TAMANHO_LOTE = 5; // Reduzido para 5 para evitar timeouts
         let todasContagens: any[] = [];
+        let ultimoErro: any = null;
         
         // Processar em lotes menores
         for (let i = 0; i < ids.length; i += TAMANHO_LOTE) {
           const loteIds = ids.slice(i, i + TAMANHO_LOTE);
-          console.log(`Processando lote de ${i/TAMANHO_LOTE + 1} com ${loteIds.length} IDs`);
+          console.log(`Processando lote ${Math.floor(i/TAMANHO_LOTE) + 1} de ${Math.ceil(ids.length/TAMANHO_LOTE)} com ${loteIds.length} IDs`);
           
-          const { data: loteData, error: loteError } = await supabase
-            .from('contagens')
-            .select(`
-              id,
-              data,
-              finalizada,
-              excel_url,
-              created_at,
-              estoque_id,
-              estoques(
+          try {
+            // Primeiro busca apenas as contagens básicas
+            const { data: loteData, error: loteError } = await supabase
+              .from('contagens')
+              .select(`
                 id,
-                nome,
-                created_at
-              ),
-              itens_contagem(
-                id,
-                produto_id,
-                nome_livre,
-                pallets,
-                lastros,
-                pacotes,
-                unidades,
-                total,
-                total_pacotes,
+                data,
+                finalizada,
+                excel_url,
                 created_at,
-                produtos(
+                estoque_id,
+                estoques(
                   id,
-                  codigo,
                   nome,
-                  unidades_por_pacote,
-                  pacotes_por_lastro,
-                  lastros_por_pallet,
-                  quantidade_pacs_por_pallet,
                   created_at
                 )
-              )
-            `)
-            .in('id', loteIds)
-            .order('created_at', { ascending: false });
+              `)
+              .in('id', loteIds)
+              .order('created_at', { ascending: false });
+              
+            if (loteError) {
+              console.error(`Erro ao buscar lote de contagens:`, loteError);
+              ultimoErro = loteError;
+              continue; // Pula para o próximo lote em caso de erro
+            }
             
-          if (loteError) {
-            console.error(`Erro ao buscar lote de contagens:`, loteError);
-            throw loteError;
+            if (loteData && loteData.length > 0) {
+              // Buscar itens de contagem separadamente para evitar problemas de desempenho
+              const contagensComItens = await Promise.all(
+                loteData.map(async (contagem) => {
+                  const { data: itens, error: itensError } = await supabase
+                    .from('itens_contagem')
+                    .select(`
+                      id,
+                      produto_id,
+                      nome_livre,
+                      pallets,
+                      lastros,
+                      pacotes,
+                      unidades,
+                      total,
+                      total_pacotes,
+                      created_at,
+                      produtos(
+                        id,
+                        codigo,
+                        nome,
+                        unidades_por_pacote,
+                        pacotes_por_lastro,
+                        lastros_por_pallet,
+                        quantidade_pacs_por_pallet,
+                        created_at
+                      )
+                    `)
+                    .eq('contagem_id', contagem.id);
+                  
+                  if (itensError) {
+                    console.error(`Erro ao buscar itens da contagem ${contagem.id}:`, itensError);
+                    return { ...contagem, itens_contagem: [] };
+                  }
+                  
+                  return { ...contagem, itens_contagem: itens || [] };
+                })
+              );
+              
+              todasContagens = [...todasContagens, ...contagensComItens];
+            }
+          } catch (error) {
+            console.error(`Erro inesperado ao processar lote de contagens:`, error);
+            ultimoErro = error;
+            continue; // Continua com o próximo lote mesmo em caso de erro inesperado
           }
-          
-          if (loteData && loteData.length > 0) {
-            todasContagens = [...todasContagens, ...loteData];
-          }
+        }
+        
+        // Se não encontrou nenhuma contagem e houve erro, retorna o último erro
+        if (todasContagens.length === 0 && ultimoErro) {
+          console.error('Falha ao carregar contagens. Último erro:', ultimoErro);
+          throw new Error(`Não foi possível carregar as contagens: ${ultimoErro.message || 'Erro desconhecido'}`);
+        } else if (ultimoErro) {
+          console.warn('Algumas contagens podem não ter sido carregadas devido a erros:', ultimoErro);
         }
         
         return { data: todasContagens, error: null };
