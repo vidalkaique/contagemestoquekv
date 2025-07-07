@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useCounts } from "@/hooks/use-counts";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ClipboardList, Plus, History, LineChart, Package, ChevronRight, Warehouse, Clock, Trash2 } from "lucide-react";
@@ -21,21 +21,9 @@ export default function Home() {
     setCountHistory(history);
   }, []);
 
-  const { data: ultimaContagem } = useQuery<ContagemWithItens>({
-    queryKey: ["ultima-contagem"],
-    queryFn: async () => {
-      try {
-        const response = await fetch("http://localhost:3000/contagens/ultima");
-        if (!response.ok) {
-          return null;
-        }
-        return response.json();
-      } catch (error) {
-        console.error("Erro ao buscar última contagem:", error);
-        return null;
-      }
-    },
-  });
+  const { data: contagens = [] } = useCounts();
+  const ultimaContagem = contagens.length > 0 ? contagens[0] : null;
+
 
   const handleClearCurrentCount = () => {
     if (window.confirm("Tem certeza que deseja limpar a contagem em andamento?")) {

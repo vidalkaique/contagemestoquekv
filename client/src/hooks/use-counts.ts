@@ -198,13 +198,13 @@ export function useCounts() {
             )
           )
         `)
-        .order('created_at', { ascending: false });
+        
 
       if (error) throw error;
       if (!data) return [];
 
       // Convert to ContagemWithItens[] type
-      return data.map((contagem) => {
+      const resultArray = data.map((contagem) => {
         // Verifica se estoques é um array e pega o primeiro item
         const estoque = Array.isArray(contagem.estoques) && contagem.estoques.length > 0 
           ? contagem.estoques[0] 
@@ -262,6 +262,10 @@ export function useCounts() {
         };
         return contagemWithItens;
       });
+
+      // sort locally by createdAt desc
+      resultArray.sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime());
+      return resultArray;
     }
   });
 }
