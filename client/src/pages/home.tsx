@@ -94,27 +94,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Última contagem finalizada */}
-        {ultimaContagem && (!showHistory || countHistory.length === 0) && (
-          <button
-            onClick={() => setLocation(`/count/${ultimaContagem.id}`)}
-            className="w-full bg-blue-50 text-blue-800 rounded-xl p-4 flex items-center justify-between shadow-sm hover:bg-blue-100 transition-colors"
-          >
-            <div className="flex items-center">
-              <div className="p-3 mr-4 bg-white rounded-full">
-                <History className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-left">Última Contagem</p>
-                <p className="text-sm text-left">
-                  {format(new Date(ultimaContagem.data), "dd/MM/yyyy", { locale: ptBR })}
-                  {ultimaContagem.estoque && ` • ${ultimaContagem.estoque.nome}`}
-                </p>
-              </div>
-            </div>
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        )} {/* Contagem em andamento */}
+{/* Contagem em andamento */}
         {countHistory.length > 0 && countHistory[0] && !countHistory[0].id && (
           <div className="relative bg-yellow-50 border border-yellow-200 rounded-xl p-4">
             <div className="flex items-start">
