@@ -314,7 +314,7 @@ export function useCounts() {
         console.log('\nItens da contagem (bruto):', contagem.itens_contagem);
         
         const itens = Array.isArray(contagem.itens_contagem) 
-          ? contagem.itens_contagem.map((item, index) => {
+          ? contagem.itens_contagem.map((item: any, index: number) => {
               console.log(`\n--- Processando item ${index + 1}/${contagem.itens_contagem.length} ---`);
               console.log('Dados brutos do item:', item);
               
