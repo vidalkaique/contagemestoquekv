@@ -159,25 +159,13 @@ export function useCounts() {
           excel_url,
           created_at,
           estoque_id,
-          estoques (
+          estoques!inner(
             id,
             nome,
             created_at
-          ),
-          itens_contagem (
-            id,
-            contagem_id,
-            produto_id,
-            nome_livre,
-            pallets,
-            lastros,
-            pacotes,
-            unidades,
-            total,
-            total_pacotes,
-            created_at
           )
         `)
+        .order('created_at', { ascending: false })
         
 
       if (error) throw error;
