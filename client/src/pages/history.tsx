@@ -50,9 +50,15 @@ export default function History() {
     return dateStr.includes(searchQuery);
   });
 
-  const handleDownloadExcel = async (contagemId: string) => {
+  const handleDownloadExcel = async (contagemId: string, excelUrl?: string | null) => {
     try {
-      // Buscar dados da contagem de forma autenticada
+      // Se já existe uma URL de Excel, redireciona para o download
+      if (excelUrl) {
+        window.open(excelUrl, '_blank');
+        return;
+      }
+
+      // Se não tem URL, busca os dados e gera o Excel
       const { data: contagem, error } = await supabase
         .from('contagens')
         .select(`
@@ -67,13 +73,15 @@ export default function History() {
             pacotes,
             unidades,
             total,
+            total_pacotes,
             produtos (
               id,
               codigo,
               nome,
               unidades_por_pacote,
               pacotes_por_lastro,
-              lastros_por_pallet
+              lastros_por_pallet,
+              quantidade_pacs_por_pallet
             )
           )
         `)
@@ -97,8 +105,15 @@ export default function History() {
         { header: "Lastros", key: "lastros", width: 10 },
         { header: "Pacotes", key: "pacotes", width: 10 },
         { header: "Unidades", key: "unidades", width: 10 },
-        { header: "Total", key: "total", width: 15 },
+        { header: "Total Pacotes", key: "total_pacotes", width: 12 },
+        { header: "Total Unidades", key: "total", width: 15 },
       ];
+
+      // Adicionar título
+      const titleRow = worksheet.addRow(['CONTAGEM DE ESTOQUE']);
+      titleRow.font = { bold: true, size: 18 };
+      titleRow.alignment = { horizontal: 'center' };
+      worksheet.mergeCells('A1:H1');
 
       // Adicionar dados
       (contagem.itens_contagem || []).forEach((item: any) => {
@@ -110,20 +125,68 @@ export default function History() {
           lastros: item.lastros || 0,
           pacotes: item.pacotes || 0,
           unidades: item.unidades || 0,
+          total_pacotes: item.total_pacotes || 0,
           total: item.total || 0,
         });
       });
 
+      // Adicionar totais
+      const totalPacotes = (contagem.itens_contagem || []).reduce((sum, item) => sum + (item.total_pacotes || 0), 0);
+      const totalUnidades = (contagem.itens_contagem || []).reduce((sum, item) => sum + (item.total || 0), 0);
+      
+      const totalRow = worksheet.addRow({
+        codigo: 'TOTAIS:',
+        total_pacotes: totalPacotes,
+        total: totalUnidades
+      });
+      
+      totalRow.font = { bold: true };
+
       // Estilizar cabeçalho
-      worksheet.getRow(1).font = { bold: true };
-      worksheet.getRow(1).fill = {
+      const headerRow = worksheet.getRow(2);
+      headerRow.font = { bold: true };
+      headerRow.fill = {
         type: "pattern",
         pattern: "solid",
         fgColor: { argb: "FFE0E0E0" },
       };
 
-      // Gerar e baixar o arquivo
+      // Gerar o arquivo Excel
       const buffer = await workbook.xlsx.writeBuffer();
+      const fileName = `contagem_${contagemId}_${new Date().getTime()}.xlsx`;
+      const filePath = `contagens/${contagemId}/${fileName}`;
+
+      // Fazer upload para o Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('contagens')
+        .upload(filePath, buffer, {
+          contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          upsert: true,
+          cacheControl: '3600'
+        });
+
+      if (uploadError) {
+        console.error('Erro ao fazer upload do Excel:', uploadError);
+        throw new Error('Erro ao salvar o arquivo Excel');
+      }
+
+      // Obter URL pública do arquivo
+      const { data: { publicUrl } } = supabase.storage
+        .from('contagens')
+        .getPublicUrl(filePath);
+
+      // Atualizar a contagem com a URL do Excel
+      const { error: updateError } = await supabase
+        .from('contagens')
+        .update({ excel_url: publicUrl })
+        .eq('id', contagemId);
+
+      if (updateError) {
+        console.error('Erro ao atualizar contagem com URL do Excel:', updateError);
+        throw new Error('Erro ao salvar o link do Excel');
+      }
+
+      // Baixar o arquivo para o usuário
       const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -134,7 +197,7 @@ export default function History() {
 
       toast({
         title: "Download iniciado",
-        description: "O arquivo Excel está sendo baixado",
+        description: "O arquivo Excel foi salvo e está sendo baixado",
       });
     } catch (error) {
       console.error("Erro ao baixar Excel:", error);
@@ -230,11 +293,11 @@ export default function History() {
                 </div>
                 {contagem.finalizada ? (
                   <Button
-                    onClick={() => handleDownloadExcel(contagem.id)}
+                    onClick={() => handleDownloadExcel(contagem.id, contagem.excel_url)}
                     className="w-full bg-primary/10 text-primary py-2 px-3 rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors"
                   >
                     <Download className="mr-2" size={16} />
-                    Baixar Excel
+                    {contagem.excel_url ? 'Abrir Excel' : 'Gerar Excel'}
                   </Button>
                 ) : (
                   <Button

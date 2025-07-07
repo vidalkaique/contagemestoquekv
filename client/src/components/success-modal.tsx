@@ -73,6 +73,7 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
           data,
           finalizada,
           estoque_id,
+          excel_url,
           estoques:estoques(
             id,
             nome
@@ -88,6 +89,12 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
       
       if (!contagemData) {
         throw new Error('Contagem não encontrada');
+      }
+
+      // Se já existe uma URL de Excel, redireciona para o download
+      if (contagemData.excel_url) {
+        window.open(contagemData.excel_url, '_blank');
+        return;
       }
       
       console.log('Dados da contagem:', contagemData);
@@ -310,8 +317,42 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
       // Adicionar linha em branco final
       worksheet.addRow([]);
 
-      // Gerar e baixar o arquivo
+      // Gerar o arquivo Excel
       const buffer = await workbook.xlsx.writeBuffer();
+      const fileName = `contagem_${countId}_${new Date().getTime()}.xlsx`;
+      const filePath = `contagens/${countId}/${fileName}`;
+
+      // Fazer upload para o Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('contagens')
+        .upload(filePath, buffer, {
+          contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          upsert: true,
+          cacheControl: '3600'
+        });
+
+      if (uploadError) {
+        console.error('Erro ao fazer upload do Excel:', uploadError);
+        throw new Error('Erro ao salvar o arquivo Excel');
+      }
+
+      // Obter URL pública do arquivo
+      const { data: { publicUrl } } = supabase.storage
+        .from('contagens')
+        .getPublicUrl(filePath);
+
+      // Atualizar a contagem com a URL do Excel
+      const { error: updateError } = await supabase
+        .from('contagens')
+        .update({ excel_url: publicUrl })
+        .eq('id', countId);
+
+      if (updateError) {
+        console.error('Erro ao atualizar contagem com URL do Excel:', updateError);
+        throw new Error('Erro ao salvar o link do Excel');
+      }
+
+      // Baixar o arquivo para o usuário
       const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -322,7 +363,7 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
 
       toast({
         title: "Download iniciado",
-        description: "O arquivo Excel está sendo baixado",
+        description: "O arquivo Excel foi salvo e está sendo baixado",
       });
     } catch (error) {
       console.error("Erro ao baixar Excel:", error);

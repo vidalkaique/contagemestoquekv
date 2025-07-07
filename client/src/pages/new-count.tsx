@@ -462,10 +462,13 @@ export default function NewCount() {
    * e marcando a contagem como finalizada
    */
   const handleFinalizeCount = async (): Promise<void> => {
+    // Resolve o ID da contagem usando, na ordem: estado, parâmetro da rota ou contagem não finalizada
+    const resolvedCountId = currentCountId || contagemId || unfinishedCount?.id;
+
     // ID que será usado na tela de sucesso
     let successRedirectId: string | undefined;
-    // Se o ID atual é de um draft local, trata como nova contagem
-    const isDraftId = currentCountId?.startsWith('draft-');
+    // Se o ID é de um draft local ou não existe, trata como nova contagem
+    const isDraftId = resolvedCountId?.startsWith('draft-') || !resolvedCountId;
     // Valida se existem produtos na contagem
     if (!products.length) {
       toast({
@@ -489,9 +492,9 @@ export default function NewCount() {
     
     try {
       // Se já tiver um ID de contagem, atualiza a existente
-      if (currentCountId && !isDraftId) {
-        console.log(`Atualizando contagem existente: ${currentCountId}`);
-        successRedirectId = currentCountId;
+      if (resolvedCountId && !isDraftId) {
+        console.log(`Atualizando contagem existente: ${resolvedCountId}`);
+        successRedirectId = resolvedCountId;
         
         // Atualiza os dados básicos da contagem
         const { error: updateError } = await supabase
@@ -500,20 +503,20 @@ export default function NewCount() {
             data: formattedDate,
             finalizada: true
           })
-          .eq('id', currentCountId);
+          .eq('id', resolvedCountId);
         
         if (updateError) {
           console.error("Erro ao atualizar contagem:", updateError);
           throw new Error(`Falha ao atualizar contagem: ${updateError.message}`);
         }
         
-        console.log(`Removendo itens antigos da contagem: ${currentCountId}`);
+        console.log(`Removendo itens antigos da contagem: ${resolvedCountId}`);
         
         // Remove os itens antigos da contagem
         const { error: deleteError } = await supabase
           .from('itens_contagem')
           .delete()
-          .eq('contagem_id', currentCountId);
+          .eq('contagem_id', resolvedCountId);
         
         if (deleteError) {
           console.error("Erro ao remover itens antigos:", deleteError);
@@ -523,7 +526,7 @@ export default function NewCount() {
         console.log(`Adicionando ${products.length} itens à contagem`);
         
         // Adiciona os itens atualizados à contagem
-        await addItemsToCount(currentCountId);
+        await addItemsToCount(resolvedCountId);
         
         console.log("Contagem finalizada com sucesso!");
       } else {
