@@ -198,7 +198,7 @@ export function useCounts() {
             )
           )
         `)
-        .order('data', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       if (!data) return [];
