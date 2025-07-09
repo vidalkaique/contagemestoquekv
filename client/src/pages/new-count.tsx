@@ -170,6 +170,8 @@ export default function NewCount() {
             unidades: product.unidades ?? 0,
             total: total,
             totalPacotes: totalPacotes,
+            // Garante que o código do produto seja incluído
+            codigo: product.codigo || undefined,
           });
           
           console.log(`Item ${product.nome} salvo com sucesso!`);
@@ -693,83 +695,70 @@ export default function NewCount() {
       const totalPacotes = item.totalPacotes || calculateTotalPacotes(item);
       const totalUnidades = item.total || calculateProductTotal(item);
       
-      // Tenta obter o código do produto de várias fontes possíveis
-      let codigoProduto = 'N/A';
-      // Prioriza o código já carregado no item, se existir
-      if (item.codigo) {
-        codigoProduto = item.codigo;
-        console.log('Usando código já presente no item:', codigoProduto);
-      }
-      if (!isFreeProduct && codigoProduto === 'N/A') {
-        // Tenta encontrar o produto no mapa de códigos usando diferentes chaves
-        const possibleIdFields = [
-          item.product_id,  // Primeiro tenta com product_id
-          item.id,          // Depois com id
-          item.produto_id   // E finalmente com produto_id
-        ].filter(Boolean);  // Remove valores nulos/undefined
-        
-        console.log(`Buscando código para o item ID: ${item.id}, possíveis IDs:`, possibleIdFields);
-        console.log('Mapa de códigos disponível:', Object.fromEntries(productCodesMap));
-        
-        let productInfo = null;
-        
-        // Tenta encontrar o produto no mapa usando cada ID possível
-        for (const id of possibleIdFields) {
-          if (productCodesMap.has(id)) {
-            productInfo = productCodesMap.get(id);
-            console.log(`Produto encontrado no mapa com ID ${id}:`, productInfo);
-            break;
-          }
+      // Função para obter o código do produto de várias fontes possíveis
+      const getProductCode = (item: any): string => {
+        // 1. Primeiro tenta pegar o código diretamente do item
+        if (item.codigo) {
+          console.log('Usando código direto do item:', item.codigo);
+          return item.codigo;
         }
+
+        // 2. Tenta pegar de propriedades aninhadas
+        const nestedCode = item.produto?.codigo || 
+                          item.produto?.codigo_barras || 
+                          item.produto?.referencia ||
+                          item.codigo_barras ||
+                          item.referencia;
         
-        if (productInfo) {
-          // Ordem de preferência para o código: codigo > codigo_barras > referencia > id
-          if (productInfo.codigo) {
-            codigoProduto = productInfo.codigo;
-            console.log('Usando código do produto:', codigoProduto);
-          } else if (productInfo.codigo_barras) {
-            codigoProduto = productInfo.codigo_barras;
-            console.log('Usando código de barras como código do produto:', codigoProduto);
-          } else if (productInfo.referencia) {
-            codigoProduto = productInfo.referencia;
-            console.log('Usando referência como código do produto:', codigoProduto);
-          } else {
-            // Se o produto foi encontrado no banco mas não tem nenhum código, deixa em branco
-            codigoProduto = ''; // Deixa em branco ao invés de mostrar o ID
-            console.log('Produto encontrado, mas sem código, código de barras ou referência. Deixando em branco.');
-          }
-        } else {
-          console.log('Produto não encontrado no mapa de códigos, verificando campos locais...');
-          
-          // Se não encontrou no mapa, verifica nos campos locais do item
-          const possibleCodeFields = [
-            'codigo', 'codigo_barras', 'referencia',
-            'produto.codigo', 'produto.codigo_barras', 'produto.referencia'
-          ];
-          
-          // Tenta encontrar em campos aninhados
-          for (const field of possibleCodeFields) {
-            try {
-              const value = field.split('.').reduce((obj, key) => obj?.[key], item);
-              if (value) {
-                codigoProduto = value.toString();
-                console.log(`Código encontrado no campo '${field}':`, codigoProduto);
-                break;
-              }
-            } catch (error) {
-              console.warn(`Erro ao acessar campo '${field}':`, error);
+        if (nestedCode) {
+          console.log('Usando código de propriedades aninhadas:', nestedCode);
+          return nestedCode;
+        }
+
+        // 3. Tenta usar o mapa de códigos (se disponível)
+        const possibleIds = [
+          item.product_id,
+          item.id,
+          item.produto_id,
+          item.produto?.id
+        ].filter(Boolean);
+
+        for (const id of possibleIds) {
+          if (productCodesMap?.has(id)) {
+            const productInfo = productCodesMap.get(id);
+            if (productInfo?.codigo) {
+              console.log('Usando código do mapa:', productInfo.codigo);
+              return productInfo.codigo;
             }
           }
-          
-          // Se ainda não encontrou, usa o ID do produto como último recurso
-          if (codigoProduto === 'N/A' && possibleIdFields.length > 0) {
-            codigoProduto = possibleIdFields[0];
-            console.log('Último recurso: usando ID do produto como código:', codigoProduto);
+        }
+
+        // 4. Tenta extrair de qualquer campo que possa conter o código
+        const codeFields = [
+          'codigo', 'codigo_barras', 'referencia', 'code', 'barcode', 'sku',
+          'produto.codigo', 'produto.codigo_barras', 'produto.referencia',
+          'produto.code', 'produto.barcode', 'produto.sku'
+        ];
+
+        for (const field of codeFields) {
+          try {
+            const value = field.split('.').reduce((obj, key) => obj?.[key], item);
+            if (value) {
+              console.log(`Usando código do campo ${field}:`, value);
+              return value.toString();
+            }
+          } catch (error) {
+            console.warn(`Erro ao acessar campo ${field}:`, error);
           }
         }
-      } else {
-        console.log('Produto livre - usando N/A como código');
-      }
+
+        // 5. Se nada mais funcionar, retorna o ID como último recurso
+        console.log('Nenhum código encontrado, usando ID como fallback:', item.id);
+        return item.id || 'N/A';
+      };
+
+      // Obtém o código do produto usando a função auxiliar
+      const codigoProduto = isFreeProduct ? 'N/A' : getProductCode(item);
       
       console.log('Código do produto a ser exibido:', codigoProduto);
       
@@ -792,7 +781,7 @@ export default function NewCount() {
         // Total de pacotes
         totalPacotes
       ]);
-    });
+    }
     
     // Gerar o arquivo Excel
     const buffer = await workbook.xlsx.writeBuffer();

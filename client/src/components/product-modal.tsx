@@ -13,6 +13,7 @@ interface ProductModalProps {
   onClose: () => void;
   onAddProduct: (product: {
     id: string;
+    codigo?: string;
     nome: string;
     pallets: number;
     lastros: number;

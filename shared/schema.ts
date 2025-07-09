@@ -101,6 +101,7 @@ export const insertItemContagemSchema = createInsertSchema(itensContagem).omit({
   lastros: z.number().min(0, "Lastros não pode ser negativo"),
   pacotes: z.number().min(0, "Pacotes não pode ser negativo"),
   unidades: z.number().min(0, "Unidades não pode ser negativo"),
+  codigo: z.string().optional(), // Adicionado para suportar o código do produto
 });
 
 // Types
