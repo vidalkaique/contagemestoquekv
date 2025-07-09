@@ -305,7 +305,7 @@ export default function History() {
                     </div>
                     <div className="text-right">
                       <p className="font-medium text-gray-900">
-                        {contagem.itens?.length || 0} produtos
+                        {contagem.qntdProdutos || contagem.itens?.length || 0} produtos
                       </p>
                       {contagem.finalizada ? (
                         <p className="text-xs text-emerald-600">Concluída</p>

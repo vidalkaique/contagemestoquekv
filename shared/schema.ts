@@ -57,6 +57,7 @@ export const contagens = pgTable("contagens", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   excelUrl: text("excel_url"),
   finalizada: boolean("finalizada").notNull().default(false),
+  qntdProdutos: integer("qntd_produtos").notNull().default(0),
 });
 
 export const itensContagem = pgTable("itens_contagem", {
@@ -175,7 +176,10 @@ export type NovaContagem = z.infer<typeof novaContagemSchema>;
 export type Produto = typeof produtos.$inferSelect;
 export type InsertProduto = Omit<Produto, 'id' | 'createdAt'>;
 
-export type Contagem = typeof contagens.$inferSelect;
+export type Contagem = typeof contagens.$inferSelect & {
+  qntdProdutos: number;
+};
+
 export type InsertContagem = z.infer<typeof insertContagemSchema>;
 
 export type ItemContagem = typeof itensContagem.$inferSelect;

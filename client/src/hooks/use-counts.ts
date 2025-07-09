@@ -100,6 +100,7 @@ export function useUnfinishedCount() {
         finalizada: first.finalizada,
         estoqueId: first.estoque_id,
         excelUrl: first.excel_url,
+        qntdProdutos: (first as any).qntd_produtos || 0,
         createdAt: new Date(first.created_at),
         produto: primeiroProduto ? {
           id: primeiroProduto.id,
@@ -224,6 +225,7 @@ export function useCounts() {
                 finalizada,
                 excel_url,
                 created_at,
+                qntd_produtos,
                 estoque_id,
                 estoques(
                   id,
@@ -443,6 +445,7 @@ export function useCounts() {
           finalizada: contagem.finalizada,
           estoqueId: contagem.estoque_id,
           excelUrl: contagem.excel_url,
+          qntdProdutos: contagem.qntd_produtos || 0,
           createdAt: new Date(contagem.created_at),
           itens: itens,
           produto: primeiroProduto,
@@ -538,7 +541,10 @@ export function useCreateCount() {
       if (error) throw error;
       if (!result) throw new Error('Nenhum dado retornado');
 
-      const contagem = result as ContagemRow & { estoque_id: string | null };
+      const contagem = result as ContagemRow & { 
+        estoque_id: string | null;
+        qntd_produtos?: number;
+      };
 
       const novaContagem: ContagemWithItens = {
         id: contagem.id,
@@ -546,6 +552,7 @@ export function useCreateCount() {
         finalizada: contagem.finalizada,
         estoqueId: contagem.estoque_id,
         excelUrl: contagem.excel_url,
+        qntdProdutos: contagem.qntd_produtos || 0,
         produto: null, // Inicialmente não há produto associado
         createdAt: new Date(contagem.created_at),
         itens: [],

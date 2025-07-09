@@ -955,13 +955,17 @@ export default function NewCount() {
           // Não interrompe o fluxo se falhar a geração do Excel
         }
         
+        // Conta o número de produtos únicos na contagem
+        const uniqueProductCount = new Set(products.map(p => p.id)).size;
+        
         // Atualiza os dados básicos da contagem
         const { error: updateError } = await supabase
           .from('contagens')
           .update({ 
             data: formattedDate,
             finalizada: true,
-            excel_url: excelUrl
+            excel_url: excelUrl,
+            qntd_produtos: uniqueProductCount // Adiciona a contagem de produtos únicos
           })
           .eq('id', resolvedCountId);
         
@@ -992,6 +996,9 @@ export default function NewCount() {
       } else {
         console.log("Criando nova contagem...");
         
+        // Conta o número de produtos únicos na contagem
+        const uniqueProductCount = new Set(products.map(p => p.id)).size;
+        
         // Cria uma nova contagem
         const { data: contagem, error: createError } = await supabase
           .from('contagens')
@@ -999,6 +1006,7 @@ export default function NewCount() {
             data: formattedDate,
             finalizada: true,
             estoque_id: unfinishedCount?.estoque?.id || null,
+            qntd_produtos: uniqueProductCount // Adiciona a contagem de produtos únicos
           }])
           .select()
           .single();
