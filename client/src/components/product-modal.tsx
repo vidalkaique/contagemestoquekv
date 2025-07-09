@@ -80,14 +80,6 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
     }));
   };
 
-  const handleApplyRounding = (pacotesToAdd: number, newUnidades: number) => {
-    setFormData(prev => ({
-      ...prev,
-      pacotes: prev.pacotes + pacotesToAdd,
-      unidades: newUnidades
-    }));
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProduct) {
