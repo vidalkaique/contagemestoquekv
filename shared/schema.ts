@@ -1,5 +1,6 @@
-import { pgTable, text, serial, integer, uuid, date, timestamp, boolean } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { pgTable, text, serial, integer, uuid, date, timestamp, boolean, uniqueIndex } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { one } from "drizzle-orm/pg-core/operations/db/query-builders/select.types";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -11,16 +12,44 @@ export const produtos = pgTable("produtos", {
   pacotesPorLastro: integer("pacotes_por_lastro").notNull().default(1),
   lastrosPorPallet: integer("lastros_por_pallet").notNull().default(1),
   quantidadePacsPorPallet: integer("quantidade_pacs_por_pallet"),
+  ativo: boolean("ativo").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const produtoEstoque = pgTable("produto_estoque", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  produtoId: uuid("produto_id").notNull().references(() => produtos.id, { onDelete: "cascade" }),
+  estoqueId: uuid("estoque_id").notNull().references(() => estoques.id, { onDelete: "cascade" }),
+  localizacao: text("localizacao"),
+  quantidadeMinima: integer("quantidade_minima").notNull().default(0),
+  criadoEm: timestamp("criado_em").defaultNow().notNull(),
+  atualizadoEm: timestamp("atualizado_em").defaultNow().notNull()
+}, (table) => ({
+  // Índice único para garantir que um produto só pode estar uma vez em cada estoque
+  unqProdutoEstoque: uniqueIndex("unq_produto_estoque").on(table.produtoId, table.estoqueId),
+}));
 
 export const estoques = pgTable("estoques", {
   id: uuid("id").primaryKey().defaultRandom(),
   nome: text("nome").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+  ativo: boolean("ativo").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export type Estoque = typeof estoques.$inferSelect;
+export type Estoque = typeof estoques.$inferSelect & {
+  produtos?: Array<Produto & { produtoEstoque?: ProdutoEstoque }>;
+};
+
+export type ProdutoEstoque = typeof produtoEstoque.$inferSelect & {
+  produto?: Produto;
+  estoque?: Estoque;
+};
+
+export type ProdutoComEstoque = Produto & {
+  produtoEstoque?: ProdutoEstoque;
+};
 
 export const contagens = pgTable("contagens", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -47,6 +76,10 @@ export const itensContagem = pgTable("itens_contagem", {
 // Relations
 export const contagensRelations = relations(contagens, ({ many }) => ({
   itens: many(itensContagem),
+  estoque: one(estoques, {
+    fields: [contagens.estoqueId],
+    references: [estoques.id],
+  }),
 }));
 
 export const itensContagemRelations = relations(itensContagem, ({ one }) => ({
@@ -62,7 +95,35 @@ export const itensContagemRelations = relations(itensContagem, ({ one }) => ({
 
 export const produtosRelations = relations(produtos, ({ many }) => ({
   itens: many(itensContagem),
+  estoques: many(produtoEstoque, { relationName: "produto_estoque" }),
 }));
+
+export const estoquesRelations = relations(estoques, ({ many }) => ({
+  produtos: many(produtoEstoque, { relationName: "produto_estoque" }),
+  contagens: many(contagens),
+}));
+
+export const produtoEstoqueRelations = relations(produtoEstoque, ({ one }) => ({
+  produto: one(produtos, {
+    fields: [produtoEstoque.produtoId],
+    references: [produtos.id],
+  }),
+  estoque: one(estoques, {
+    fields: [produtoEstoque.estoqueId],
+    references: [estoques.id],
+  }),
+}));
+
+// Schema para produto_estoque
+export const insertProdutoEstoqueSchema = createInsertSchema(produtoEstoque).omit({
+  id: true,
+  criadoEm: true,
+  atualizadoEm: true,
+}).extend({
+  produtoId: z.string().uuid("ID do produto inválido"),
+  estoqueId: z.string().uuid("ID do estoque inválido"),
+  quantidadeMinima: z.number().min(0, "A quantidade mínima não pode ser negativa").optional(),
+});
 
 // Insert schemas
 export const insertProdutoSchema = createInsertSchema(produtos).omit({
@@ -121,4 +182,12 @@ export type InsertContagem = z.infer<typeof insertContagemSchema>;
 export type ItemContagem = typeof itensContagem.$inferSelect;
 export type InsertItemContagem = z.infer<typeof insertItemContagemSchema>;
 
-export type ContagemWithItens = Contagem & { itens: (ItemContagem & { produto: Produto | null })[]; estoque: Estoque | null };
+export type ContagemWithItens = Contagem & {
+  itens: (ItemContagem & { produto: Produto | null })[];
+  produto: Produto | null;
+  estoque: Estoque | null;
+};
+
+export type EstoqueComProdutos = Estoque & {
+  produtos: Array<Produto & { produtoEstoque?: ProdutoEstoque }>;
+};

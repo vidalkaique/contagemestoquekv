@@ -89,6 +89,11 @@ export function useUnfinishedCount() {
         : null;
 
       // Convert to ContagemWithItens type
+      // Garante que temos um produto para a contagem
+      const primeiroProduto = ((first as any).itens_contagem || []).length > 0 
+        ? ((first as any).itens_contagem[0].produtos || [])[0] || null 
+        : null;
+
       const contagem: ContagemWithItens = {
         id: first.id,
         data: first.data,
@@ -96,6 +101,18 @@ export function useUnfinishedCount() {
         estoqueId: first.estoque_id,
         excelUrl: first.excel_url,
         createdAt: new Date(first.created_at),
+        produto: primeiroProduto ? {
+          id: primeiroProduto.id,
+          codigo: primeiroProduto.codigo,
+          nome: primeiroProduto.nome,
+          unidadesPorPacote: primeiroProduto.unidades_por_pacote,
+          pacotesPorLastro: primeiroProduto.pacotes_por_lastro,
+          lastrosPorPallet: primeiroProduto.lastros_por_pallet,
+          quantidadePacsPorPallet: primeiroProduto.quantidade_pacs_por_pallet,
+          ativo: primeiroProduto.ativo,
+          createdAt: new Date(primeiroProduto.created_at),
+          updatedAt: new Date(primeiroProduto.updated_at || primeiroProduto.created_at)
+        } : null,
         itens: ((first as any).itens_contagem || []).map((item: any) => {
           // Garante que produtos seja um único objeto ou null
           const produtoEntry = Array.isArray(item.produtos) && item.produtos.length > 0 
@@ -135,7 +152,9 @@ export function useUnfinishedCount() {
         estoque: estoque ? {
           id: estoque.id,
           nome: estoque.nome,
-          createdAt: new Date(estoque.created_at)
+          ativo: true,
+          createdAt: new Date(estoque.created_at),
+          updatedAt: new Date()
         } : null
       };
 
@@ -407,6 +426,17 @@ export function useCounts() {
           console.log('Dados completos da contagem (para depuração):', contagem);
         }
 
+        // Encontra o primeiro produto não nulo dos itens
+        let primeiroProduto = null;
+        if (itens && itens.length > 0) {
+          for (const item of itens) {
+            if (item.produto) {
+              primeiroProduto = item.produto;
+              break;
+            }
+          }
+        }
+
         const contagemWithItens: ContagemWithItens = {
           id: contagem.id,
           data: contagem.data,
@@ -415,10 +445,13 @@ export function useCounts() {
           excelUrl: contagem.excel_url,
           createdAt: new Date(contagem.created_at),
           itens: itens,
+          produto: primeiroProduto,
           estoque: estoque ? {
             id: estoque.id,
             nome: estoque.nome,
-            createdAt: new Date(estoque.created_at)
+            ativo: true,
+            createdAt: new Date(estoque.created_at),
+            updatedAt: new Date(estoque.updated_at || estoque.created_at)
           } : null
         };
 
@@ -513,6 +546,7 @@ export function useCreateCount() {
         finalizada: contagem.finalizada,
         estoqueId: contagem.estoque_id,
         excelUrl: contagem.excel_url,
+        produto: null, // Inicialmente não há produto associado
         createdAt: new Date(contagem.created_at),
         itens: [],
         estoque: null

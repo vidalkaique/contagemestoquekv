@@ -1364,7 +1364,12 @@ export default function NewCount() {
         )}
       </div>
 
-      <ProductModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} onAddProduct={handleAddProduct} />
+      <ProductModal 
+        isOpen={isProductModalOpen} 
+        onClose={() => setIsProductModalOpen(false)} 
+        onAddProduct={handleAddProduct} 
+        estoqueId={unfinishedCount?.estoqueId || undefined} 
+      />
     </>
   );
 }

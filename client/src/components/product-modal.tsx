@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Search } from "lucide-react";
+import { X, Search, PackagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,12 +7,15 @@ import { NumberInputWithButtons } from "@/components/ui/number-input-with-button
 import { RoundingSuggestion } from "@/components/rounding-suggestion";
 import { useToast } from "@/hooks/use-toast";
 import { useDebounce } from "@/hooks/use-debounce";
-import { useProductSearch } from "@/hooks/use-products";
-import type { Produto } from "@shared/schema";
+import { useProductSearch, useProductsByEstoque } from "@/hooks/use-products";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import type { Produto, ProdutoComEstoque } from "@shared/schema";
 
 interface ProductModalProps {
   isOpen: boolean;
   onClose: () => void;
+  estoqueId?: string;
   onAddProduct: (product: {
     id: string;
     codigo?: string;
@@ -27,8 +30,9 @@ interface ProductModalProps {
   }) => void;
 }
 
-export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductModalProps) {
+export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct }: ProductModalProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Produto | null>(null);
@@ -40,7 +44,21 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
   });
 
   const debouncedSearch = useDebounce(searchTerm, 300);
-  const { data: suggestions = [], isLoading } = useProductSearch(debouncedSearch);
+  
+  // Busca produtos do estoque atual se houver um estoque selecionado
+  const { data: produtosEstoque = [] } = useProductsByEstoque(estoqueId);
+  
+  // Busca sugestões de produtos baseado no termo de busca
+  const { data: searchResults = [], isLoading } = useProductSearch({
+    query: debouncedSearch,
+    estoqueId,
+  });
+  
+  // Se houver um estoque selecionado, mostra apenas os produtos do estoque
+  // Caso contrário, mostra os resultados da busca
+  const suggestions = estoqueId && !searchTerm
+    ? produtosEstoque.map(pe => pe as unknown as Produto)
+    : searchResults;
 
   const handleSelectSuggestion = (produto: Produto) => {
     setSelectedProduct(produto);
@@ -93,6 +111,37 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
       unidades: 0,
     });
     onClose();
+  };
+
+  // Adiciona um produto ao estoque atual
+  const handleAddToEstoque = async (produto: Produto) => {
+    if (!estoqueId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('produto_estoque')
+        .insert({
+          produto_id: produto.id,
+          estoque_id: estoqueId,
+        });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Sucesso",
+        description: "Produto adicionado ao estoque com sucesso!",
+      });
+      
+      // Atualiza a lista de produtos do estoque
+      queryClient.invalidateQueries({ queryKey: ["produtos/estoque", estoqueId] });
+    } catch (error) {
+      console.error("Erro ao adicionar produto ao estoque:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível adicionar o produto ao estoque.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Calcula o total de unidades baseado nas quantidades informadas
@@ -211,69 +260,58 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
                   </div>
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* Quantidades */}
-          {selectedProduct && (
-            <>
-              <div className="grid grid-cols-2 gap-3 sm:gap-4 pb-4">
-                <div>
-                  <div className="space-y-1">
-                    <Label className="text-base">Pallets</Label>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="pallets">Pallets</Label>
                     <NumberInputWithButtons
+                      id="pallets"
                       value={formData.pallets}
                       onChange={(value) => setFormData({ ...formData, pallets: value })}
                       min={0}
                     />
                   </div>
-                </div>
-                <div>
-                  <div className="space-y-1">
-                    <Label className="text-base">Lastros</Label>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="lastros">Lastros</Label>
                     <NumberInputWithButtons
+                      id="lastros"
                       value={formData.lastros}
                       onChange={(value) => setFormData({ ...formData, lastros: value })}
                       min={0}
                     />
                   </div>
-                </div>
-                <div>
-                  <div className="space-y-1">
-                    <Label className="text-base">Pacotes</Label>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="pacotes">Pacotes</Label>
                     <NumberInputWithButtons
+                      id="pacotes"
                       value={formData.pacotes}
                       onChange={(value) => setFormData({ ...formData, pacotes: value })}
                       min={0}
                     />
                   </div>
-                </div>
-                <div>
-                  <div className="space-y-1">
-                    <Label className="text-base">Unidades</Label>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="unidades">Unidades</Label>
                     <NumberInputWithButtons
+                      id="unidades"
                       value={formData.unidades}
                       onChange={(value) => setFormData({ ...formData, unidades: value })}
                       min={0}
                     />
-                    {selectedProduct.unidadesPorPacote && selectedProduct.unidadesPorPacote > 0 && formData.unidades > 0 && (
-                      <RoundingSuggestion
-                        currentValue={formData.unidades}
-                        maxValue={selectedProduct.unidadesPorPacote}
-                        onApply={handleApplyRounding}
-                      />
-                    )}
+                  </div>
+                </div>
+
+                {/* Total */}
+                <div className="bg-emerald-50 p-3 rounded-lg">
+                  <div className="text-sm text-emerald-800">
+                    <strong>Total:</strong> {calculateTotal()} unidades
                   </div>
                 </div>
               </div>
-
-              {/* Total */}
-              <div className="bg-emerald-50 p-3 rounded-lg">
-                <div className="text-sm text-emerald-800">
-                  <strong>Total:</strong> {calculateTotal()} unidades
-                </div>
-              </div>
-            </>
+            </div>
           )}
 
           <div className="flex justify-end space-x-3 pt-6">

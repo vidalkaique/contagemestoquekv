@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Produto, InsertProduto } from "@shared/schema";
+import type { Produto, InsertProduto, ProdutoComEstoque } from "@shared/schema";
 import { supabase } from "@/lib/supabase";
 
 const fullProductSelect = 'id, codigo, nome, created_at, unidades_por_pacote, pacotes_por_lastro, lastros_por_pallet, quantidade_pacs_por_pallet';
@@ -9,10 +9,12 @@ const mapProdutoFromDb = (produto: any): Produto => ({
   codigo: produto.codigo,
   nome: produto.nome,
   createdAt: new Date(produto.created_at),
+  updatedAt: new Date(produto.updated_at || produto.created_at),
   unidadesPorPacote: produto.unidades_por_pacote ?? 1,
   pacotesPorLastro: produto.pacotes_por_lastro ?? 1,
   lastrosPorPallet: produto.lastros_por_pallet ?? 1,
   quantidadePacsPorPallet: produto.quantidade_pacs_por_pallet ?? 0,
+  ativo: produto.ativo ?? true,
 });
 
 export function useProducts() {
@@ -31,13 +33,51 @@ export function useProducts() {
   });
 }
 
-export function useProductSearch(query: string) {
-  return useQuery<Produto[]>({ 
-    queryKey: ["produtos/search", query],
+interface ProductSearchOptions {
+  query: string;
+  estoqueId?: string;
+}
+
+export function useProductSearch({ query, estoqueId }: ProductSearchOptions) {
+  return useQuery<ProdutoComEstoque[]>({ 
+    queryKey: ["produtos/search", { query, estoqueId }],
     queryFn: async () => {
-      if (!query.trim()) return [];
       const searchTerm = query.trim().toLowerCase();
       
+      // Se não houver termo de busca, retorna vazio
+      if (!searchTerm) return [];
+      
+      // Se houver um estoqueId, busca apenas os produtos desse estoque
+      if (estoqueId) {
+        const { data: produtosEstoque, error: peError } = await supabase
+          .from('produto_estoque')
+          .select(`
+            *,
+            produto:produtos(${fullProductSelect})
+          `)
+          .eq('estoque_id', estoqueId)
+          .or(
+            `produto.nome.ilike.%${searchTerm}%,` +
+            `produto.codigo.ilike.%${searchTerm}%`
+          );
+          
+        if (peError) throw peError;
+        
+        return (produtosEstoque || []).map(pe => ({
+          ...mapProdutoFromDb(pe.produto),
+          produtoEstoque: {
+            id: pe.id,
+            produtoId: pe.produto_id,
+            estoqueId: pe.estoque_id,
+            localizacao: pe.localizacao,
+            quantidadeMinima: pe.quantidade_minima,
+            criadoEm: new Date(pe.criado_em),
+            atualizadoEm: new Date(pe.atualizado_em)
+          }
+        }));
+      }
+      
+      // Busca geral sem filtro de estoque
       const { data, error } = await supabase
         .from('produtos')
         .select(fullProductSelect)
@@ -50,6 +90,7 @@ export function useProductSearch(query: string) {
 
       if (error) throw error;
 
+      // Se não encontrou resultados, tenta uma busca mais flexível
       if (!data?.length) {
         const terms = searchTerm.split(/\s+/).filter(t => t.length > 1);
         if (!terms.length) return [];
@@ -70,6 +111,41 @@ export function useProductSearch(query: string) {
     },
     enabled: !!query.trim(),
     staleTime: 1000 * 60 * 5,
+  });
+}
+
+// Hook para buscar produtos de um estoque específico
+export function useProductsByEstoque(estoqueId?: string) {
+  return useQuery<ProdutoComEstoque[]>({
+    queryKey: ["produtos/estoque", estoqueId],
+    queryFn: async () => {
+      if (!estoqueId) return [];
+      
+      const { data: produtosEstoque, error } = await supabase
+        .from('produto_estoque')
+        .select(`
+          *,
+          produto:produtos(${fullProductSelect})
+        `)
+        .eq('estoque_id', estoqueId)
+        .order('criado_em', { ascending: false });
+        
+      if (error) throw error;
+      
+      return (produtosEstoque || []).map(pe => ({
+        ...mapProdutoFromDb(pe.produto),
+        produtoEstoque: {
+          id: pe.id,
+          produtoId: pe.produto_id,
+          estoqueId: pe.estoque_id,
+          localizacao: pe.localizacao,
+          quantidadeMinima: pe.quantidade_minima,
+          criadoEm: new Date(pe.criado_em),
+          atualizadoEm: new Date(pe.atualizado_em)
+        }
+      }));
+    },
+    enabled: !!estoqueId,
   });
 }
 
