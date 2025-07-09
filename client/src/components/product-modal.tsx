@@ -3,6 +3,7 @@ import { X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NumberInputWithButtons } from "@/components/ui/number-input-with-buttons";
 import { useToast } from "@/hooks/use-toast";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useProductSearch } from "@/hooks/use-products";
@@ -211,56 +212,40 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
                 <div>
                   <div className="space-y-1">
                     <Label className="text-base">Pallets</Label>
-                    <Input
-                      type="number"
-                      min="0"
+                    <NumberInputWithButtons
                       value={formData.pallets}
-                      onChange={(e) =>
-                        setFormData({ ...formData, pallets: parseInt(e.target.value) || 0 })
-                      }
-                      className="h-12 text-base"
+                      onChange={(value) => setFormData({ ...formData, pallets: value })}
+                      min={0}
                     />
                   </div>
                 </div>
                 <div>
                   <div className="space-y-1">
                     <Label className="text-base">Lastros</Label>
-                    <Input
-                      type="number"
-                      min="0"
+                    <NumberInputWithButtons
                       value={formData.lastros}
-                      onChange={(e) =>
-                        setFormData({ ...formData, lastros: parseInt(e.target.value) || 0 })
-                      }
-                      className="h-12 text-base"
+                      onChange={(value) => setFormData({ ...formData, lastros: value })}
+                      min={0}
                     />
                   </div>
                 </div>
                 <div>
                   <div className="space-y-1">
                     <Label className="text-base">Pacotes</Label>
-                    <Input
-                      type="number"
-                      min="0"
+                    <NumberInputWithButtons
                       value={formData.pacotes}
-                      onChange={(e) =>
-                        setFormData({ ...formData, pacotes: parseInt(e.target.value) || 0 })
-                      }
-                      className="h-12 text-base"
+                      onChange={(value) => setFormData({ ...formData, pacotes: value })}
+                      min={0}
                     />
                   </div>
                 </div>
                 <div>
                   <div className="space-y-1">
                     <Label className="text-base">Unidades</Label>
-                    <Input
-                      type="number"
-                      min="0"
+                    <NumberInputWithButtons
                       value={formData.unidades}
-                      onChange={(e) =>
-                        setFormData({ ...formData, unidades: parseInt(e.target.value) || 0 })
-                      }
-                      className="h-12 text-base"
+                      onChange={(value) => setFormData({ ...formData, unidades: value })}
+                      min={0}
                     />
                   </div>
                 </div>
