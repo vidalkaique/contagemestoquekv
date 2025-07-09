@@ -464,25 +464,89 @@ export default function NewCount() {
   // Função para gerar e salvar o Excel no Supabase Storage
   // Função para buscar os códigos dos produtos no banco de dados
   const fetchProductCodes = async (productIds: string[]) => {
-    if (!productIds.length) return new Map();
+    if (!productIds.length) {
+      console.log('Nenhum ID de produto fornecido para busca');
+      return new Map();
+    }
     
     try {
-      const { data: produtos, error } = await supabase
-        .from('produtos')
-        .select('id, codigo, codigo_barras, referencia')
-        .in('id', productIds);
+      console.log('Buscando códigos para os produtos:', productIds);
+      
+      // Verifica se há IDs válidos
+      const validProductIds = productIds.filter(id => {
+        const isValid = id && typeof id === 'string' && id.trim() !== '';
+        if (!isValid) {
+          console.warn('ID de produto inválido encontrado:', id);
+        }
+        return isValid;
+      });
+      
+      if (validProductIds.length === 0) {
+        console.log('Nenhum ID de produto válido para busca');
+        return new Map();
+      }
+      
+      console.log('IDs válidos para busca:', validProductIds);
+      
+      // Busca os produtos em lotes menores para evitar problemas com a query
+      const BATCH_SIZE = 50;
+      const batches = [];
+      
+      for (let i = 0; i < validProductIds.length; i += BATCH_SIZE) {
+        const batch = validProductIds.slice(i, i + BATCH_SIZE);
+        batches.push(batch);
+      }
+      
+      console.log(`Buscando produtos em ${batches.length} lotes...`);
+      
+      let allProducts: any[] = [];
+      
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+        console.log(`Buscando lote ${i + 1}/${batches.length} com ${batch.length} produtos...`);
         
-      if (error) {
-        console.error('Erro ao buscar códigos dos produtos:', error);
+        const { data: produtos, error } = await supabase
+          .from('produtos')
+          .select('id, codigo, codigo_barras, referencia, nome')
+          .in('id', batch);
+          
+        if (error) {
+          console.error(`Erro ao buscar lote ${index + 1}:`, error);
+          continue;
+        }
+        
+        console.log(`Encontrados ${produtos.length} produtos no lote ${index + 1}`);
+        allProducts = [...allProducts, ...(produtos || [])];
+      }
+      
+      console.log(`Total de produtos encontrados: ${allProducts.length}`);
+      
+      if (allProducts.length === 0) {
+        console.warn('Nenhum produto encontrado no banco de dados para os IDs fornecidos');
         return new Map();
       }
       
       // Cria um mapa de ID do produto para seus dados
-      return new Map(produtos.map(p => [p.id, {
-        codigo: p.codigo,
-        codigo_barras: p.codigo_barras,
-        referencia: p.referencia
-      }]));
+      const productMap = new Map();
+      
+      for (const p of allProducts) {
+        if (!p || !p.id) continue;
+        
+        console.log(`Produto encontrado - ID: ${p.id}, Nome: ${p.nome || 'Sem nome'}, ` +
+                   `Código: ${p.codigo || 'N/A'}, Código de Barras: ${p.codigo_barras || 'N/A'}, ` +
+                   `Referência: ${p.referencia || 'N/A'}`);
+        
+        productMap.set(p.id, {
+          codigo: p.codigo || null,
+          codigo_barras: p.codigo_barras || null,
+          referencia: p.referencia || null,
+          nome: p.nome || 'Produto sem nome'
+        });
+      }
+      
+      console.log('Mapa de produtos criado com sucesso. Total de itens:', productMap.size);
+      return productMap;
+      
     } catch (error) {
       console.error('Erro inesperado ao buscar códigos dos produtos:', error);
       return new Map();
@@ -495,13 +559,64 @@ export default function NewCount() {
     console.log('items:', JSON.stringify(items, null, 2));
     
     // Busca os códigos dos produtos no banco de dados
-    const productIds = items
-      .filter(item => !item.id?.startsWith('free-'))
-      .map(item => item.id)
-      .filter((id, index, self) => self.indexOf(id) === index); // Remove duplicados
-      
+    console.log('Itens recebidos para geração do Excel:', JSON.stringify(items, null, 2));
+    
+    // Extrai os IDs dos produtos, garantindo que são válidos
+    const productEntries = items
+      .filter(item => {
+        // Verifica se o item tem um ID válido (não é produto livre)
+        const hasValidId = item && item.id && !item.id.startsWith('free-');
+        // Verifica se tem product_id (caso o ID principal seja diferente)
+        const hasProductId = item && item.product_id && !item.product_id.startsWith('free-');
+        
+        if (!hasValidId && !hasProductId) {
+          console.log('Item inválido ou é produto livre:', item);
+          return false;
+        }
+        return true;
+      })
+      .map(item => {
+        // Usa product_id se disponível, senão usa id
+        const productId = item.product_id || item.id;
+        console.log(`Processando item - ID: ${item.id}, ` +
+                   `Product ID: ${item.product_id || 'N/A'}, ` +
+                   `Nome: ${item.nome || 'Sem nome'}, ` +
+                   `Usando ID: ${productId}`);
+        
+        return {
+          id: item.id,
+          product_id: productId,
+          nome: item.nome
+        };
+      });
+    
+    // Extrai apenas os IDs únicos para busca
+    const productIds = Array.from(
+      productEntries
+        .map(entry => entry.product_id)
+        .reduce((unique, item) => {
+          if (!unique.includes(item)) {
+            unique.push(item);
+          }
+          return unique;
+        }, [] as string[])
+    );
+    
+    // Log para depuração
+    console.log('Entradas de produtos processadas:', productEntries);
+    console.log('IDs de produtos únicos para busca:', productIds);
+    
+    console.log('IDs de produtos únicos para busca:', productIds);
+    
+    // Busca os códigos dos produtos no banco
     const productCodesMap = await fetchProductCodes(productIds);
     console.log('Mapa de códigos de produtos:', Object.fromEntries(productCodesMap));
+    
+    // Verifica se todos os produtos foram encontrados
+    const missingProducts = productIds.filter(id => !productCodesMap.has(id));
+    if (missingProducts.length > 0) {
+      console.warn('Os seguintes produtos não foram encontrados no banco de dados:', missingProducts);
+    }
     
     const { Workbook } = await import('exceljs');
     
@@ -619,22 +734,40 @@ export default function NewCount() {
       // Tenta obter o código do produto de várias fontes possíveis
       let codigoProduto = 'N/A';
       if (!isFreeProduct) {
+        // Usa product_id se disponível, senão usa id
+        const productIdToLookup = item.product_id || item.id;
+        
+        console.log(`Buscando código para o item ID: ${item.id}, Product ID: ${productIdToLookup}`);
+        console.log('Mapa de códigos disponível:', Object.fromEntries(productCodesMap));
+        
         // Primeiro tenta obter do mapa de códigos buscado no banco
-        const productInfo = productCodesMap.get(item.id);
+        const productInfo = productCodesMap.get(productIdToLookup);
+        
         if (productInfo) {
+          console.log('Informações do produto encontradas no banco:', productInfo);
+          
           // Ordem de preferência: codigo > codigo_barras > referencia > id
-          codigoProduto = productInfo.codigo || 
-                          productInfo.codigo_barras || 
-                          productInfo.referencia || 
-                          item.id;
-          console.log('Código encontrado no banco de dados:', codigoProduto);
+          if (productInfo.codigo) {
+            codigoProduto = productInfo.codigo;
+            console.log('Usando código do produto:', codigoProduto);
+          } else if (productInfo.codigo_barras) {
+            codigoProduto = productInfo.codigo_barras;
+            console.log('Usando código de barras como código do produto:', codigoProduto);
+          } else if (productInfo.referencia) {
+            codigoProduto = productInfo.referencia;
+            console.log('Usando referência como código do produto:', codigoProduto);
+          } else {
+            codigoProduto = item.id;
+            console.log('Nenhum código encontrado, usando ID do produto:', codigoProduto);
+          }
         } else {
           console.log('Produto não encontrado no mapa de códigos, verificando campos locais...');
           
           // Se não encontrou no mapa, verifica nos campos locais
           const possibleCodeFields = [
-            'codigo', 'codigo_barras', 'referencia', 'id',
-            ...(item.produto ? ['produto.codigo', 'produto.codigo_barras', 'produto.referencia'] : [])
+            'codigo', 'codigo_barras', 'referencia',
+            'produto.codigo', 'produto.codigo_barras', 'produto.referencia',
+            'produto_id', 'id'
           ];
           
           for (const field of possibleCodeFields) {
