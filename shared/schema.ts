@@ -1,6 +1,5 @@
 import { pgTable, text, serial, integer, uuid, date, timestamp, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
-// Removed invalid import - 'one' is not directly used in this file
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -74,7 +73,7 @@ export const itensContagem = pgTable("itens_contagem", {
 });
 
 // Relations
-export const contagensRelations = relations(contagens, ({ many }) => ({
+export const contagensRelations = relations(contagens, ({ many, one }) => ({
   itens: many(itensContagem),
   estoque: one(estoques, {
     fields: [contagens.estoqueId],

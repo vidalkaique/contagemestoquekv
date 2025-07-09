@@ -148,7 +148,7 @@ export default function Products() {
       lastrosPorPallet: Math.max(0, Number(formData.lastrosPorPallet)),
       quantidadePacsPorPallet: Math.max(0, Number(formData.pacotesPorLastro)) * Math.max(0, Number(formData.lastrosPorPallet)),
       ativo: true,
-      updatedAt: new Date().toISOString(),
+      updatedAt: new Date(),
     };
 
     if (editingProduct) {
