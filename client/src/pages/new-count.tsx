@@ -761,9 +761,9 @@ export default function NewCount() {
             codigoProduto = productInfo.referencia;
             console.log('Usando referência como código do produto:', codigoProduto);
           } else {
-            // Se não encontrar nenhum código, usa o primeiro ID disponível
-            codigoProduto = possibleIdFields[0] || 'N/A';
-            console.log('Nenhum código encontrado, usando ID do produto:', codigoProduto);
+            // Se o produto foi encontrado no banco mas não tem nenhum código, deixa em branco
+            codigoProduto = ''; // Deixa em branco ao invés de mostrar o ID
+            console.log('Produto encontrado, mas sem código, código de barras ou referência. Deixando em branco.');
           }
         } else {
           console.log('Produto não encontrado no mapa de códigos, verificando campos locais...');
@@ -791,7 +791,7 @@ export default function NewCount() {
           // Se ainda não encontrou, usa o ID do produto como último recurso
           if (codigoProduto === 'N/A' && possibleIdFields.length > 0) {
             codigoProduto = possibleIdFields[0];
-            console.log('Usando ID do produto como código:', codigoProduto);
+            console.log('Último recurso: usando ID do produto como código:', codigoProduto);
           }
         }
       } else {
