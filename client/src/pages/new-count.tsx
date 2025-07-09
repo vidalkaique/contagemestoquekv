@@ -728,19 +728,29 @@ export default function NewCount() {
       // Tenta obter o código do produto de várias fontes possíveis
       let codigoProduto = 'N/A';
       if (!isFreeProduct) {
-        // Usa product_id se disponível, senão usa id
-        const productIdToLookup = item.product_id || item.id;
+        // Tenta encontrar o produto no mapa de códigos usando diferentes chaves
+        const possibleIdFields = [
+          item.product_id,  // Primeiro tenta com product_id
+          item.id,          // Depois com id
+          item.produto_id   // E finalmente com produto_id
+        ].filter(Boolean);  // Remove valores nulos/undefined
         
-        console.log(`Buscando código para o item ID: ${item.id}, Product ID: ${productIdToLookup}`);
+        console.log(`Buscando código para o item ID: ${item.id}, possíveis IDs:`, possibleIdFields);
         console.log('Mapa de códigos disponível:', Object.fromEntries(productCodesMap));
         
-        // Primeiro tenta obter do mapa de códigos buscado no banco
-        const productInfo = productCodesMap.get(productIdToLookup);
+        let productInfo = null;
+        
+        // Tenta encontrar o produto no mapa usando cada ID possível
+        for (const id of possibleIdFields) {
+          if (productCodesMap.has(id)) {
+            productInfo = productCodesMap.get(id);
+            console.log(`Produto encontrado no mapa com ID ${id}:`, productInfo);
+            break;
+          }
+        }
         
         if (productInfo) {
-          console.log('Informações do produto encontradas no banco:', productInfo);
-          
-          // Ordem de preferência: codigo > codigo_barras > referencia > id
+          // Ordem de preferência para o código: codigo > codigo_barras > referencia > id
           if (productInfo.codigo) {
             codigoProduto = productInfo.codigo;
             console.log('Usando código do produto:', codigoProduto);
@@ -751,19 +761,20 @@ export default function NewCount() {
             codigoProduto = productInfo.referencia;
             console.log('Usando referência como código do produto:', codigoProduto);
           } else {
-            codigoProduto = item.id;
+            // Se não encontrar nenhum código, usa o primeiro ID disponível
+            codigoProduto = possibleIdFields[0] || 'N/A';
             console.log('Nenhum código encontrado, usando ID do produto:', codigoProduto);
           }
         } else {
           console.log('Produto não encontrado no mapa de códigos, verificando campos locais...');
           
-          // Se não encontrou no mapa, verifica nos campos locais
+          // Se não encontrou no mapa, verifica nos campos locais do item
           const possibleCodeFields = [
             'codigo', 'codigo_barras', 'referencia',
-            'produto.codigo', 'produto.codigo_barras', 'produto.referencia',
-            'produto_id', 'id'
+            'produto.codigo', 'produto.codigo_barras', 'produto.referencia'
           ];
           
+          // Tenta encontrar em campos aninhados
           for (const field of possibleCodeFields) {
             try {
               const value = field.split('.').reduce((obj, key) => obj?.[key], item);
@@ -775,6 +786,12 @@ export default function NewCount() {
             } catch (error) {
               console.warn(`Erro ao acessar campo '${field}':`, error);
             }
+          }
+          
+          // Se ainda não encontrou, usa o ID do produto como último recurso
+          if (codigoProduto === 'N/A' && possibleIdFields.length > 0) {
+            codigoProduto = possibleIdFields[0];
+            console.log('Usando ID do produto como código:', codigoProduto);
           }
         }
       } else {
