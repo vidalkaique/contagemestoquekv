@@ -54,10 +54,11 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
     });
   };
 
-  const handleApplyRounding = (value: number) => {
+  const handleApplyRounding = (pacotesToAdd: number, newUnidades: number) => {
     setFormData(prev => ({
       ...prev,
-      unidades: value
+      pacotes: prev.pacotes + pacotesToAdd,
+      unidades: newUnidades
     }));
   };
 
@@ -255,7 +256,7 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
                       onChange={(value) => setFormData({ ...formData, unidades: value })}
                       min={0}
                     />
-                    {selectedProduct?.unidadesPorPacote && (
+                    {selectedProduct.unidadesPorPacote && selectedProduct.unidadesPorPacote > 0 && formData.unidades > 0 && (
                       <RoundingSuggestion
                         currentValue={formData.unidades}
                         maxValue={selectedProduct.unidadesPorPacote}
