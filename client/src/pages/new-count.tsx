@@ -527,15 +527,15 @@ export default function NewCount() {
       }
       
       // Cria um mapa de ID do produto para seus dados
-      const productMap = new Map();
-      
+      const productMap = new Map<string, { codigo: string | null; codigo_barras: string | null; referencia: string | null; nome: string }>();
+
       for (const p of allProducts) {
         if (!p || !p.id) continue;
-        
+
         console.log(`Produto encontrado - ID: ${p.id}, Nome: ${p.nome || 'Sem nome'}, ` +
-                   `Código: ${p.codigo || 'N/A'}, Código de Barras: ${p.codigo_barras || 'N/A'}, ` +
-                   `Referência: ${p.referencia || 'N/A'}`);
-        
+          `Código: ${p.codigo || 'N/A'}, Código de Barras: ${p.codigo_barras || 'N/A'}, ` +
+          `Referência: ${p.referencia || 'N/A'}`);
+
         productMap.set(p.id, {
           codigo: p.codigo || null,
           codigo_barras: p.codigo_barras || null,
@@ -543,7 +543,36 @@ export default function NewCount() {
           nome: p.nome || 'Produto sem nome'
         });
       }
-      
+
+      // Verifica se ainda há produtos faltando e busca individualmente
+      const missingIds = validProductIds.filter((id) => !productMap.has(id));
+      if (missingIds.length > 0) {
+        console.log('Buscando individualmente os produtos que faltam:', missingIds);
+        for (const id of missingIds) {
+          try {
+            const { data: single, error: singleError } = await supabase
+              .from('produtos')
+              .select('id, codigo, codigo_barras, referencia, nome')
+              .eq('id', id)
+              .single();
+            if (singleError) {
+              console.error(`Erro ao buscar produto ${id}:`, singleError);
+              continue;
+            }
+            if (single) {
+              productMap.set(single.id, {
+                codigo: single.codigo || null,
+                codigo_barras: single.codigo_barras || null,
+                referencia: single.referencia || null,
+                nome: single.nome || 'Produto sem nome'
+              });
+            }
+          } catch (err) {
+            console.error('Erro inesperado ao buscar produto individualmente:', err);
+          }
+        }
+      }
+
       console.log('Mapa de produtos criado com sucesso. Total de itens:', productMap.size);
       return productMap;
       
@@ -727,7 +756,12 @@ export default function NewCount() {
       
       // Tenta obter o código do produto de várias fontes possíveis
       let codigoProduto = 'N/A';
-      if (!isFreeProduct) {
+      // Prioriza o código já carregado no item, se existir
+      if (item.codigo) {
+        codigoProduto = item.codigo;
+        console.log('Usando código já presente no item:', codigoProduto);
+      }
+      if (!isFreeProduct && codigoProduto === 'N/A') {
         // Tenta encontrar o produto no mapa de códigos usando diferentes chaves
         const possibleIdFields = [
           item.product_id,  // Primeiro tenta com product_id
