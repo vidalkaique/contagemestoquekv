@@ -463,6 +463,10 @@ export default function NewCount() {
    */
   // Função para gerar e salvar o Excel no Supabase Storage
   const generateAndSaveExcel = async (countId: string, countData: any, items: any[]): Promise<string> => {
+    console.log('=== INÍCIO DA GERAÇÃO DO EXCEL ===');
+    console.log('countData:', JSON.stringify(countData, null, 2));
+    console.log('items:', JSON.stringify(items, null, 2));
+    
     const { Workbook } = await import('exceljs');
     
     // Criar workbook
@@ -495,8 +499,16 @@ export default function NewCount() {
     }
     
     // Adicionar informações do estoque e data
+    console.log('countData.estoques:', countData.estoques);
+    console.log('countData.estoque_id:', countData.estoque_id);
+    
+    // Tenta obter o nome do estoque de várias fontes possíveis
     const estoqueNome = countData.estoques?.nome || 
+                       countData.estoque?.nome ||
                        (countData.estoque_id ? `Estoque ID: ${countData.estoque_id}` : 'NÃO INFORMADO');
+    
+    console.log('Nome do estoque a ser exibido:', estoqueNome);
+    
     const estoqueInfo = worksheet.addRow([
       `Estoque: ${estoqueNome}`,
       '', '', '', '', '', '',
@@ -526,12 +538,13 @@ export default function NewCount() {
     };
     
     // Adicionar dados
-    items.forEach((item: any) => {
-      // Debug: Mostrar estrutura do item
-      console.log('Item sendo processado para Excel:', JSON.stringify(item, null, 2));
+    items.forEach((item: any, index: number) => {
+      console.log(`\n=== Processando item ${index + 1}/${items.length} ===`);
+      console.log('Estrutura completa do item:', JSON.stringify(item, null, 2));
       
       // Verifica se é um produto livre (sem ID de produto cadastrado)
       const isFreeProduct = item.id?.startsWith('free-');
+      console.log('É produto livre?', isFreeProduct);
       
       // Calcula totais se não estiverem definidos
       const totalPacotes = item.totalPacotes || calculateTotalPacotes(item);
@@ -540,8 +553,20 @@ export default function NewCount() {
       // Tenta obter o código do produto de várias fontes possíveis
       let codigoProduto = 'N/A';
       if (!isFreeProduct) {
-        codigoProduto = item.codigo || item.referencia || item.codigo_barras || 'N/A';
+        // Verifica em várias propriedades possíveis para o código
+        const possibleCodeFields = ['codigo', 'codigo_barras', 'referencia', 'id'];
+        for (const field of possibleCodeFields) {
+          if (item[field]) {
+            codigoProduto = item[field].toString();
+            console.log(`Código encontrado no campo '${field}':`, codigoProduto);
+            break;
+          }
+        }
+      } else {
+        console.log('Produto livre - usando N/A como código');
       }
+      
+      console.log('Código do produto a ser exibido:', codigoProduto);
       
       // Obtém o nome do produto
       const nomeProduto = item.nome || 'Produto não cadastrado';
@@ -587,6 +612,10 @@ export default function NewCount() {
     const { data: { publicUrl } } = supabase.storage
       .from('contagens')
       .getPublicUrl(filePath);
+    
+    console.log('=== FIM DA GERAÇÃO DO EXCEL ===');
+    console.log('Arquivo salvo em:', filePath);
+    console.log('URL pública:', publicUrl);
     
     return publicUrl;
   };
