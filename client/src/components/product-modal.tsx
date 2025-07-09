@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NumberInputWithButtons } from "@/components/ui/number-input-with-buttons";
+import { RoundingSuggestion } from "@/components/rounding-suggestion";
 import { useToast } from "@/hooks/use-toast";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useProductSearch } from "@/hooks/use-products";
@@ -51,6 +52,13 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
       pacotes: 0,
       unidades: 0,
     });
+  };
+
+  const handleApplyRounding = (value: number) => {
+    setFormData(prev => ({
+      ...prev,
+      unidades: value
+    }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -247,6 +255,13 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
                       onChange={(value) => setFormData({ ...formData, unidades: value })}
                       min={0}
                     />
+                    {selectedProduct?.unidadesPorPacote && (
+                      <RoundingSuggestion
+                        currentValue={formData.unidades}
+                        maxValue={selectedProduct.unidadesPorPacote}
+                        onApply={handleApplyRounding}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
