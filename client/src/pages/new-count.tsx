@@ -499,16 +499,46 @@ export default function NewCount() {
     }
     
     // Adicionar informações do estoque e data
+    console.log('=== DADOS DO ESTOQUE ===');
+    console.log('countData completo:', JSON.stringify(countData, null, 2));
     console.log('countData.estoques:', countData.estoques);
+    console.log('countData.estoque:', countData.estoque);
     console.log('countData.estoque_id:', countData.estoque_id);
     
     // Tenta obter o nome do estoque de várias fontes possíveis
-    const estoqueNome = countData.estoques?.nome || 
-                       countData.estoque?.nome ||
-                       (countData.estoque_id ? `Estoque ID: ${countData.estoque_id}` : 'NÃO INFORMADO');
+    let estoqueNome = 'NÃO INFORMADO';
+    
+    if (countData.estoques?.nome) {
+      estoqueNome = countData.estoques.nome;
+      console.log('Usando nome do estoque de countData.estoques.nome');
+    } else if (countData.estoque?.nome) {
+      estoqueNome = countData.estoque.nome;
+      console.log('Usando nome do estoque de countData.estoque.nome');
+    } else if (countData.estoque_id) {
+      // Tenta buscar o nome do estoque diretamente se tivermos o ID
+      try {
+        const { data: estoque, error } = await supabase
+          .from('estoques')
+          .select('nome')
+          .eq('id', countData.estoque_id)
+          .single();
+          
+        if (!error && estoque?.nome) {
+          estoqueNome = estoque.nome;
+          console.log('Nome do estoque encontrado no banco de dados:', estoqueNome);
+        } else {
+          console.log('Estoque não encontrado no banco de dados, usando ID como referência');
+          estoqueNome = `Estoque ID: ${countData.estoque_id}`;
+        }
+      } catch (error) {
+        console.error('Erro ao buscar nome do estoque:', error);
+        estoqueNome = `Estoque ID: ${countData.estoque_id}`;
+      }
+    }
     
     console.log('Nome do estoque a ser exibido:', estoqueNome);
     
+    // Adiciona a linha com as informações do estoque e data
     const estoqueInfo = worksheet.addRow([
       `Estoque: ${estoqueNome}`,
       '', '', '', '', '', '',
@@ -554,12 +584,38 @@ export default function NewCount() {
       let codigoProduto = 'N/A';
       if (!isFreeProduct) {
         // Verifica em várias propriedades possíveis para o código
-        const possibleCodeFields = ['codigo', 'codigo_barras', 'referencia', 'id'];
+        const possibleCodeFields = [
+          'codigo', 'codigo_barras', 'referencia', 'id',
+          // Verifica também em item.produto se existir
+          ...(item.produto ? ['produto.codigo', 'produto.codigo_barras', 'produto.referencia', 'produto.id'] : [])
+        ];
+        
         for (const field of possibleCodeFields) {
-          if (item[field]) {
-            codigoProduto = item[field].toString();
-            console.log(`Código encontrado no campo '${field}':`, codigoProduto);
-            break;
+          try {
+            // Suporta caminhos aninhados como 'produto.codigo'
+            const value = field.split('.').reduce((obj, key) => obj?.[key], item);
+            
+            if (value) {
+              codigoProduto = value.toString();
+              console.log(`Código encontrado no campo '${field}':`, codigoProduto);
+              break;
+            }
+          } catch (error) {
+            console.warn(`Erro ao acessar campo '${field}':`, error);
+          }
+        }
+        
+        // Se não encontrou em nenhum campo, tenta obter do produto aninhado
+        if (codigoProduto === 'N/A' && item.produto) {
+          const produto = item.produto;
+          const produtoCodeFields = ['codigo', 'codigo_barras', 'referencia', 'id'];
+          
+          for (const field of produtoCodeFields) {
+            if (produto[field]) {
+              codigoProduto = produto[field].toString();
+              console.log(`Código encontrado no produto.${field}:`, codigoProduto);
+              break;
+            }
           }
         }
       } else {
@@ -658,16 +714,41 @@ export default function NewCount() {
         console.log(`Atualizando contagem existente: ${resolvedCountId}`);
         successRedirectId = resolvedCountId;
         
+        // Busca os dados completos da contagem para garantir que temos as informações do estoque
+        const { data: contagemCompleta, error: erroBusca } = await supabase
+          .from('contagens')
+          .select(`
+            *,
+            estoques (
+              id,
+              nome
+            )
+          `)
+          .eq('id', resolvedCountId)
+          .single();
+          
+        if (erroBusca) {
+          console.error('Erro ao buscar dados da contagem:', erroBusca);
+          throw new Error('Não foi possível obter os dados completos da contagem');
+        }
+        
+        console.log('Dados completos da contagem:', contagemCompleta);
+        
         // Prepara os dados para o Excel
         const contagemData = {
-          id: resolvedCountId,
-          data: formattedDate,
-          estoques: unfinishedCount?.estoque ? {
-            id: unfinishedCount.estoque.id,
-            nome: unfinishedCount.estoque.nome
-          } : null,
-          estoque_id: unfinishedCount?.estoque?.id || null
+          ...contagemCompleta,
+          // Garante que estoques seja um objeto simples ou null
+          estoques: Array.isArray(contagemCompleta.estoques) && contagemCompleta.estoques.length > 0 
+            ? contagemCompleta.estoques[0] 
+            : null,
+          // Mantém compatibilidade com o código existente
+          estoque: Array.isArray(contagemCompleta.estoques) && contagemCompleta.estoques.length > 0 
+            ? contagemCompleta.estoques[0]
+            : null,
+          estoque_id: contagemCompleta.estoque_id
         };
+        
+        console.log('Dados formatados para o Excel:', contagemData);
         
         // Gera e salva o Excel
         try {
@@ -737,15 +818,40 @@ export default function NewCount() {
         
         console.log(`Nova contagem criada com ID: ${contagem.id}`);
         
+        // Busca os dados completos da contagem recém-criada para garantir que temos as informações do estoque
+        const { data: contagemCompleta, error: erroBusca } = await supabase
+          .from('contagens')
+          .select(`
+            *,
+            estoques (
+              id,
+              nome
+            )
+          `)
+          .eq('id', contagem.id)
+          .single();
+          
+        if (erroBusca) {
+          console.error('Erro ao buscar dados da contagem:', erroBusca);
+          throw new Error('Não foi possível obter os dados completos da contagem recém-criada');
+        }
+        
+        console.log('Dados completos da contagem recém-criada:', contagemCompleta);
+        
         // Prepara os dados para o Excel
         const contagemData = {
-          ...contagem,
-          estoques: unfinishedCount?.estoque ? {
-            id: unfinishedCount.estoque.id,
-            nome: unfinishedCount.estoque.nome
-          } : null,
-          estoque_id: unfinishedCount?.estoque?.id || null
+          ...contagemCompleta,
+          // Garante que estoques seja um objeto simples ou null
+          estoques: Array.isArray(contagemCompleta.estoques) && contagemCompleta.estoques.length > 0 
+            ? contagemCompleta.estoques[0] 
+            : null,
+          // Mantém compatibilidade com o código existente
+          estoque: Array.isArray(contagemCompleta.estoques) && contagemCompleta.estoques.length > 0 
+            ? contagemCompleta.estoques[0]
+            : null
         };
+        
+        console.log('Dados formatados para o Excel (nova contagem):', contagemData);
         
         // Gera e salva o Excel
         try {
