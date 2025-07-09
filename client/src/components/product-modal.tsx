@@ -64,6 +64,7 @@ export default function ProductModal({ isOpen, onClose, onAddProduct }: ProductM
 
     onAddProduct({
       id: selectedProduct.id,
+      codigo: selectedProduct.codigo,
       nome: selectedProduct.nome,
       ...formData,
       unidadesPorPacote: selectedProduct.unidadesPorPacote,

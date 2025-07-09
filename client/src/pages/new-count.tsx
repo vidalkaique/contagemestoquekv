@@ -15,6 +15,7 @@ import { useUnfinishedCount } from "@/hooks/use-counts";
 
 interface ProductItem {
   id: string;
+  codigo?: string;
   nome: string;
   pallets: number;
   lastros: number;
@@ -470,110 +471,47 @@ export default function NewCount() {
     }
     
     try {
-      console.log('Buscando códigos para os produtos:', productIds);
-      
-      // Verifica se há IDs válidos
-      const validProductIds = productIds.filter(id => {
-        const isValid = id && typeof id === 'string' && id.trim() !== '';
-        if (!isValid) {
-          console.warn('ID de produto inválido encontrado:', id);
-        }
-        return isValid;
-      });
-      
-      if (validProductIds.length === 0) {
-        console.log('Nenhum ID de produto válido para busca');
-        return new Map();
-      }
-      
-      console.log('IDs válidos para busca:', validProductIds);
-      
-      // Busca os produtos em lotes menores para evitar problemas com a query
-      const BATCH_SIZE = 50;
-      const batches = [];
-      
-      for (let i = 0; i < validProductIds.length; i += BATCH_SIZE) {
-        const batch = validProductIds.slice(i, i + BATCH_SIZE);
-        batches.push(batch);
-      }
-      
-      console.log(`Buscando produtos em ${batches.length} lotes...`);
-      
-      let allProducts: any[] = [];
-      
-      for (let i = 0; i < batches.length; i++) {
-        const batch = batches[i];
-        console.log(`Buscando lote ${i + 1}/${batches.length} com ${batch.length} produtos...`);
-        
-        const { data: produtos, error } = await supabase
-          .from('produtos')
-          .select('id, codigo, codigo_barras, referencia, nome')
-          .in('id', batch);
-          
-        if (error) {
-          console.error(`Erro ao buscar lote ${i + 1}:`, error);
-          continue;
-        }
-        
-        console.log(`Encontrados ${produtos.length} produtos no lote ${i + 1}`);
-        allProducts = [...allProducts, ...(produtos || [])];
-      }
-      
-      console.log(`Total de produtos encontrados: ${allProducts.length}`);
-      
-      if (allProducts.length === 0) {
-        console.warn('Nenhum produto encontrado no banco de dados para os IDs fornecidos');
-        return new Map();
-      }
-      
-      // Cria um mapa de ID do produto para seus dados
+      console.log('[fetchProductCodes] IDs recebidos:', productIds);
+
       const productMap = new Map<string, { codigo: string | null; codigo_barras: string | null; referencia: string | null; nome: string }>();
 
-      for (const p of allProducts) {
-        if (!p || !p.id) continue;
-
-        console.log(`Produto encontrado - ID: ${p.id}, Nome: ${p.nome || 'Sem nome'}, ` +
-          `Código: ${p.codigo || 'N/A'}, Código de Barras: ${p.codigo_barras || 'N/A'}, ` +
-          `Referência: ${p.referencia || 'N/A'}`);
-
-        productMap.set(p.id, {
-          codigo: p.codigo || null,
-          codigo_barras: p.codigo_barras || null,
-          referencia: p.referencia || null,
-          nome: p.nome || 'Produto sem nome'
-        });
+      // Sanitize ids
+      const ids = productIds.filter(id => !!id && typeof id === 'string');
+      if (ids.length === 0) {
+        console.warn('[fetchProductCodes] Nenhum id válido.');
+        return productMap;
       }
 
-      // Verifica se ainda há produtos faltando e busca individualmente
-      const missingIds = validProductIds.filter((id) => !productMap.has(id));
-      if (missingIds.length > 0) {
-        console.log('Buscando individualmente os produtos que faltam:', missingIds);
-        for (const id of missingIds) {
-          try {
-            const { data: single, error: singleError } = await supabase
-              .from('produtos')
-              .select('id, codigo, codigo_barras, referencia, nome')
-              .eq('id', id)
-              .single();
-            if (singleError) {
-              console.error(`Erro ao buscar produto ${id}:`, singleError);
-              continue;
-            }
-            if (single) {
-              productMap.set(single.id, {
-                codigo: single.codigo || null,
-                codigo_barras: single.codigo_barras || null,
-                referencia: single.referencia || null,
-                nome: single.nome || 'Produto sem nome'
-              });
-            }
-          } catch (err) {
-            console.error('Erro inesperado ao buscar produto individualmente:', err);
+      for (const id of ids) {
+        try {
+          const { data, error } = await supabase
+            .from('produtos')
+            .select('id, codigo, codigo_barras, referencia, nome')
+            .eq('id', id)
+            .maybeSingle();
+
+          if (error) {
+            console.error(`[fetchProductCodes] Erro Supabase para id ${id}:`, error);
+            continue;
           }
+
+          if (data) {
+            productMap.set(id, {
+              codigo: (data as any).codigo || null,
+              codigo_barras: (data as any).codigo_barras || null,
+              referencia: (data as any).referencia || null,
+              nome: (data as any).nome || 'Produto sem nome'
+            });
+            console.log(`[fetchProductCodes] Produto ok ${id} »`, productMap.get(id));
+          } else {
+            console.warn(`[fetchProductCodes] Produto não encontrado para id ${id}`);
+          }
+        } catch (err) {
+          console.error('[fetchProductCodes] Exceção inesperada para id', id, err);
         }
       }
 
-      console.log('Mapa de produtos criado com sucesso. Total de itens:', productMap.size);
+      console.log('[fetchProductCodes] Finalizado. Total mapeados:', productMap.size);
       return productMap;
       
     } catch (error) {
@@ -742,7 +680,8 @@ export default function NewCount() {
     };
     
     // Adicionar dados
-    items.forEach((item: any, index: number) => {
+    for (let index = 0; index < items.length; index++) {
+      const item: any = items[index];
       console.log(`\n=== Processando item ${index + 1}/${items.length} ===`);
       console.log('Estrutura completa do item:', JSON.stringify(item, null, 2));
       
