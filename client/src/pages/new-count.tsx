@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Check, Trash2, Package } from "lucide-react";
+import { ArrowLeft, Plus, Check, Trash2, Package, Search, Pencil, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,9 @@ export default function NewCount() {
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [currentCountId, setCurrentCountId] = useState<string | undefined>(undefined);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [editingProductIndex, setEditingProductIndex] = useState<number | null>(null);
+  const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
 
   // Define o ID da contagem atual com base no parâmetro da rota ou na contagem não finalizada carregada
   useEffect(() => {
@@ -68,7 +71,7 @@ export default function NewCount() {
     const totalFromLastros = product.lastros * pacotesPorLastro;
     
     // Soma com pacotes avulsos
-    return totalFromPallets + totalFromLastros + product.pacotes;
+    return totalFromPallets + totalFromLastros + (product.pacotes || 0);
   };
 
   /**
@@ -77,18 +80,12 @@ export default function NewCount() {
    * @returns Número total de unidades
    */
   const calculateProductTotal = (product: ProductItem): number => {
-    // Inicia com as unidades avulsas
-    let totalUnidades = product.unidades ?? 0;
-    
-    // Calcula o total de pacotes primeiro
-    const totalPacotes = calculateTotalPacotes(product);
-    
-    // Se houver conversão de pacotes para unidades, aplica
-    if (product.unidadesPorPacote) {
-      totalUnidades += totalPacotes * product.unidadesPorPacote;
-    }
-    
-    return totalUnidades;
+    return (
+      (product.pallets || 0) * (product.lastrosPorPallet || 0) * (product.pacotesPorLastro || 0) * (product.unidadesPorPacote || 0) +
+      (product.lastros || 0) * (product.pacotesPorLastro || 0) * (product.unidadesPorPacote || 0) +
+      (product.pacotes || 0) * (product.unidadesPorPacote || 0) +
+      (product.unidades || 0)
+    );
   };
 
   /**
@@ -459,6 +456,67 @@ export default function NewCount() {
       return undefined;
     }
   };
+
+  // Iniciar edição de um produto
+  const handleStartEdit = (index: number) => {
+    setEditingProductIndex(index);
+    setEditingProduct({ ...products[index] });
+  };
+
+  // Cancelar edição
+  const handleCancelEdit = () => {
+    setEditingProductIndex(null);
+    setEditingProduct(null);
+  };
+
+  // Salvar edição
+  const handleSaveEdit = (index: number) => {
+    if (!editingProduct) return;
+    
+    const updatedProducts = [...products];
+    updatedProducts[index] = {
+      ...editingProduct,
+      totalPacotes: calculateTotalPacotes(editingProduct),
+    };
+    
+    setProducts(updatedProducts);
+    setEditingProductIndex(null);
+    setEditingProduct(null);
+    
+    // Atualizar localStorage
+    const currentCount: CurrentCount = {
+      id: currentCountId || `draft-${Date.now()}`,
+      date: new Date(countDate).toISOString().split('T')[0],
+      products: updatedProducts,
+      lastUpdated: new Date().toISOString()
+    };
+    
+    if (!currentCountId) {
+      setCurrentCountId(currentCount.id);
+    }
+    
+    saveCurrentCount(currentCount);
+    saveToCountHistory(currentCount);
+  };
+
+  // Atualizar campo em edição
+  const handleEditFieldChange = (field: keyof ProductItem, value: any) => {
+    if (!editingProduct) return;
+    
+    setEditingProduct({
+      ...editingProduct,
+      [field]: value,
+    });
+  };
+
+  // Filtrar produtos com base no termo de busca
+  const filteredProducts = products.filter(product => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      product.nome.toLowerCase().includes(searchLower) ||
+      (product.codigo && product.codigo.toLowerCase().includes(searchLower))
+    );
+  });
 
   /**
    * Finaliza a contagem atual, salvando todos os itens no banco de dados
@@ -1110,13 +1168,34 @@ export default function NewCount() {
 
         <div className="mb-4">
           <Label htmlFor="count-date">Data da Contagem</Label>
-          <Input id="count-date" type="date" value={countDate} onChange={(e) => handleDateChange(e.target.value)} className="mt-1" />
+          <Input 
+            id="count-date" 
+            type="date" 
+            value={countDate} 
+            onChange={(e) => handleDateChange(e.target.value)} 
+            className="mb-3" 
+          />
+          
+          {/* Campo de busca */}
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Buscar produto por nome ou código..."
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          <Button 
+            onClick={() => setIsProductModalOpen(true)} 
+            className="w-full"
+          >
+            <Plus className="mr-2" size={20} />
+            Adicionar Produto
+          </Button>
         </div>
-
-        <Button onClick={() => setIsProductModalOpen(true)} className="w-full mb-4">
-          <Plus className="mr-2" size={20} />
-          Adicionar Produto
-        </Button>
 
         {products.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
@@ -1126,20 +1205,115 @@ export default function NewCount() {
           </div>
         ) : (
           <div className="space-y-3">
-            {products.map((product, index) => (
+            {filteredProducts.map((product, index) => (
               <div key={product.id} className="bg-white p-4 rounded-lg border">
                 <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-lg flex-1 pr-2">{product.nome}</h3>
-                  <Button variant="ghost" size="icon" onClick={() => handleRemoveProduct(index)}>
-                    <Trash2 className="text-red-500" size={20} />
-                  </Button>
+                  <h3 className="font-semibold text-lg flex-1 pr-2">
+                    {product.nome}
+                    {product.codigo && (
+                      <span className="text-sm text-gray-500 ml-2">(Código: {product.codigo})</span>
+                    )}
+                  </h3>
+                  <div className="flex space-x-1">
+                    {editingProductIndex === index ? (
+                      <>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleSaveEdit(index)}
+                          className="h-8 w-8"
+                        >
+                          <Check className="h-4 w-4 text-green-600" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={handleCancelEdit}
+                          className="h-8 w-8"
+                        >
+                          <X className="h-4 w-4 text-gray-500" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleStartEdit(index)}
+                          className="h-8 w-8"
+                        >
+                          <Pencil className="h-4 w-4 text-blue-600" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleRemoveProduct(index)}
+                          className="h-8 w-8"
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 text-sm">
-                  <div><span className="text-gray-500">Pallets:</span><span className="font-medium ml-1">{product.pallets}</span></div>
-                  <div><span className="text-gray-500">Lastros:</span><span className="font-medium ml-1">{product.lastros}</span></div>
-                  <div><span className="text-gray-500">Pacotes:</span><span className="font-medium ml-1">{product.pacotes}</span></div>
-                  <div><span className="text-gray-500">Unidades:</span><span className="font-medium ml-1">{product.unidades}</span></div>
+                  <div>
+                    <span className="text-gray-500">Pallets:</span>
+                    {editingProductIndex === index ? (
+                      <Input 
+                        type="number" 
+                        min="0" 
+                        value={editingProduct?.pallets || ''}
+                        onChange={(e) => handleEditFieldChange('pallets', parseInt(e.target.value) || 0)}
+                        className="h-8 w-20 inline-block ml-1"
+                      />
+                    ) : (
+                      <span className="font-medium ml-1">{product.pallets}</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Lastros:</span>
+                    {editingProductIndex === index ? (
+                      <Input 
+                        type="number" 
+                        min="0" 
+                        value={editingProduct?.lastros || ''}
+                        onChange={(e) => handleEditFieldChange('lastros', parseInt(e.target.value) || 0)}
+                        className="h-8 w-20 inline-block ml-1"
+                      />
+                    ) : (
+                      <span className="font-medium ml-1">{product.lastros}</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Pacotes:</span>
+                    {editingProductIndex === index ? (
+                      <Input 
+                        type="number" 
+                        min="0" 
+                        value={editingProduct?.pacotes || ''}
+                        onChange={(e) => handleEditFieldChange('pacotes', parseInt(e.target.value) || 0)}
+                        className="h-8 w-20 inline-block ml-1"
+                      />
+                    ) : (
+                      <span className="font-medium ml-1">{product.pacotes}</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Unidades:</span>
+                    {editingProductIndex === index ? (
+                      <Input 
+                        type="number" 
+                        min="0" 
+                        value={editingProduct?.unidades || ''}
+                        onChange={(e) => handleEditFieldChange('unidades', parseInt(e.target.value) || 0)}
+                        className="h-8 w-20 inline-block ml-1"
+                      />
+                    ) : (
+                      <span className="font-medium ml-1">{product.unidades}</span>
+                    )}
+                  </div>
                 </div>
 
                 {(product.unidadesPorPacote !== undefined || product.pacotesPorLastro !== undefined || product.lastrosPorPallet !== undefined || product.quantidadePacsPorPallet !== undefined) && (
