@@ -526,16 +526,29 @@ export default function NewCount() {
     
     // Adicionar dados
     items.forEach((item: any) => {
-      const produto = item.produtos || {};
+      // Verifica se é um item com estrutura de produto aninhado ou direto
+      const isNestedProduct = item.produtos !== undefined;
+      const productData = isNestedProduct ? item.produtos : item;
+      const isFreeProduct = item.id?.startsWith('free-');
+      
+      // Calcula totais se não estiverem definidos
+      const totalPacotes = item.totalPacotes || calculateTotalPacotes(item);
+      const totalUnidades = item.total || calculateProductTotal(item);
+      
       worksheet.addRow([
-        produto.codigo || item.nome_livre || 'N/A',
-        produto.nome || 'Produto não cadastrado',
-        item.pallets,
-        item.lastros,
-        item.pacotes,
-        item.unidades,
-        item.total,
-        item.total_pacotes || 0
+        // Código do produto ou 'N/A' para produtos livres
+        isFreeProduct ? 'N/A' : (productData?.codigo || item.codigo || 'N/A'),
+        // Nome do produto
+        isFreeProduct ? item.nome : (productData?.nome || item.nome || 'Produto não cadastrado'),
+        // Quantidades
+        item.pallets || 0,
+        item.lastros || 0,
+        item.pacotes || 0,
+        item.unidades || 0,
+        // Total de unidades
+        totalUnidades,
+        // Total de pacotes
+        totalPacotes
       ]);
     });
     
