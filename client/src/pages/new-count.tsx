@@ -495,7 +495,8 @@ export default function NewCount() {
     }
     
     // Adicionar informações do estoque e data
-    const estoqueNome = countData.estoques?.nome || countData.estoque_id || 'NÃO INFORMADO';
+    const estoqueNome = countData.estoques?.nome || 
+                       (countData.estoque_id ? `Estoque ID: ${countData.estoque_id}` : 'NÃO INFORMADO');
     const estoqueInfo = worksheet.addRow([
       `Estoque: ${estoqueNome}`,
       '', '', '', '', '', '',
@@ -526,20 +527,31 @@ export default function NewCount() {
     
     // Adicionar dados
     items.forEach((item: any) => {
-      // Verifica se é um item com estrutura de produto aninhado ou direto
-      const isNestedProduct = item.produtos !== undefined;
-      const productData = isNestedProduct ? item.produtos : item;
+      // Debug: Mostrar estrutura do item
+      console.log('Item sendo processado para Excel:', JSON.stringify(item, null, 2));
+      
+      // Verifica se é um produto livre (sem ID de produto cadastrado)
       const isFreeProduct = item.id?.startsWith('free-');
       
       // Calcula totais se não estiverem definidos
       const totalPacotes = item.totalPacotes || calculateTotalPacotes(item);
       const totalUnidades = item.total || calculateProductTotal(item);
       
+      // Tenta obter o código do produto de várias fontes possíveis
+      let codigoProduto = 'N/A';
+      if (!isFreeProduct) {
+        codigoProduto = item.codigo || item.referencia || item.codigo_barras || 'N/A';
+      }
+      
+      // Obtém o nome do produto
+      const nomeProduto = item.nome || 'Produto não cadastrado';
+      
+      // Adiciona a linha com os dados formatados
       worksheet.addRow([
         // Código do produto ou 'N/A' para produtos livres
-        isFreeProduct ? 'N/A' : (productData?.codigo || item.codigo || 'N/A'),
+        isFreeProduct ? 'N/A' : codigoProduto,
         // Nome do produto
-        isFreeProduct ? item.nome : (productData?.nome || item.nome || 'Produto não cadastrado'),
+        nomeProduto,
         // Quantidades
         item.pallets || 0,
         item.lastros || 0,
