@@ -3,6 +3,7 @@ import { Button } from "./button";
 import { Input } from "./input";
 
 interface NumberInputWithButtonsProps {
+  id?: string;
   value: number;
   onChange: (value: number) => void;
   min?: number;
@@ -12,6 +13,7 @@ interface NumberInputWithButtonsProps {
 }
 
 export function NumberInputWithButtons({
+  id,
   value,
   onChange,
   min = 0,
@@ -41,6 +43,7 @@ export function NumberInputWithButtons({
       </Button>
       
       <Input
+        id={id}
         type="number"
         min={min}
         value={value}

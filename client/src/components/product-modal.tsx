@@ -266,7 +266,6 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
                   <div className="space-y-2">
                     <Label htmlFor="pallets">Pallets</Label>
                     <NumberInputWithButtons
-                      id="pallets"
                       value={formData.pallets}
                       onChange={(value) => setFormData({ ...formData, pallets: value })}
                       min={0}
@@ -276,7 +275,6 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
                   <div className="space-y-2">
                     <Label htmlFor="lastros">Lastros</Label>
                     <NumberInputWithButtons
-                      id="lastros"
                       value={formData.lastros}
                       onChange={(value) => setFormData({ ...formData, lastros: value })}
                       min={0}
@@ -286,7 +284,6 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
                   <div className="space-y-2">
                     <Label htmlFor="pacotes">Pacotes</Label>
                     <NumberInputWithButtons
-                      id="pacotes"
                       value={formData.pacotes}
                       onChange={(value) => setFormData({ ...formData, pacotes: value })}
                       min={0}
@@ -296,7 +293,6 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
                   <div className="space-y-2">
                     <Label htmlFor="unidades">Unidades</Label>
                     <NumberInputWithButtons
-                      id="unidades"
                       value={formData.unidades}
                       onChange={(value) => setFormData({ ...formData, unidades: value })}
                       min={0}

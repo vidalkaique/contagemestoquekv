@@ -1,6 +1,6 @@
 import { pgTable, text, serial, integer, uuid, date, timestamp, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
-import { one } from "drizzle-orm/pg-core/operations/db/query-builders/select.types";
+// Removed invalid import - 'one' is not directly used in this file
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 

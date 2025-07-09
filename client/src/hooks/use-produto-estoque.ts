@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { ProdutoEstoque, InsertProdutoEstoque } from "@shared/schema";
+import type { ProdutoEstoque } from "@shared/schema";
+
+type InsertProdutoEstoque = Omit<ProdutoEstoque, 'id' | 'criadoEm' | 'atualizadoEm'> & {
+  id?: string;
+  criadoEm?: string | Date;
+  atualizadoEm?: string | Date;
+};
 import { toast } from "sonner";
 
 export function useProdutosPorEstoque(estoqueId?: string) {
