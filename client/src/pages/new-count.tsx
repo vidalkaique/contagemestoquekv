@@ -511,11 +511,11 @@ export default function NewCount() {
           .in('id', batch);
           
         if (error) {
-          console.error(`Erro ao buscar lote ${index + 1}:`, error);
+          console.error(`Erro ao buscar lote ${i + 1}:`, error);
           continue;
         }
         
-        console.log(`Encontrados ${produtos.length} produtos no lote ${index + 1}`);
+        console.log(`Encontrados ${produtos.length} produtos no lote ${i + 1}`);
         allProducts = [...allProducts, ...(produtos || [])];
       }
       
@@ -591,16 +591,10 @@ export default function NewCount() {
       });
     
     // Extrai apenas os IDs únicos para busca
-    const productIds = Array.from(
-      productEntries
-        .map(entry => entry.product_id)
-        .reduce((unique, item) => {
-          if (!unique.includes(item)) {
-            unique.push(item);
-          }
-          return unique;
-        }, [] as string[])
-    );
+    const productIds = productEntries
+      .map(entry => entry.product_id)
+      .filter((item): item is string => !!item) // Filtra valores nulos/undefined e faz type assertion
+      .filter((item, index, self) => self.indexOf(item) === index); // Remove duplicados
     
     // Log para depuração
     console.log('Entradas de produtos processadas:', productEntries);
