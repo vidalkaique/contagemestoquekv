@@ -462,10 +462,46 @@ export default function NewCount() {
    * e marcando a contagem como finalizada
    */
   // Função para gerar e salvar o Excel no Supabase Storage
+  // Função para buscar os códigos dos produtos no banco de dados
+  const fetchProductCodes = async (productIds: string[]) => {
+    if (!productIds.length) return new Map();
+    
+    try {
+      const { data: produtos, error } = await supabase
+        .from('produtos')
+        .select('id, codigo, codigo_barras, referencia')
+        .in('id', productIds);
+        
+      if (error) {
+        console.error('Erro ao buscar códigos dos produtos:', error);
+        return new Map();
+      }
+      
+      // Cria um mapa de ID do produto para seus dados
+      return new Map(produtos.map(p => [p.id, {
+        codigo: p.codigo,
+        codigo_barras: p.codigo_barras,
+        referencia: p.referencia
+      }]));
+    } catch (error) {
+      console.error('Erro inesperado ao buscar códigos dos produtos:', error);
+      return new Map();
+    }
+  };
+
   const generateAndSaveExcel = async (countId: string, countData: any, items: any[]): Promise<string> => {
     console.log('=== INÍCIO DA GERAÇÃO DO EXCEL ===');
     console.log('countData:', JSON.stringify(countData, null, 2));
     console.log('items:', JSON.stringify(items, null, 2));
+    
+    // Busca os códigos dos produtos no banco de dados
+    const productIds = items
+      .filter(item => !item.id?.startsWith('free-'))
+      .map(item => item.id)
+      .filter((id, index, self) => self.indexOf(id) === index); // Remove duplicados
+      
+    const productCodesMap = await fetchProductCodes(productIds);
+    console.log('Mapa de códigos de produtos:', Object.fromEntries(productCodesMap));
     
     const { Workbook } = await import('exceljs');
     
@@ -583,38 +619,34 @@ export default function NewCount() {
       // Tenta obter o código do produto de várias fontes possíveis
       let codigoProduto = 'N/A';
       if (!isFreeProduct) {
-        // Verifica em várias propriedades possíveis para o código
-        const possibleCodeFields = [
-          'codigo', 'codigo_barras', 'referencia', 'id',
-          // Verifica também em item.produto se existir
-          ...(item.produto ? ['produto.codigo', 'produto.codigo_barras', 'produto.referencia', 'produto.id'] : [])
-        ];
-        
-        for (const field of possibleCodeFields) {
-          try {
-            // Suporta caminhos aninhados como 'produto.codigo'
-            const value = field.split('.').reduce((obj, key) => obj?.[key], item);
-            
-            if (value) {
-              codigoProduto = value.toString();
-              console.log(`Código encontrado no campo '${field}':`, codigoProduto);
-              break;
-            }
-          } catch (error) {
-            console.warn(`Erro ao acessar campo '${field}':`, error);
-          }
-        }
-        
-        // Se não encontrou em nenhum campo, tenta obter do produto aninhado
-        if (codigoProduto === 'N/A' && item.produto) {
-          const produto = item.produto;
-          const produtoCodeFields = ['codigo', 'codigo_barras', 'referencia', 'id'];
+        // Primeiro tenta obter do mapa de códigos buscado no banco
+        const productInfo = productCodesMap.get(item.id);
+        if (productInfo) {
+          // Ordem de preferência: codigo > codigo_barras > referencia > id
+          codigoProduto = productInfo.codigo || 
+                          productInfo.codigo_barras || 
+                          productInfo.referencia || 
+                          item.id;
+          console.log('Código encontrado no banco de dados:', codigoProduto);
+        } else {
+          console.log('Produto não encontrado no mapa de códigos, verificando campos locais...');
           
-          for (const field of produtoCodeFields) {
-            if (produto[field]) {
-              codigoProduto = produto[field].toString();
-              console.log(`Código encontrado no produto.${field}:`, codigoProduto);
-              break;
+          // Se não encontrou no mapa, verifica nos campos locais
+          const possibleCodeFields = [
+            'codigo', 'codigo_barras', 'referencia', 'id',
+            ...(item.produto ? ['produto.codigo', 'produto.codigo_barras', 'produto.referencia'] : [])
+          ];
+          
+          for (const field of possibleCodeFields) {
+            try {
+              const value = field.split('.').reduce((obj, key) => obj?.[key], item);
+              if (value) {
+                codigoProduto = value.toString();
+                console.log(`Código encontrado no campo '${field}':`, codigoProduto);
+                break;
+              }
+            } catch (error) {
+              console.warn(`Erro ao acessar campo '${field}':`, error);
             }
           }
         }
