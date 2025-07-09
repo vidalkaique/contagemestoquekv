@@ -80,6 +80,14 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
     }));
   };
 
+  const handleApplyRounding = (pacotesToAdd: number, newUnidades: number) => {
+    setFormData(prev => ({
+      ...prev,
+      pacotes: prev.pacotes + pacotesToAdd,
+      unidades: newUnidades
+    }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProduct) {
@@ -293,10 +301,18 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
                   <div className="space-y-2">
                     <Label htmlFor="unidades">Unidades</Label>
                     <NumberInputWithButtons
+                      id="unidades"
                       value={formData.unidades}
                       onChange={(value) => setFormData({ ...formData, unidades: value })}
                       min={0}
                     />
+                    {selectedProduct?.unidadesPorPacote && selectedProduct.unidadesPorPacote > 0 && (
+                      <RoundingSuggestion
+                        currentValue={formData.unidades}
+                        maxValue={selectedProduct.unidadesPorPacote}
+                        onApply={handleApplyRounding}
+                      />
+                    )}
                   </div>
                 </div>
 
