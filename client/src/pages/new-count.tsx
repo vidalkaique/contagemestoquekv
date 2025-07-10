@@ -999,12 +999,12 @@ export default function NewCount() {
     return publicUrl;
   };
 
+  // Obtém os valores dos hooks no nível superior do componente
+  const { id: routeContagemId } = useParams();
+  const { data: localUnfinishedCount } = useUnfinishedCount();
+  const { countDate: localCountDate } = useCountDate();
+  
   const handleFinalizeCount = async (): Promise<void> => {
-    // Obtém as variáveis do escopo do componente
-    const { id: routeContagemId } = useParams();
-    const { data: localUnfinishedCount } = useUnfinishedCount();
-    const { countDate: localCountDate } = useCountDate();
-    
     // Resolve o ID da contagem usando, na ordem: estado, parâmetro da rota ou contagem não finalizada
     const resolvedCountId = currentCountId || routeContagemId || (localUnfinishedCount?.id ? String(localUnfinishedCount.id) : undefined);
     
