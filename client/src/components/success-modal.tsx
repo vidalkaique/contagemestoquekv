@@ -299,6 +299,141 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
         totalGeralPacotes,
         totalGeralUnidades
       ]);
+
+      // ============================================
+      // CRIANDO A ABA DE ANÁLISE
+      // ============================================
+      
+      const analysisWorksheet = workbook.addWorksheet('Análise');
+      
+      // Configurar largura das colunas
+      analysisWorksheet.columns = [
+        { key: 'codigo', width: 15 },
+        { key: 'produto', width: 40 },
+        { key: 'sistema', width: 15 },
+        { key: 'contado', width: 15 },
+        { key: 'diferenca', width: 15 }
+      ];
+      
+      // Título da planilha
+      const analysisTitleRow = analysisWorksheet.addRow(['ANÁLISE DE DIVERGÊNCIAS']);
+      analysisTitleRow.font = { bold: true, size: 16, color: { argb: 'FF2F5496' } };
+      analysisTitleRow.alignment = { horizontal: 'center' };
+      analysisWorksheet.mergeCells('A1:E1');
+      
+      // Informações da contagem
+      analysisWorksheet.addRow([`Data: ${new Date(contagem.data).toLocaleDateString('pt-BR')}`]);
+      analysisWorksheet.addRow([`Estoque: ${contagem.estoques?.nome || 'N/A'}`]);
+      analysisWorksheet.addRow([]); // Linha em branco
+      
+      // Cabeçalhos
+      const analysisHeaderRow = analysisWorksheet.addRow([
+        'CÓDIGO',
+        'PRODUTO',
+        'SISTEMA',
+        'CONTADO',
+        'DIFERENÇA (SISTEMA - CONTADO)'
+      ]);
+      
+      // Estilizar cabeçalho
+      analysisHeaderRow.font = { 
+        bold: true, 
+        color: { argb: 'FFFFFFFF' },
+        size: 12
+      };
+      
+      analysisHeaderRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF2F5496' }
+      };
+      
+      // Adicionar dados
+      (contagem.itens_contagem || []).forEach((item: any) => {
+        const produto = Array.isArray(item.produtos) ? item.produtos[0] : item.produtos;
+        const totalPacotes = item.total_pacotes || 0;
+        
+        const row = analysisWorksheet.addRow({
+          codigo: produto?.codigo || 'N/A',
+          produto: produto?.nome || item.nome_livre || 'N/A',
+          sistema: '', // Deixar em branco para preenchimento manual
+          contado: totalPacotes,
+          // A fórmula será adicionada após a criação da linha
+        });
+        
+        // Adicionar a fórmula de diferença (sistema - contado)
+        const diffCell = row.getCell('diferenca');
+        const rowNumber = row.number;
+        diffCell.value = { formula: `C${rowNumber}-D${rowNumber}` };
+        
+        // Aplicar formatação condicional
+        diffCell.numFmt = '#,##0';
+      });
+      
+      // Adicionar formatação condicional para a coluna de diferença
+      const lastRow = analysisWorksheet.rowCount;
+      
+      // Estilo para valores positivos (verde)
+      analysisWorksheet.addConditionalFormatting({
+        ref: `E5:E${lastRow}`, // A partir da linha 5 (após cabeçalhos e informações)
+        rules: [
+          {
+            type: 'cellIs',
+            operator: 'greaterThan',
+            priority: 1,
+            formula: ['0'],
+            style: { 
+              font: { color: { argb: 'FF107C41' } }, // Verde escuro
+              fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } } // Verde claro
+            }
+          },
+          {
+            type: 'cellIs',
+            operator: 'lessThan',
+            priority: 2,
+            formula: ['0'],
+            style: { 
+              font: { color: { argb: 'FF9C0006' } }, // Vermelho escuro
+              fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } } // Vermelho claro
+            }
+          },
+          {
+            type: 'cellIs',
+            operator: 'equal',
+            priority: 3,
+            formula: ['0'],
+            style: { 
+              font: { color: { argb: 'FF9C5700' } }, // Laranja escuro
+              fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEB9C' } } // Amarelo claro
+            }
+          }
+        ]
+      });
+      
+      // Ajustar alinhamento das células
+      analysisWorksheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 4) { // Pular cabeçalhos e informações iniciais
+          ['A', 'B', 'C', 'D', 'E'].forEach(col => {
+            const cell = row.getCell(col);
+            cell.alignment = { 
+              vertical: 'middle',
+              horizontal: col === 'B' ? 'left' : 'center'
+            };
+            
+            // Formatar células numéricas
+            if (['C', 'D', 'E'].includes(col) && rowNumber > 4) {
+              if (typeof cell.value === 'number') {
+                cell.numFmt = '#,##0';
+              }
+            }
+          });
+        }
+      });
+      
+      // Congelar painéis (cabeçalhos fixos)
+      analysisWorksheet.views = [
+        { state: 'frozen', xSplit: 0, ySplit: 4, activeCell: 'A5', showGridLines: false }
+      ];
       
       // Estilizar linha de totais
       totalRow.font = { bold: true, color: { argb: 'FF2F5496' } };
