@@ -896,7 +896,7 @@ export default function NewCount() {
       const nomeProduto = item.nome || 'Produto não cadastrado';
       const totalPacotes = item.totalPacotes || calculateTotalPacotes(item);
       
-      // Adiciona a linha com os dados formatados
+      // Primeiro, adiciona a linha com os dados básicos
       const row = analysisWorksheet.addRow([
         // Código do produto ou 'N/A' para produtos livres
         isFreeProduct ? 'N/A' : codigoProduto,
@@ -906,9 +906,13 @@ export default function NewCount() {
         '',
         // Total de pacotes contados
         totalPacotes,
-        // Fórmula para calcular a diferença (=SISTEMA-CONTADO)
-        { formula: `C${analysisWorksheet.rowCount}-D${analysisWorksheet.rowCount}`, result: 0 }
+        // Inicialmente vazio, será preenchido com a fórmula abaixo
+        ''
       ]);
+      
+      // Agora que a linha foi criada, adicionamos a fórmula corretamente
+      const rowNumber = row.number + 1; // +1 porque as linhas no Excel começam em 1
+      row.getCell('E').value = { formula: `C${rowNumber}-D${rowNumber}`, result: 0 };
       
       // Formatar a célula de diferença como número
       const diffCell = row.getCell('E');
