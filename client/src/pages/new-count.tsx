@@ -911,7 +911,8 @@ export default function NewCount() {
       ]);
       
       // Agora que a linha foi criada, adicionamos a fórmula corretamente
-      const rowNumber = row.number + 1; // +1 porque as linhas no Excel começam em 1
+      // row.number já retorna o número correto da linha no Excel (1-based)
+      const rowNumber = row.number;
       row.getCell('E').value = { formula: `C${rowNumber}-D${rowNumber}`, result: 0 };
       
       // Formatar a célula de diferença como número
