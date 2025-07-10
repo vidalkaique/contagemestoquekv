@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { format } from 'date-fns';
+
+// Função auxiliar para converter data para o formato YYYY-MM-DD no fuso local
+const toLocalDateString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export function useCountDate() {
-  // Inicializa com a data atual apenas se não for uma contagem existente
+  // Inicializa com a data atual no formato YYYY-MM-DD
   const [countDate, setCountDate] = useState<string>(() => {
-    try {
-      return format(new Date(), "yyyy-MM-dd");
-    } catch (error) {
-      console.error('Erro ao formatar data inicial:', error);
-      return '';
-    }
+    return toLocalDateString(new Date());
   });
 
   const updateCountDate = (newDate: string) => {
@@ -19,23 +21,24 @@ export function useCountDate() {
         return;
       }
 
-      // Solução definitiva para o problema de fuso horário na sua origem.
-      // O input type="date" retorna uma string 'YYYY-MM-DD'.
-      // new Date('YYYY-MM-DD') por padrão cria uma data em UTC.
-      // Para tratar como data local, o que corrige o bug, adicionamos um horário.
-      const date = new Date(`${newDate}T12:00:00`);
-
-      if (isNaN(date.getTime())) {
+      // Extrai ano, mês e dia da string de data
+      const [year, month, day] = newDate.split('-').map(Number);
+      
+      // Cria uma data no fuso horário local
+      const localDate = new Date(year, month - 1, day);
+      
+      // Verifica se a data é válida
+      if (isNaN(localDate.getTime())) {
         throw new Error('Data inválida');
       }
       
-      // Agora, a formatação para yyyy-MM-dd será correta.
-      const formattedDate = format(date, "yyyy-MM-dd");
+      // Formata a data para YYYY-MM-DD
+      const formattedDate = toLocalDateString(localDate);
       setCountDate(formattedDate);
 
     } catch (error) {
       console.error('Erro ao atualizar data:', error);
-      setCountDate('');
+      // Mantém o valor anterior em caso de erro
     }
   };
 
@@ -43,4 +46,4 @@ export function useCountDate() {
     countDate,
     setCountDate: updateCountDate,
   };
-} 
+}
