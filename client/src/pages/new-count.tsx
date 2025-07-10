@@ -739,6 +739,68 @@ export default function NewCount() {
       fgColor: { argb: 'FF2F5496' }
     };
     
+    // Função para obter o código do produto de várias fontes possíveis
+    const getProductCode = (item: any): string => {
+      // 1. Primeiro tenta pegar o código diretamente do item
+      if (item.codigo) {
+        console.log('Usando código direto do item:', item.codigo);
+        return item.codigo;
+      }
+
+      // 2. Tenta pegar de propriedades aninhadas
+      const nestedCode = item.produto?.codigo || 
+                        item.produto?.codigo_barras || 
+                        item.produto?.referencia ||
+                        item.codigo_barras ||
+                        item.referencia;
+      
+      if (nestedCode) {
+        console.log('Usando código de propriedades aninhadas:', nestedCode);
+        return nestedCode;
+      }
+
+      // 3. Tenta usar o mapa de códigos (se disponível)
+      const possibleIds = [
+        item.product_id,
+        item.id,
+        item.produto_id,
+        item.produto?.id
+      ].filter(Boolean);
+
+      for (const id of possibleIds) {
+        if (productCodesMap?.has(id)) {
+          const productInfo = productCodesMap.get(id);
+          if (productInfo?.codigo) {
+            console.log('Usando código do mapa:', productInfo.codigo);
+            return productInfo.codigo;
+          }
+        }
+      }
+
+      // 4. Tenta extrair de qualquer campo que possa conter o código
+      const codeFields = [
+        'codigo', 'codigo_barras', 'referencia', 'code', 'barcode', 'sku',
+        'produto.codigo', 'produto.codigo_barras', 'produto.referencia',
+        'produto.code', 'produto.barcode', 'produto.sku'
+      ];
+      
+      for (const field of codeFields) {
+        try {
+          const value = field.split('.').reduce((obj, key) => obj?.[key], item);
+          if (value) {
+            console.log(`Usando código do campo ${field}:`, value);
+            return value.toString();
+          }
+        } catch (error) {
+          console.warn(`Erro ao acessar campo ${field}:`, error);
+        }
+      }
+
+      // 5. Se nada mais funcionar, retorna o ID como último recurso
+      console.log('Nenhum código encontrado, usando ID como fallback:', item.id);
+      return item.id || 'N/A';
+    };
+    
     // Adicionar dados
     for (let index = 0; index < items.length; index++) {
       const item: any = items[index];
@@ -752,68 +814,6 @@ export default function NewCount() {
       // Calcula totais se não estiverem definidos
       const totalPacotes = item.totalPacotes || calculateTotalPacotes(item);
       const totalUnidades = item.total || calculateProductTotal(item);
-      
-      // Função para obter o código do produto de várias fontes possíveis
-      const getProductCode = (item: any): string => {
-        // 1. Primeiro tenta pegar o código diretamente do item
-        if (item.codigo) {
-          console.log('Usando código direto do item:', item.codigo);
-          return item.codigo;
-        }
-
-        // 2. Tenta pegar de propriedades aninhadas
-        const nestedCode = item.produto?.codigo || 
-                          item.produto?.codigo_barras || 
-                          item.produto?.referencia ||
-                          item.codigo_barras ||
-                          item.referencia;
-        
-        if (nestedCode) {
-          console.log('Usando código de propriedades aninhadas:', nestedCode);
-          return nestedCode;
-        }
-
-        // 3. Tenta usar o mapa de códigos (se disponível)
-        const possibleIds = [
-          item.product_id,
-          item.id,
-          item.produto_id,
-          item.produto?.id
-        ].filter(Boolean);
-
-        for (const id of possibleIds) {
-          if (productCodesMap?.has(id)) {
-            const productInfo = productCodesMap.get(id);
-            if (productInfo?.codigo) {
-              console.log('Usando código do mapa:', productInfo.codigo);
-              return productInfo.codigo;
-            }
-          }
-        }
-
-        // 4. Tenta extrair de qualquer campo que possa conter o código
-        const codeFields = [
-          'codigo', 'codigo_barras', 'referencia', 'code', 'barcode', 'sku',
-          'produto.codigo', 'produto.codigo_barras', 'produto.referencia',
-          'produto.code', 'produto.barcode', 'produto.sku'
-        ];
-
-        for (const field of codeFields) {
-          try {
-            const value = field.split('.').reduce((obj, key) => obj?.[key], item);
-            if (value) {
-              console.log(`Usando código do campo ${field}:`, value);
-              return value.toString();
-            }
-          } catch (error) {
-            console.warn(`Erro ao acessar campo ${field}:`, error);
-          }
-        }
-
-        // 5. Se nada mais funcionar, retorna o ID como último recurso
-        console.log('Nenhum código encontrado, usando ID como fallback:', item.id);
-        return item.id || 'N/A';
-      };
 
       // Obtém o código do produto usando a função auxiliar
       const codigoProduto = isFreeProduct ? 'N/A' : getProductCode(item);
@@ -840,6 +840,133 @@ export default function NewCount() {
         totalPacotes
       ]);
     }
+    
+    // ============================================
+    // CRIANDO A ABA DE ANÁLISE
+    // ============================================
+    
+    const analysisWorksheet = workbook.addWorksheet('Análise');
+    
+    // Configurar largura das colunas
+    analysisWorksheet.columns = [
+      { key: 'codigo', width: 15 },
+      { key: 'produto', width: 40 },
+      { key: 'sistema', width: 15 },
+      { key: 'contado', width: 15 },
+      { key: 'diferenca', width: 15 }
+    ];
+    
+    // Título da planilha
+    const analysisTitleRow = analysisWorksheet.addRow(['ANÁLISE DE DIVERGÊNCIAS']);
+    analysisTitleRow.font = { bold: true, size: 16, color: { argb: 'FF2F5496' } };
+    analysisTitleRow.alignment = { horizontal: 'center' };
+    analysisWorksheet.mergeCells('A1:E1');
+    
+    // Informações da contagem
+    analysisWorksheet.addRow([`Data: ${dataFormatada}`]);
+    analysisWorksheet.addRow([`Estoque: ${estoqueNome}`]);
+    analysisWorksheet.addRow([]); // Linha em branco
+    
+    // Cabeçalhos
+    const analysisHeaderRow = analysisWorksheet.addRow([
+      'CÓDIGO',
+      'PRODUTO',
+      'SISTEMA',
+      'CONTADO',
+      'DIFERENÇA (SISTEMA - CONTADO)'
+    ]);
+    
+    // Estilizar cabeçalho
+    analysisHeaderRow.font = { 
+      bold: true, 
+      color: { argb: 'FFFFFFFF' },
+      size: 12
+    };
+    
+    analysisHeaderRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF2F5496' }
+    };
+    
+    // Adicionar dados dos itens
+    for (const item of items) {
+      const isFreeProduct = item.id?.startsWith('free-');
+      const codigoProduto = isFreeProduct ? 'N/A' : getProductCode(item);
+      const nomeProduto = item.nome || 'Produto não cadastrado';
+      const totalPacotes = item.totalPacotes || calculateTotalPacotes(item);
+      
+      // Adiciona a linha com os dados formatados
+      const row = analysisWorksheet.addRow([
+        // Código do produto ou 'N/A' para produtos livres
+        isFreeProduct ? 'N/A' : codigoProduto,
+        // Nome do produto
+        nomeProduto,
+        // Sistema (em branco para preenchimento manual)
+        '',
+        // Total de pacotes contados
+        totalPacotes,
+        // Fórmula para calcular a diferença (=SISTEMA-CONTADO)
+        { formula: `C${analysisWorksheet.rowCount}-D${analysisWorksheet.rowCount}`, result: 0 }
+      ]);
+      
+      // Formatar a célula de diferença como número
+      const diffCell = row.getCell('E');
+      diffCell.numFmt = '#,##0';
+    }
+    
+    // Adicionar formatação condicional para a coluna de diferença
+    const lastRow = analysisWorksheet.rowCount;
+    
+    // Estilo para valores positivos (verde)
+    analysisWorksheet.addConditionalFormatting({
+      ref: `E5:E${lastRow}`, // A partir da linha 5 (após cabeçalhos e informações)
+      rules: [
+        {
+          type: 'cellIs',
+          operator: 'greaterThan',
+          priority: 1,
+          formulae: ['0'],
+          style: { 
+            font: { color: { argb: 'FF107C41' } }, // Verde escuro
+            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } } // Verde claro
+          }
+        },
+        {
+          type: 'cellIs',
+          operator: 'lessThan',
+          priority: 2,
+          formulae: ['0'],
+          style: { 
+            font: { color: { argb: 'FF9C0006' } }, // Vermelho escuro
+            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } } // Vermelho claro
+          }
+        },
+        {
+          type: 'cellIs',
+          operator: 'equal',
+          priority: 3,
+          formulae: ['0'],
+          style: { 
+            font: { color: { argb: 'FF9C5700' } }, // Laranja escuro
+            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEB9C' } } // Amarelo claro
+          }
+        }
+      ]
+    });
+    
+    // Ajustar alinhamento das células
+    analysisWorksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 4) { // Pular cabeçalhos e informações iniciais
+        ['A', 'B', 'C', 'D', 'E'].forEach(col => {
+          const cell = row.getCell(col);
+          cell.alignment = { 
+            vertical: 'middle',
+            horizontal: col === 'B' ? 'left' : 'center'
+          };
+        });
+      }
+    });
     
     // Gerar o arquivo Excel
     const buffer = await workbook.xlsx.writeBuffer();
@@ -873,8 +1000,24 @@ export default function NewCount() {
   };
 
   const handleFinalizeCount = async (): Promise<void> => {
+    // Obtém as variáveis do escopo do componente
+    const { id: routeContagemId } = useParams();
+    const { data: localUnfinishedCount } = useUnfinishedCount();
+    const { countDate: localCountDate } = useCountDate();
+    
     // Resolve o ID da contagem usando, na ordem: estado, parâmetro da rota ou contagem não finalizada
-    const resolvedCountId = currentCountId || contagemId || unfinishedCount?.id;
+    const resolvedCountId = currentCountId || routeContagemId || (localUnfinishedCount?.id ? String(localUnfinishedCount.id) : undefined);
+    
+    // Garante que temos um ID de contagem válido
+    if (!resolvedCountId) {
+      console.error('Nenhum ID de contagem válido encontrado');
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível identificar a contagem. Por favor, recarregue a página e tente novamente.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     // ID que será usado na tela de sucesso
     let successRedirectId: string | undefined;
@@ -894,7 +1037,7 @@ export default function NewCount() {
     }
     
     // Valida a data da contagem
-    const formattedDate = new Date(countDate).toISOString().split('T')[0];
+    const formattedDate = new Date(localCountDate).toISOString().split('T')[0];
     if (!formattedDate || isNaN(new Date(formattedDate).getTime())) {
       toast({
         title: "Data inválida",
