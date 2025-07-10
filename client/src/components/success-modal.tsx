@@ -381,7 +381,7 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
             type: 'cellIs',
             operator: 'greaterThan',
             priority: 1,
-            formula: ['0'],
+            formulae: ['0'],
             style: { 
               font: { color: { argb: 'FF107C41' } }, // Verde escuro
               fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } } // Verde claro
@@ -391,7 +391,7 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
             type: 'cellIs',
             operator: 'lessThan',
             priority: 2,
-            formula: ['0'],
+            formulae: ['0'],
             style: { 
               font: { color: { argb: 'FF9C0006' } }, // Vermelho escuro
               fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } } // Vermelho claro
@@ -401,7 +401,7 @@ export default function SuccessModal({ isOpen, onClose, countId }: SuccessModalP
             type: 'cellIs',
             operator: 'equal',
             priority: 3,
-            formula: ['0'],
+            formulae: ['0'],
             style: { 
               font: { color: { argb: 'FF9C5700' } }, // Laranja escuro
               fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEB9C' } } // Amarelo claro
