@@ -1647,7 +1647,7 @@ export default function NewCount() {
           setEditingProduct(null);
         }}
         onAddProduct={handleAddProduct}
-        estoqueId={unfinishedCount?.estoqueId}
+        estoqueId={unfinishedCount?.estoqueId || undefined}
       />
       
       <ImportStockScreen
