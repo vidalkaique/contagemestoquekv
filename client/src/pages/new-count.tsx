@@ -537,7 +537,8 @@ export default function NewCount() {
     try {
       // Primeiro, obter todos os IDs de produtos únicos
       const produtoIds = importedProducts
-        .filter(p => !p.id.startsWith('free-'))
+        .filter((p): p is { id: string; quantidade: number; codigo?: string } => 
+          !!p.id && typeof p.id === 'string' && !p.id.startsWith('free-'))
         .map(p => p.id);
       
       // Busca os produtos do banco de dados para obter os detalhes completos
@@ -560,12 +561,27 @@ export default function NewCount() {
       let produtosAdicionados = 0;
       let produtosNaoEncontrados: string[] = [];
       
-      // Usar um Set para evitar duplicatas
-      const produtosUnicos = new Map<string, {id: string; quantidade: number; codigo?: string}>();
+      // Usar um Map para evitar duplicatas
+      const produtosUnicos = new Map<string, {id: string; quantidade: number; codigo?: string; }>();
       
       // Agrupa produtos pelo ID para evitar duplicatas
       for (const item of importedProducts) {
-        produtosUnicos.set(item.id, item);
+        if (item.id && typeof item.id === 'string') {
+          // Se tiver ID, usa como chave
+          produtosUnicos.set(item.id, { 
+            id: item.id, 
+            quantidade: item.quantidade, 
+            codigo: 'codigo' in item ? item.codigo : undefined 
+          });
+        } else if (item.codigo) {
+          // Se não tiver ID, mas tiver código, usa o código como chave
+          produtosUnicos.set(`code-${item.codigo}`, { 
+            id: `code-${item.codigo}`, 
+            quantidade: item.quantidade, 
+            codigo: item.codigo 
+          });
+        }
+        // Ignora itens sem ID nem código
       }
       
       // Processa cada produto único (usando forEach para compatibilidade)
