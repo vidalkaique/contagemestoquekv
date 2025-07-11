@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Check, Trash2, Package, Search, Pencil, X } from "lucide-react";
+import { ArrowLeft, Plus, Check, Trash2, Package, Search, Pencil, X, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { saveCurrentCount, getCurrentCount, clearCurrentCount, saveToCountHistor
 import type { InsertContagem, InsertItemContagem, ContagemWithItens } from "@shared/schema";
 import { useCountDate } from "@/hooks/use-count-date";
 import { useUnfinishedCount } from "@/hooks/use-counts";
+import { ImportStockScreen } from "@/components/import-stock-screen";
 
 interface ProductItem {
   id: string;
@@ -45,6 +46,7 @@ export default function NewCount() {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [editingProductIndex, setEditingProductIndex] = useState<number | null>(null);
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
 
   // Define o ID da contagem atual com base no parâmetro da rota ou na contagem não finalizada carregada
   useEffect(() => {
@@ -469,6 +471,20 @@ export default function NewCount() {
     setEditingProduct(null);
   };
 
+  // Atualiza um campo específico do produto em edição
+  const handleEditFieldChange = (field: keyof ProductItem, value: any) => {
+    if (editingProduct) {
+      setEditingProduct({
+        ...editingProduct,
+        [field]: value,
+        totalPacotes: calculateTotalPacotes({
+          ...editingProduct,
+          [field]: value
+        })
+      });
+    }
+  };
+
   // Salvar edição
   const handleSaveEdit = (index: number) => {
     if (!editingProduct) return;
@@ -497,16 +513,110 @@ export default function NewCount() {
     
     saveCurrentCount(currentCount);
     saveToCountHistory(currentCount);
+    
+    toast({
+      title: "Produto atualizado",
+      description: `As alterações em ${editingProduct.nome} foram salvas.`,
+    });
   };
 
-  // Atualizar campo em edição
-  const handleEditFieldChange = (field: keyof ProductItem, value: any) => {
-    if (!editingProduct) return;
+  /**
+   * Processa os produtos importados e os adiciona à contagem
+   * @param importedProducts Lista de produtos importados
+   */
+  const handleImportComplete = async (importedProducts: Array<{ codigo: string; quantidade: number }>) => {
+    if (!importedProducts.length) {
+      toast({
+        title: "Nenhum produto para importar",
+        description: "A planilha não contém produtos válidos para importação.",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    setEditingProduct({
-      ...editingProduct,
-      [field]: value,
-    });
+    try {
+      // Busca os produtos do banco de dados para obter os detalhes completos
+      const { data: produtos, error } = await supabase
+        .from('produtos')
+        .select('*')
+        .in('codigo', importedProducts.map(p => p.codigo));
+      
+      if (error) {
+        console.error("Erro ao buscar produtos:", error);
+        throw new Error("Não foi possível buscar os detalhes dos produtos");
+      }
+      
+      // Mapeia os produtos encontrados por código para busca rápida
+      const produtosPorCodigo = new Map(
+        (produtos || []).map(p => [p.codigo, p])
+      );
+      
+      // Processa cada produto importado
+      let produtosAdicionados = 0;
+      let produtosNaoEncontrados: string[] = [];
+      
+      for (const item of importedProducts) {
+        const produto = produtosPorCodigo.get(item.codigo);
+        
+        if (produto) {
+          // Produto encontrado - adiciona com os detalhes completos
+          handleAddProduct({
+            id: produto.id,
+            codigo: produto.codigo,
+            nome: produto.nome,
+            pallets: 0,
+            lastros: 0,
+            pacotes: 0,
+            unidades: 0,
+            totalPacotes: 0,
+            unidadesPorPacote: produto.unidades_por_pacote,
+            pacotesPorLastro: produto.pacotes_por_lastro,
+            lastrosPorPallet: produto.lastros_por_pallet,
+            quantidadePacsPorPallet: produto.quantidade_pacs_por_pallet,
+          });
+          produtosAdicionados++;
+        } else {
+          // Produto não encontrado - adiciona à lista de não encontrados
+          produtosNaoEncontrados.push(item.codigo);
+          
+          // Adiciona como produto livre (sem ID)
+          handleAddProduct({
+            id: `free-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            codigo: item.codigo,
+            nome: `Produto não cadastrado (${item.codigo})`,
+            pallets: 0,
+            lastros: 0,
+            pacotes: 0,
+            unidades: 0,
+            totalPacotes: 0,
+          });
+        }
+      }
+      
+      // Exibe mensagem de sucesso com resumo da importação
+      let message = `${produtosAdicionados} produtos importados com sucesso.`;
+      
+      if (produtosNaoEncontrados.length > 0) {
+        message += ` ${produtosNaoEncontrados.length} produtos não foram encontrados no cadastro e foram adicionados como itens livres.`;
+      }
+      
+      toast({
+        title: "Importação concluída",
+        description: message,
+      });
+      
+      // Fecha o modal de importação
+      setIsImportModalOpen(false);
+      
+    } catch (error) {
+      console.error("Erro ao processar importação:", error);
+      
+      toast({
+        title: "Erro na importação",
+        description: error instanceof Error ? error.message : "Ocorreu um erro ao processar a importação.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Filtrar produtos com base no termo de busca
@@ -1344,13 +1454,23 @@ export default function NewCount() {
             />
           </div>
           
-          <Button 
-            onClick={() => setIsProductModalOpen(true)} 
-            className="w-full"
-          >
-            <Plus className="mr-2" size={20} />
-            Adicionar Produto
-          </Button>
+          <div className="flex space-x-2">
+            <Button 
+              onClick={() => setIsProductModalOpen(true)} 
+              className="flex-1"
+            >
+              <Plus className="mr-2" size={20} />
+              Adicionar Produto
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => setIsImportModalOpen(true)}
+              className="flex-1"
+            >
+              <Upload className="mr-2" size={20} />
+              Importar
+            </Button>
+          </div>
         </div>
 
         {products.length === 0 ? (
@@ -1522,9 +1642,19 @@ export default function NewCount() {
 
       <ProductModal 
         isOpen={isProductModalOpen} 
-        onClose={() => setIsProductModalOpen(false)} 
-        onAddProduct={handleAddProduct} 
-        estoqueId={unfinishedCount?.estoqueId || undefined} 
+        onClose={() => {
+          setIsProductModalOpen(false);
+          setEditingProduct(null);
+        }}
+        onAddProduct={handleAddProduct}
+        estoqueId={unfinishedCount?.estoqueId}
+      />
+      
+      <ImportStockScreen
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        contagemId={currentCountId || `draft-${Date.now()}`}
+        onImportComplete={handleImportComplete}
       />
     </>
   );
