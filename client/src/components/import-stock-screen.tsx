@@ -121,10 +121,16 @@ export function ImportStockScreen({ isOpen, onClose, contagemId, onImportComplet
           quantidade_sistema: item.quantidade,
         }));
       
+      console.log('Dados para inserir:', dadosParaInserir);
+      
+      if (dadosParaInserir.length === 0) {
+        throw new Error('Nenhum produto válido para importar. Verifique se os códigos dos produtos existem no sistema.');
+      }
+      
       // Inserir no banco de dados
       const { error: insertError } = await supabase
         .from('contagem_importacoes')
-        .upsert(dadosParaInserit, { onConflict: 'contagem_id,produto_id' });
+        .upsert(dadosParaInserir, { onConflict: 'contagem_id,produto_id' });
       
       if (insertError) throw insertError;
       
@@ -140,9 +146,16 @@ export function ImportStockScreen({ isOpen, onClose, contagemId, onImportComplet
       
     } catch (error) {
       console.error('Erro ao importar produtos:', error);
+      
+      let errorMessage = 'Ocorreu um erro ao importar os produtos. Tente novamente.';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message || errorMessage;
+      }
+      
       toast({
         title: 'Erro ao importar produtos',
-        description: 'Ocorreu um erro ao importar os produtos. Tente novamente.',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
