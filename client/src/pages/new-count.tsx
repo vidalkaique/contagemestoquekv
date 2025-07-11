@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Check, Trash2, Package } from "lucide-react";
+import { ArrowLeft, Plus, Check, Trash2, Package, Upload, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ProductModal from "@/components/product-modal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import * as XLSX from 'xlsx';
 import { supabase } from "@/lib/supabase";
 import { saveCurrentCount, getCurrentCount, clearCurrentCount, saveToCountHistory, getCountHistory, type CurrentCount } from "@/lib/localStorage";
 import type { InsertContagem, InsertItemContagem, ContagemWithItens } from "@shared/schema";
@@ -25,6 +27,8 @@ interface ProductItem {
   pacotesPorLastro?: number;
   lastrosPorPallet?: number;
   quantidadePacsPorPallet?: number;
+  quantidadeSistema?: number; // Quantidade do sistema (importada da planilha)
+  codigo?: string; // Código do produto para facilitar a importação
 }
 
 export default function NewCount() {
@@ -39,8 +43,341 @@ export default function NewCount() {
 
   // Estados do componente
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [currentCountId, setCurrentCountId] = useState<string | undefined>(undefined);
+  const [file, setFile] = useState<File | null>(null);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [importedData, setImportedData] = useState<Array<{codigo: string; quantidade: number}>>([]);
+  const [excelUrl, setExcelUrl] = useState<string | null>(null);
+
+  /**
+   * Aplica formatação condicional a uma célula baseada no valor
+   */
+  const applyConditionalFormatting = (cell: any) => {
+    const value = cell.value;
+    if (typeof value === 'number') {
+      if (value > 0) {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFC6EFCE' } // Verde claro
+        };
+      } else if (value < 0) {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFC7CE' } // Vermelho claro
+        };
+      }
+    }
+  };
+
+  /**
+   * Gera e faz o download de um arquivo Excel com os dados da contagem
+   * @param products Produtos a serem exportados
+   */
+  const generateAndSaveExcel = async (products: ProductItem[]) => {
+    try {
+      setIsProcessing(true);
+      
+      const { Workbook } = await import('exceljs');
+      const workbook = new Workbook();
+      
+      // Adiciona a aba principal com os dados da contagem
+      const worksheet = workbook.addWorksheet('Contagem');
+      
+      // Define os cabeçalhos
+      worksheet.columns = [
+        { header: 'Código', key: 'codigo', width: 15 },
+        { header: 'Produto', key: 'produto', width: 40 },
+        { header: 'Pallets', key: 'pallets', width: 10 },
+        { header: 'Lastros', key: 'lastros', width: 10 },
+        { header: 'Pacotes', key: 'pacotes', width: 10 },
+        { header: 'Unidades', key: 'unidades', width: 10 },
+        { header: 'Total Unidades', key: 'totalUnidades', width: 15 },
+        { header: 'Sistema', key: 'sistema', width: 15 },
+        { header: 'Diferença', key: 'diferenca', width: 15 }
+      ];
+      
+      // Adiciona os dados dos produtos
+      products.forEach(product => {
+        const totalUnidades = calculateProductTotal(product);
+        const sistema = product.quantidadeSistema || 0;
+        const diferenca = totalUnidades - sistema;
+        
+        worksheet.addRow({
+          codigo: product.codigo || '-',
+          produto: product.nome,
+          pallets: product.pallets,
+          lastros: product.lastros,
+          pacotes: product.pacotes,
+          unidades: product.unidades,
+          totalUnidades,
+          sistema,
+          diferenca
+        });
+      });
+      
+      // Formatação condicional para destacar diferenças
+      worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+        if (rowNumber > 1) { // Pula o cabeçalho
+          const cell = row.getCell('I'); // Coluna de diferença
+          applyConditionalFormatting(cell);
+        }
+      });
+      
+      // Estiliza o cabeçalho
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { bold: true };
+      headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'F3F4F6' } // Cinza claro
+      };
+      
+      // Ajusta o alinhamento das células
+      worksheet.eachRow({ includeEmpty: true }, (row) => {
+        row.eachCell({ includeEmpty: true }, (cell) => {
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+      });
+      
+      // Adiciona uma aba de análise
+      const analysisSheet = workbook.addWorksheet('Análise');
+      
+      // Cabeçalhos da aba de análise
+      analysisSheet.columns = [
+        { header: 'Código', key: 'codigo', width: 15 },
+        { header: 'Produto', key: 'produto', width: 40 },
+        { header: 'Sistema', key: 'sistema', width: 15 },
+        { header: 'Contado', key: 'contado', width: 15 },
+        { header: 'Diferença', key: 'diferenca', width: 15 }
+      ];
+      
+      // Adiciona os dados à aba de análise
+      products.forEach(product => {
+        const totalUnidades = calculateProductTotal(product);
+        const sistema = product.quantidadeSistema || 0;
+        const diferenca = totalUnidades - sistema;
+        
+        analysisSheet.addRow({
+          codigo: product.codigo || '-',
+          produto: product.nome,
+          sistema,
+          contado: totalUnidades,
+          diferenca
+        });
+      });
+      
+      // Adiciona fórmulas de totais na aba de análise
+      const lastRow = products.length + 1;
+      
+      // Fórmula para soma da coluna Sistema
+      const sistemaCell = analysisSheet.getCell(`C${lastRow + 2}`);
+      sistemaCell.value = { formula: `SUM(C2:C${lastRow})` } as any;
+      sistemaCell.font = { bold: true };
+      
+      // Fórmula para soma da coluna Contado
+      const contadoCell = analysisSheet.getCell(`D${lastRow + 2}`);
+      contadoCell.value = { formula: `SUM(D2:D${lastRow})` } as any;
+      contadoCell.font = { bold: true };
+      
+      // Fórmula para soma da coluna Diferença
+      const diferencaCell = analysisSheet.getCell(`E${lastRow + 2}`);
+      diferencaCell.value = { formula: `SUM(E2:E${lastRow})` } as any;
+      diferencaCell.font = { bold: true };
+      
+      // Estiliza o cabeçalho da aba de análise
+      const analysisHeader = analysisSheet.getRow(1);
+      analysisHeader.font = { bold: true };
+      analysisHeader.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'F3F4F6' } // Cinza claro
+      };
+      
+      // Ajusta o alinhamento das células da aba de análise
+      analysisSheet.eachRow({ includeEmpty: true }, (row) => {
+        row.eachCell({ includeEmpty: true }, (cell) => {
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+      });
+      
+      // Formatação condicional para a coluna de diferença
+      analysisSheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+        if (rowNumber > 1 && rowNumber <= lastRow) { // Apenas linhas de dados
+          const cell = row.getCell('E'); // Coluna de diferença
+          applyConditionalFormatting(cell);
+        }
+      });
+      
+      // Gera o arquivo Excel
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      setExcelUrl(url);
+      
+      // Cria um link temporário e dispara o download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `contagem-estoque-${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Limpa o URL do objeto após o download
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        setExcelUrl(null);
+      }, 100);
+      
+      // Remove o link temporário
+      document.body.removeChild(a);
+      
+      toast({
+        title: 'Exportação concluída',
+        description: 'O arquivo Excel foi gerado com sucesso!',
+      });
+      
+    } catch (error) {
+      console.error('Erro ao gerar o arquivo Excel:', error);
+      toast({
+        title: 'Erro ao exportar',
+        description: 'Ocorreu um erro ao gerar o arquivo Excel. Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  /**
+   * Processa o arquivo de importação e extrai os códigos e quantidades
+   * @param file Arquivo Excel a ser processado
+   */
+  const processImportFile = async (file: File) => {
+    try {
+      setIsProcessing(true);
+      
+      // Lê o arquivo Excel
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(firstSheet);
+
+      // Processa os dados extraídos
+      const processedData = jsonData
+        .map(row => {
+          // Tenta encontrar o código e quantidade em diferentes formatos de coluna
+          const codigo = row['Código'] || row['codigo'] || row['CÓDIGO'] || row['CODIGO'] || '';
+          const quantidade = Number(row['Quantidade'] || row['quantidade'] || row['QUANTIDADE'] || 0);
+          
+          return {
+            codigo: String(codigo).trim(),
+            quantidade: Math.max(0, Math.floor(quantidade)) // Garante número inteiro não negativo
+          };
+        })
+        .filter(item => item.codigo); // Remove linhas sem código
+
+      setImportedData(processedData);
+      return processedData;
+      
+    } catch (error) {
+      console.error('Erro ao processar arquivo de importação:', error);
+      toast({
+        title: 'Erro ao processar arquivo',
+        description: 'Não foi possível processar o arquivo. Verifique o formato e tente novamente.',
+        variant: 'destructive',
+      });
+      return [];
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  /**
+   * Lida com a importação de produtos a partir de uma planilha
+   * @param file Arquivo Excel a ser importado
+   */
+  const handleImportComplete = async (importedProducts: Array<{codigo: string; quantidade: number}>) => {
+    if (!importedProducts.length) return;
+    
+    try {
+      setIsProcessing(true);
+      
+      // Busca os produtos no banco de dados baseado nos códigos
+      const { data: produtos, error } = await supabase
+        .from('produtos')
+        .select('*')
+        .in('codigo', importedProducts.map(p => p.codigo));
+      
+      if (error) throw error;
+      
+      // Mapeia os códigos para os produtos encontrados
+      const codigoParaProduto = new Map(produtos.map(p => [p.codigo, p]));
+      
+      // Cria novos produtos para a contagem
+      const novosProdutos = importedProducts
+        .filter(item => codigoParaProduto.has(item.codigo))
+        .map(item => {
+          const produto = codigoParaProduto.get(item.codigo)!;
+          return {
+            id: `imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            nome: produto.nome,
+            codigo: produto.codigo,
+            pallets: 0,
+            lastros: 0,
+            pacotes: 0,
+            unidades: 0,
+            totalPacotes: 0,
+            unidadesPorPacote: produto.unidades_por_pacote,
+            pacotesPorLastro: produto.pacotes_por_lastro,
+            lastrosPorPallet: produto.lastros_por_pallet,
+            quantidadePacsPorPallet: produto.quantidade_pacs_por_pallet,
+            quantidadeSistema: item.quantidade // Armazena o valor do sistema
+          } as ProductItem;
+        });
+      
+      // Adiciona os novos produtos à lista existente
+      setProducts(prevProducts => [...prevProducts, ...novosProdutos]);
+      
+      toast({
+        title: 'Importação concluída',
+        description: `${novosProdutos.length} produtos foram importados com sucesso.`,
+      });
+      
+    } catch (error) {
+      console.error('Erro ao importar produtos:', error);
+      toast({
+        title: 'Erro ao importar produtos',
+        description: 'Não foi possível importar os produtos. Verifique os dados e tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessing(false);
+      setIsImportModalOpen(false);
+    }
+  };
+
+  /**
+   * Manipula a seleção de arquivo para importação
+   */
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+    
+    try {
+      setFile(selectedFile);
+      const processedData = await processImportFile(selectedFile);
+      
+      if (processedData.length > 0) {
+        await handleImportComplete(processedData);
+      }
+    } catch (error) {
+      console.error('Erro ao processar arquivo:', error);
+    }
+  };
 
   // Define o ID da contagem atual com base no parâmetro da rota ou na contagem não finalizada carregada
   useEffect(() => {
@@ -642,10 +979,15 @@ export default function NewCount() {
         
         // Gera e salva o Excel
         try {
-          excelUrl = await generateAndSaveExcel(resolvedCountId, contagemData, products);
-          console.log('Excel gerado e salvo com sucesso:', excelUrl);
+          await generateAndSaveExcel(products);
+          console.log('Excel gerado com sucesso');
         } catch (error) {
           console.error('Erro ao gerar Excel:', error);
+          toast({
+            title: 'Aviso',
+            description: 'O arquivo Excel foi gerado, mas houve um problema ao salvá-lo no servidor.',
+            variant: 'destructive',
+          });
           // Não interrompe o fluxo se falhar a geração do Excel
         }
         
@@ -840,10 +1182,43 @@ export default function NewCount() {
           <Input id="count-date" type="date" value={countDate} onChange={(e) => handleDateChange(e.target.value)} className="mt-1" />
         </div>
 
-        <Button onClick={() => setIsProductModalOpen(true)} className="w-full mb-4">
-          <Plus className="mr-2" size={20} />
-          Adicionar Produto
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2 mb-4">
+          <Button 
+            onClick={() => setIsProductModalOpen(true)} 
+            className="flex-1"
+          >
+            <Plus className="mr-2" size={20} />
+            Adicionar Produto
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex-1"
+          >
+            <Upload className="mr-2" size={20} />
+            Importar Excel
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            disabled={products.length === 0 || isProcessing}
+            onClick={() => generateAndSaveExcel(products)}
+            className="flex-1"
+          >
+            {isProcessing ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mr-2"></div>
+                Exportando...
+              </>
+            ) : (
+              <>
+                <Download className="mr-2" size={20} />
+                Exportar
+              </>
+            )}
+          </Button>
+        </div>
 
         {products.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
@@ -918,6 +1293,102 @@ export default function NewCount() {
       </div>
 
       <ProductModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} onAddProduct={handleAddProduct} />
+      
+      {/* Modal de Importação de Planilha */}
+      <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Importar Planilha</DialogTitle>
+            <DialogDescription>
+              Selecione um arquivo Excel (.xlsx, .xls) ou CSV com os produtos a serem importados.
+              A planilha deve conter as colunas "Código" e "Quantidade".
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="file" className="text-right">
+                Arquivo
+              </Label>
+              <Input
+                id="file"
+                type="file"
+                accept=".xlsx, .xls, .csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, text/csv"
+                onChange={handleFileChange}
+                className="col-span-3"
+                disabled={isProcessing}
+              />
+            </div>
+            
+            {isProcessing && (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                <span className="ml-2">Processando arquivo...</span>
+              </div>
+            )}
+            
+            {importedData.length > 0 && (
+              <div className="mt-4 border rounded-md p-4">
+                <h4 className="font-medium mb-2">Dados a serem importados:</h4>
+                <div className="max-h-40 overflow-y-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
+                        <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {importedData.slice(0, 5).map((item, index) => (
+                        <tr key={index}>
+                          <td className="px-2 py-1 whitespace-nowrap text-sm text-gray-900">{item.codigo}</td>
+                          <td className="px-2 py-1 whitespace-nowrap text-sm text-gray-500">{item.quantidade}</td>
+                        </tr>
+                      ))}
+                      {importedData.length > 5 && (
+                        <tr>
+                          <td colSpan={2} className="px-2 py-1 text-center text-xs text-gray-500">
+                            + {importedData.length - 5} itens adicionais
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsImportModalOpen(false);
+                setFile(null);
+                setImportedData([]);
+              }}
+              disabled={isProcessing}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={async () => {
+                if (file) {
+                  const processedData = await processImportFile(file);
+                  if (processedData.length > 0) {
+                    await handleImportComplete(processedData);
+                    setFile(null);
+                    setImportedData([]);
+                  }
+                }
+              }}
+              disabled={!file || isProcessing || importedData.length === 0}
+            >
+              {isProcessing ? 'Importando...' : 'Confirmar Importação'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
