@@ -566,17 +566,17 @@ export default function NewCount() {
       
       // Agrupa produtos pelo ID para evitar duplicatas
       for (const item of importedProducts) {
-        if (item.id && typeof item.id === 'string') {
-          // Se tiver ID, usa como chave
+        if (item.id && typeof item.id === 'string' && !item.id.startsWith('free-')) {
+          // Se tiver ID e não for um ID de produto livre, usa como chave
           produtosUnicos.set(item.id, { 
             id: item.id, 
             quantidade: item.quantidade, 
             codigo: 'codigo' in item ? item.codigo : undefined 
           });
         } else if (item.codigo) {
-          // Se não tiver ID, mas tiver código, usa o código como chave
+          // Se não tiver ID ou for um ID de produto livre, mas tiver código, usa o código como chave
           produtosUnicos.set(`code-${item.codigo}`, { 
-            id: `code-${item.codigo}`, 
+            id: item.id || `code-${item.codigo}`, 
             quantidade: item.quantidade, 
             codigo: item.codigo 
           });
@@ -584,46 +584,71 @@ export default function NewCount() {
         // Ignora itens sem ID nem código
       }
       
-      // Processa cada produto único (usando forEach para compatibilidade)
+      // Criar um array de promessas para processar os produtos em paralelo
+      const promises = [];
+      
+      // Converte o Map para array e processa cada produto único
       const produtosArray = Array.from(produtosUnicos.entries());
-      for (let i = 0; i < produtosArray.length; i++) {
-        const [id, item] = produtosArray[i];
+      for (const [id, item] of produtosArray) {
         const produto = produtosPorId.get(id);
         
         if (produto) {
           // Produto encontrado - adiciona com os detalhes completos
-          handleAddProduct({
-            id: produto.id,
-            codigo: produto.codigo,
-            nome: produto.nome,
-            pallets: 0,
-            lastros: 0,
-            pacotes: 0,
-            unidades: 0,
-            totalPacotes: 0,
-            unidadesPorPacote: produto.unidades_por_pacote,
-            pacotesPorLastro: produto.pacotes_por_lastro,
-            lastrosPorPallet: produto.lastros_por_pallet,
-            quantidadePacsPorPallet: produto.quantidade_pacs_por_pallet,
-          });
-          produtosAdicionados++;
+          promises.push(
+            new Promise<void>((resolve) => {
+              const newProduct = {
+                id: produto.id,
+                codigo: produto.codigo,
+                nome: produto.nome,
+                pallets: 0,
+                lastros: 0,
+                pacotes: 0,
+                unidades: 0,
+                totalPacotes: 0,
+                unidadesPorPacote: produto.unidades_por_pacote,
+                pacotesPorLastro: produto.pacotes_por_lastro,
+                lastrosPorPallet: produto.lastros_por_pallet,
+                quantidadePacsPorPallet: produto.quantidade_pacs_por_pallet,
+              };
+              
+              // Usar setTimeout para garantir que o React tenha tempo de processar cada atualização
+              setTimeout(() => {
+                handleAddProduct(newProduct);
+                produtosAdicionados++;
+                resolve();
+              }, 0);
+            })
+          );
         } else if (item.codigo) {
           // Produto não encontrado - adiciona à lista de não encontrados
           produtosNaoEncontrados.push(item.codigo);
           
           // Adiciona como produto livre (sem ID)
-          handleAddProduct({
-            id: `free-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            codigo: item.codigo,
-            nome: `Produto não cadastrado (${item.codigo})`,
-            pallets: 0,
-            lastros: 0,
-            pacotes: 0,
-            unidades: 0,
-            totalPacotes: 0,
-          });
+          promises.push(
+            new Promise<void>((resolve) => {
+              const newProduct = {
+                id: `free-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                codigo: item.codigo,
+                nome: `Produto não cadastrado (${item.codigo})`,
+                pallets: 0,
+                lastros: 0,
+                pacotes: 0,
+                unidades: 0,
+                totalPacotes: 0,
+              };
+              
+              // Usar setTimeout para garantir que o React tenha tempo de processar cada atualização
+              setTimeout(() => {
+                handleAddProduct(newProduct);
+                resolve();
+              }, 0);
+            })
+          );
         }
       }
+      
+      // Aguarda todas as operações de adição de produto serem concluídas
+      await Promise.all(promises);
       
       // Exibe mensagem de sucesso com resumo da importação
       let message = `${produtosAdicionados} produtos importados com sucesso.`;
