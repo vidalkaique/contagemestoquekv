@@ -12,7 +12,7 @@ interface ImportStockScreenProps {
   isOpen: boolean;
   onClose: () => void;
   contagemId: string;
-  onImportComplete: (products: Array<{ codigo: string; quantidade: number }>) => void;
+  onImportComplete: (products: Array<{ id: string; quantidade: number; codigo?: string } | { codigo: string; quantidade: number; id?: string }>) => void;
 }
 
 export function ImportStockScreen({ isOpen, onClose, contagemId, onImportComplete }: ImportStockScreenProps) {
@@ -152,8 +152,12 @@ export function ImportStockScreen({ isOpen, onClose, contagemId, onImportComplet
       
       if (insertError) throw insertError;
       
-      // Chamar callback de conclusão
-      onImportComplete(previewData);
+      // Chamar callback de conclusão com os dados processados e IDs dos produtos
+      onImportComplete(dadosParaInserir.map(item => ({
+        id: item.produto_id,
+        quantidade: item.quantidade_sistema,
+        // Incluir outras propriedades necessárias para o componente pai
+      })));
       
       toast({
         title: 'Importação concluída',

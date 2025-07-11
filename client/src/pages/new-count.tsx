@@ -524,7 +524,7 @@ export default function NewCount() {
    * Processa os produtos importados e os adiciona à contagem
    * @param importedProducts Lista de produtos importados
    */
-  const handleImportComplete = async (importedProducts: Array<{ id: string; quantidade: number; codigo?: string }>) => {
+  const handleImportComplete = async (importedProducts: Array<{ id: string; quantidade: number; codigo?: string } | { codigo: string; quantidade: number; id?: string }>) => {
     if (!importedProducts.length) {
       toast({
         title: "Nenhum produto para importar",
@@ -568,8 +568,10 @@ export default function NewCount() {
         produtosUnicos.set(item.id, item);
       }
       
-      // Processa cada produto único
-      for (const [id, item] of produtosUnicos.entries()) {
+      // Processa cada produto único (usando forEach para compatibilidade)
+      const produtosArray = Array.from(produtosUnicos.entries());
+      for (let i = 0; i < produtosArray.length; i++) {
+        const [id, item] = produtosArray[i];
         const produto = produtosPorId.get(id);
         
         if (produto) {
