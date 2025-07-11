@@ -8,11 +8,22 @@ import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/lib/supabase';
 
+export interface ImportedProduct {
+  id?: string;
+  codigo?: string;
+  quantidade: number;
+  nome?: string;
+  unidadesPorPacote?: number;
+  pacotesPorLastro?: number;
+  lastrosPorPallet?: number;
+  quantidadePacsPorPallet?: number;
+}
+
 interface ImportStockScreenProps {
   isOpen: boolean;
   onClose: () => void;
   contagemId: string;
-  onImportComplete: (products: Array<{ id: string; quantidade: number; codigo?: string } | { codigo: string; quantidade: number; id?: string }>) => void;
+  onImportComplete: (products: ImportedProduct[]) => void;
 }
 
 export function ImportStockScreen({ isOpen, onClose, contagemId, onImportComplete }: ImportStockScreenProps) {
@@ -102,12 +113,12 @@ export function ImportStockScreen({ isOpen, onClose, contagemId, onImportComplet
     
     try {
       // Primeiro, buscar os IDs dos produtos baseados nos códigos
-      const { data: produtos, error: produtosError } = await supabase
+      const { data: produtos, error: produtosFetchError } = await supabase
         .from('produtos')
         .select('id, codigo')
         .in('codigo', previewData.map(p => p.codigo));
       
-      if (produtosError) throw produtosError;
+      if (produtosFetchError) throw produtosFetchError;
       
       // Mapear códigos para IDs
       const codigoParaId = new Map(produtos.map(p => [p.codigo, p.id]));
@@ -152,12 +163,31 @@ export function ImportStockScreen({ isOpen, onClose, contagemId, onImportComplet
       
       if (insertError) throw insertError;
       
-      // Chamar callback de conclusão com os dados processados e IDs dos produtos
-      onImportComplete(dadosParaInserir.map(item => ({
-        id: item.produto_id,
-        quantidade: item.quantidade_sistema,
-        // Incluir outras propriedades necessárias para o componente pai
-      })));
+      // Buscar informações completas dos produtos para o callback
+      const { data: produtosCompletos, error: produtosCompletosError } = await supabase
+        .from('produtos')
+        .select('*')
+        .in('id', dadosParaInserir.map(item => item.produto_id));
+      
+      if (produtosCompletosError) throw produtosCompletosError;
+      
+      // Mapear produtos por ID para busca rápida
+      const produtosPorId = new Map(produtosCompletos?.map(p => [p.id, p]) || []);
+      
+      // Chamar callback de conclusão com os dados processados e informações completas
+      onImportComplete(dadosParaInserir.map(item => {
+        const produto = produtosPorId.get(item.produto_id);
+        return {
+          id: item.produto_id,
+          quantidade: item.quantidade_sistema,
+          codigo: produto?.codigo,
+          nome: produto?.nome,
+          unidadesPorPacote: produto?.unidades_por_pacote,
+          pacotesPorLastro: produto?.pacotes_por_lastro,
+          lastrosPorPallet: produto?.lastros_por_pallet,
+          quantidadePacsPorPallet: produto?.quantidade_pacs_por_pallet
+        };
+      }));
       
       toast({
         title: 'Importação concluída',

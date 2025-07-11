@@ -12,7 +12,7 @@ import { saveCurrentCount, getCurrentCount, clearCurrentCount, saveToCountHistor
 import type { InsertContagem, InsertItemContagem, ContagemWithItens } from "@shared/schema";
 import { useCountDate } from "@/hooks/use-count-date";
 import { useUnfinishedCount } from "@/hooks/use-counts";
-import { ImportStockScreen } from "@/components/import-stock-screen";
+import { ImportStockScreen, type ImportedProduct } from "@/components/import-stock-screen";
 
 interface ProductItem {
   id: string;
@@ -27,6 +27,7 @@ interface ProductItem {
   pacotesPorLastro?: number;
   lastrosPorPallet?: number;
   quantidadePacsPorPallet?: number;
+  quantidadeSistema?: number;
 }
 
 export default function NewCount() {
@@ -524,7 +525,7 @@ export default function NewCount() {
    * Processa os produtos importados e os adiciona à contagem
    * @param importedProducts Lista de produtos importados
    */
-  const handleImportComplete = async (importedProducts: Array<{ id: string; quantidade: number; codigo?: string } | { codigo: string; quantidade: number; id?: string }>) => {
+  const handleImportComplete = async (importedProducts: ImportedProduct[]) => {
     if (!importedProducts.length) {
       toast({
         title: "Nenhum produto para importar",
@@ -535,126 +536,69 @@ export default function NewCount() {
     }
     
     try {
-      // Primeiro, obter todos os IDs de produtos únicos
-      const produtoIds = importedProducts
-        .filter((p): p is { id: string; quantidade: number; codigo?: string } => 
-          !!p.id && typeof p.id === 'string' && !p.id.startsWith('free-'))
-        .map(p => p.id);
-      
-      // Busca os produtos do banco de dados para obter os detalhes completos
-      const { data: produtos, error } = await supabase
-        .from('produtos')
-        .select('*')
-        .in('id', produtoIds);
-      
-      if (error) {
-        console.error("Erro ao buscar produtos:", error);
-        throw new Error("Não foi possível buscar os detalhes dos produtos");
-      }
-      
-      // Mapeia os produtos encontrados por ID para busca rápida
-      const produtosPorId = new Map(
-        (produtos || []).map(p => [p.id, p])
-      );
-      
-      // Processa cada produto importado
+      // Contadores para feedback ao usuário
       let produtosAdicionados = 0;
       let produtosNaoEncontrados: string[] = [];
       
-      // Usar um Map para evitar duplicatas
-      const produtosUnicos = new Map<string, {id: string; quantidade: number; codigo?: string; }>();
+      // Usar um Set para rastrear produtos já adicionados e evitar duplicatas
+      const produtosAdicionadosIds = new Set(products.map(p => p.id));
       
-      // Agrupa produtos pelo ID para evitar duplicatas
+      // Processar cada produto importado
       for (const item of importedProducts) {
-        if (item.id && typeof item.id === 'string' && !item.id.startsWith('free-')) {
-          // Se tiver ID e não for um ID de produto livre, usa como chave
-          produtosUnicos.set(item.id, { 
-            id: item.id, 
-            quantidade: item.quantidade, 
-            codigo: 'codigo' in item ? item.codigo : undefined 
-          });
-        } else if (item.codigo) {
-          // Se não tiver ID ou for um ID de produto livre, mas tiver código, usa o código como chave
-          produtosUnicos.set(`code-${item.codigo}`, { 
-            id: item.id || `code-${item.codigo}`, 
-            quantidade: item.quantidade, 
-            codigo: item.codigo 
-          });
-        }
-        // Ignora itens sem ID nem código
-      }
-      
-      // Criar um array de promessas para processar os produtos em paralelo
-      const promises = [];
-      
-      // Converte o Map para array e processa cada produto único
-      const produtosArray = Array.from(produtosUnicos.entries());
-      for (const [id, item] of produtosArray) {
-        const produto = produtosPorId.get(id);
-        
-        if (produto) {
-          // Produto encontrado - adiciona com os detalhes completos
-          promises.push(
-            new Promise<void>((resolve) => {
-              const newProduct = {
-                id: produto.id,
-                codigo: produto.codigo,
-                nome: produto.nome,
-                pallets: 0,
-                lastros: 0,
-                pacotes: 0,
-                unidades: 0,
-                totalPacotes: 0,
-                unidadesPorPacote: produto.unidades_por_pacote,
-                pacotesPorLastro: produto.pacotes_por_lastro,
-                lastrosPorPallet: produto.lastros_por_pallet,
-                quantidadePacsPorPallet: produto.quantidade_pacs_por_pallet,
-              };
-              
-              // Usar setTimeout para garantir que o React tenha tempo de processar cada atualização
-              setTimeout(() => {
-                handleAddProduct(newProduct);
-                produtosAdicionados++;
-                resolve();
-              }, 0);
-            })
-          );
-        } else if (item.codigo) {
-          // Produto não encontrado - adiciona à lista de não encontrados
-          produtosNaoEncontrados.push(item.codigo);
+        try {
+          // Verificar se o produto já foi adicionado
+          const productId = item.id || `free-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          if (produtosAdicionadosIds.has(productId)) {
+            console.log(`Produto ${item.codigo || productId} já adicionado, pulando...`);
+            continue;
+          }
           
-          // Adiciona como produto livre (sem ID)
-          promises.push(
-            new Promise<void>((resolve) => {
-              const newProduct = {
-                id: `free-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                codigo: item.codigo,
-                nome: `Produto não cadastrado (${item.codigo})`,
-                pallets: 0,
-                lastros: 0,
-                pacotes: 0,
-                unidades: 0,
-                totalPacotes: 0,
-              };
-              
-              // Usar setTimeout para garantir que o React tenha tempo de processar cada atualização
-              setTimeout(() => {
-                handleAddProduct(newProduct);
-                resolve();
-              }, 0);
-            })
-          );
+          // Adicionar o ID à lista de produtos já processados
+          produtosAdicionadosIds.add(productId);
+          
+          // Extrair as propriedades com valores padrão seguros
+          const nome = item.nome || `Produto ${item.codigo || productId}`;
+          const codigo = item.codigo || '';
+          
+          // Criar o objeto do produto com as informações fornecidas
+          const newProduct: ProductItem = {
+            id: productId,
+            codigo,
+            nome,
+            pallets: 0,
+            lastros: 0,
+            pacotes: 0,
+            unidades: 0,
+            totalPacotes: 0,
+            unidadesPorPacote: item.unidadesPorPacote,
+            pacotesPorLastro: item.pacotesPorLastro,
+            lastrosPorPallet: item.lastrosPorPallet,
+            quantidadePacsPorPallet: item.quantidadePacsPorPallet,
+            quantidadeSistema: item.quantidade
+          };
+          
+          // Adicionar o produto à lista
+          await new Promise<void>((resolve) => {
+            setTimeout(() => {
+              handleAddProduct(newProduct);
+              produtosAdicionados++;
+              resolve();
+            }, 0);
+          });
+          
+        } catch (error) {
+          console.error(`Erro ao processar produto ${item.codigo || item.id}:`, error);
+          if (item.codigo) {
+            produtosNaoEncontrados.push(item.codigo);
+          }
         }
       }
-      
-      // Aguarda todas as operações de adição de produto serem concluídas
-      await Promise.all(promises);
       
       // Exibe mensagem de sucesso com resumo da importação
       let message = `${produtosAdicionados} produtos importados com sucesso.`;
       
       if (produtosNaoEncontrados.length > 0) {
-        message += ` ${produtosNaoEncontrados.length} produtos não foram encontrados no cadastro e foram adicionados como itens livres.`;
+        message += ` ${produtosNaoEncontrados.length} produtos tiveram problemas ao serem importados.`;
       }
       
       toast({
@@ -664,6 +608,9 @@ export default function NewCount() {
       
       // Fecha o modal de importação
       setIsImportModalOpen(false);
+      
+      // Forçar atualização do estado
+      setProducts(prevProducts => [...prevProducts]);
       
     } catch (error) {
       console.error("Erro ao processar importação:", error);
