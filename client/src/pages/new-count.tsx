@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Check, Trash2, Package, Search, Pencil, X, Upload } from "lucide-react";
+import { ArrowLeft, Plus, Check, Trash2, Package, Search, Pencil, X, Upload, Download } from "lucide-react";
+import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1451,16 +1452,94 @@ export default function NewCount() {
     }
   };
 
+  /**
+   * Exporta os produtos para um arquivo Excel
+   */
+  const exportToExcel = () => {
+    try {
+      // Mapeia os produtos para o formato de planilha
+      const data = products.map(product => ({
+        'Código': product.codigo || '',
+        'Produto': product.nome,
+        'Pallets': product.pallets,
+        'Lastros': product.lastros,
+        'Pacotes': product.pacotes,
+        'Unidades': product.unidades,
+        'Total de Pacotes': product.totalPacotes,
+        'Total de Unidades': calculateProductTotal(product),
+        'Quantidade do Sistema': product.quantidadeSistema || 0,
+        'Divergência': (product.quantidadeSistema || 0) - calculateProductTotal(product),
+        'Unidades por Pacote': product.unidadesPorPacote || '',
+        'Pacotes por Lastro': product.pacotesPorLastro || '',
+        'Lastros por Pallet': product.lastrosPorPallet || ''
+      }));
+
+      // Cria uma nova planilha
+      const ws = XLSX.utils.json_to_sheet(data);
+      
+      // Ajusta a largura das colunas
+      const wscols = [
+        { wch: 15 }, // Código
+        { wch: 30 }, // Produto
+        { wch: 10 }, // Pallets
+        { wch: 10 }, // Lastros
+        { wch: 10 }, // Pacotes
+        { wch: 10 }, // Unidades
+        { wch: 15 }, // Total de Pacotes
+        { wch: 15 }, // Total de Unidades
+        { wch: 20 }, // Quantidade do Sistema
+        { wch: 15 }, // Divergência
+        { wch: 15 }, // Unidades por Pacote
+        { wch: 15 }, // Pacotes por Lastro
+        { wch: 15 }, // Lastros por Pallet
+      ];
+      ws['!cols'] = wscols;
+
+      // Cria um novo livro de trabalho
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Contagem de Estoque');
+
+      // Gera o arquivo Excel
+      const fileName = `contagem_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      
+      toast({
+        title: "Exportação concluída",
+        description: `A planilha foi baixada como ${fileName}`,
+      });
+      
+    } catch (error) {
+      console.error("Erro ao exportar para Excel:", error);
+      toast({
+        title: "Erro ao exportar",
+        description: "Não foi possível exportar os dados para Excel. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <>
       <div className="p-4 max-w-2xl mx-auto">
-        <div className="flex items-center mb-4">
-          <Button variant="ghost" size="icon" onClick={() => setLocation("/")}>
-            <ArrowLeft />
-          </Button>
-          <h1 className="text-2xl font-bold ml-2">
-            {contagemId ? `Contagem #${contagemId}` : "Nova Contagem"}
-          </h1>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center">
+            <Button variant="ghost" size="icon" onClick={() => setLocation("/")}>
+              <ArrowLeft />
+            </Button>
+            <h1 className="text-2xl font-bold ml-2">
+              {contagemId ? `Contagem #${contagemId}` : "Nova Contagem"}
+            </h1>
+          </div>
+          {products.length > 0 && (
+            <Button 
+              variant="outline" 
+              onClick={exportToExcel}
+              className="flex items-center gap-2"
+            >
+              <Download size={18} />
+              Exportar para Excel
+            </Button>
+          )}
         </div>
 
         <div className="mb-4">
@@ -1594,8 +1673,20 @@ export default function NewCount() {
         )}
 
         {products.length > 0 && (
-          <div className="pt-4">
-            <Button onClick={handleFinalizeCount} disabled={createCountMutation.isPending} className="w-full bg-emerald-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-emerald-600 transition-colors">
+          <div className="pt-4 flex flex-col sm:flex-row gap-3">
+            <Button 
+              onClick={exportToExcel} 
+              variant="outline" 
+              className="w-full sm:w-auto flex items-center justify-center gap-2"
+            >
+              <Download size={18} />
+              Exportar para Excel
+            </Button>
+            <Button 
+              onClick={handleFinalizeCount} 
+              disabled={createCountMutation.isPending} 
+              className="w-full sm:w-auto bg-emerald-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-emerald-600 transition-colors"
+            >
               {createCountMutation.isPending ? "Finalizando..." : <><Check className="mr-2" size={20} />Finalizar Contagem</>}
             </Button>
           </div>
