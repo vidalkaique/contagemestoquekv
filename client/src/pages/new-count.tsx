@@ -334,193 +334,6 @@ export default function NewCount() {
     },
   });
 
-  /**
-   * Adiciona um novo produto à lista de produtos da contagem atual
-   * @param product Produto a ser adicionado
-   * @returns O produto adicionado com valores padrão
-   */
-  const handleAddProduct = (product: Omit<ProductItem, 'totalPacotes'> & { totalPacotes?: number }): ProductItem => {
-    try {
-      // Validações iniciais
-      if (!product || !product.id || !product.nome) {
-        throw new Error("Dados do produto inválidos");
-      }
-
-      // Cria o produto com valores padrão
-      const productWithDefaults: ProductItem = {
-        ...product,
-        pallets: product.pallets ?? 0,
-        lastros: product.lastros ?? 0,
-        pacotes: product.pacotes ?? 0,
-        unidades: product.unidades ?? 0,
-        totalPacotes: product.totalPacotes ?? calculateTotalPacotes({
-          ...product,
-          pallets: product.pallets ?? 0,
-          lastros: product.lastros ?? 0,
-          pacotes: product.pacotes ?? 0,
-          unidades: product.unidades ?? 0,
-          totalPacotes: 0,
-        }),
-      };
-
-      // Verifica se o produto já existe na lista
-      const productIndex = products.findIndex(p => p.id === product.id);
-      let updatedProducts: ProductItem[];
-      
-      if (productIndex >= 0) {
-        // Atualiza o produto existente
-        updatedProducts = [...products];
-        updatedProducts[productIndex] = productWithDefaults;
-      } else {
-        // Adiciona o novo produto
-        updatedProducts = [...products, productWithDefaults];
-      }
-      
-      // Atualiza o estado
-      setProducts(updatedProducts);
-      
-      // Prepara os dados para salvar no localStorage
-      const currentCount: CurrentCount = {
-        id: currentCountId || `draft-${Date.now()}`,
-        date: new Date(countDate).toISOString().split('T')[0],
-        products: updatedProducts,
-        lastUpdated: new Date().toISOString()
-      };
-      
-      // Atualiza o ID da contagem se ainda não existir
-      if (!currentCountId) {
-        setCurrentCountId(currentCount.id);
-      }
-      
-      // Persiste os dados
-      saveCurrentCount(currentCount);
-      saveToCountHistory(currentCount);
-      
-      return productWithDefaults;
-      
-    } catch (error) {
-      console.error("Erro ao adicionar produto:", error);
-      toast({
-        title: "Erro ao adicionar produto",
-        description: error instanceof Error ? error.message : "Não foi possível adicionar o produto à contagem.",
-        variant: "destructive",
-      });
-      throw error; // Propaga o erro para o chamador, se necessário
-    }
-  };
-
-  /**
-   * Remove um produto da lista de produtos da contagem atual
-   * @param index Índice do produto a ser removido
-   * @returns O produto removido ou undefined se o índice for inválido
-   */
-  const handleRemoveProduct = (index: number): ProductItem | undefined => {
-    try {
-      // Valida o índice
-      if (index < 0 || index >= products.length) {
-        console.warn(`Índice inválido ao remover produto: ${index}`);
-        return undefined;
-      }
-
-      // Cria uma cópia do array de produtos e remove o item
-      const updatedProducts = [...products];
-      const [removedProduct] = updatedProducts.splice(index, 1);
-      
-      // Atualiza o estado
-      setProducts(updatedProducts);
-      
-      // Prepara os dados para salvar no localStorage
-      const currentCount: CurrentCount = {
-        id: currentCountId || `draft-${Date.now()}`,
-        date: new Date(countDate).toISOString().split('T')[0],
-        products: updatedProducts,
-        lastUpdated: new Date().toISOString()
-      };
-      
-      // Atualiza o ID da contagem se ainda não existir
-      if (!currentCountId) {
-        setCurrentCountId(currentCount.id);
-      }
-      
-      // Persiste os dados
-      saveCurrentCount(currentCount);
-      saveToCountHistory(currentCount);
-      
-      return removedProduct;
-      
-    } catch (error) {
-      console.error("Erro ao remover produto:", error);
-      toast({
-        title: "Erro ao remover produto",
-        description: "Não foi possível remover o produto da contagem.",
-        variant: "destructive",
-      });
-      return undefined;
-    }
-  };
-
-  // Iniciar edição de um produto
-  const handleStartEdit = (index: number) => {
-    setEditingProductIndex(index);
-    setEditingProduct({ ...products[index] });
-  };
-
-  // Cancelar edição
-  const handleCancelEdit = () => {
-    setEditingProductIndex(null);
-    setEditingProduct(null);
-  };
-
-  // Atualiza um campo específico do produto em edição
-  const handleEditFieldChange = (field: keyof ProductItem, value: any) => {
-    if (editingProduct) {
-      setEditingProduct({
-        ...editingProduct,
-        [field]: value,
-        totalPacotes: calculateTotalPacotes({
-          ...editingProduct,
-          [field]: value
-        })
-      });
-    }
-  };
-
-  // Salvar edição
-  const handleSaveEdit = (index: number) => {
-    if (!editingProduct) return;
-    
-    const updatedProducts = [...products];
-    updatedProducts[index] = {
-      ...editingProduct,
-      totalPacotes: calculateTotalPacotes(editingProduct),
-    };
-    
-    setProducts(updatedProducts);
-    setEditingProductIndex(null);
-    setEditingProduct(null);
-    
-    // Atualizar localStorage
-    const currentCount: CurrentCount = {
-      id: currentCountId || `draft-${Date.now()}`,
-      date: new Date(countDate).toISOString().split('T')[0],
-      products: updatedProducts,
-      lastUpdated: new Date().toISOString()
-    };
-    
-    if (!currentCountId) {
-      setCurrentCountId(currentCount.id);
-    }
-    
-    saveCurrentCount(currentCount);
-    saveToCountHistory(currentCount);
-    
-    toast({
-      title: "Produto atualizado",
-      description: `As alterações em ${editingProduct.nome} foram salvas.`,
-    });
-  };
-
-  /**
    * Processa os produtos importados e os adiciona à contagem
    * @param importedProducts Lista de produtos importados
    */
@@ -584,41 +397,18 @@ export default function NewCount() {
         // Ignora itens sem ID nem código
       }
       
-      // Processa cada produto único (usando forEach para compatibilidade)
-      const produtosArray = Array.from(produtosUnicos.entries());
-      for (let i = 0; i < produtosArray.length; i++) {
-        const [id, item] = produtosArray[i];
+      console.log('Iniciando processamento de', produtosUnicos.size, 'produtos únicos');
+      
+      // Cria um array de Promises para processar cada produto
+      const promises = Array.from(produtosUnicos.entries()).map(async ([id, item]) => {
         const produto = produtosPorId.get(id);
         
-        if (produto) {
-          // Produto encontrado - adiciona com os detalhes completos
-          handleAddProduct({
-            id: produto.id,
-            codigo: produto.codigo,
-            nome: produto.nome,
-            pallets: 0,
-            lastros: 0,
-            pacotes: 0,
-            unidades: 0,
-            totalPacotes: 0,
-            unidadesPorPacote: produto.unidades_por_pacote,
-            pacotesPorLastro: produto.pacotes_por_lastro,
-            lastrosPorPallet: produto.lastros_por_pallet,
-            quantidadePacsPorPallet: produto.quantidade_pacs_por_pallet,
-          });
-          produtosAdicionados++;
-        } else if (item.codigo) {
-          // Produto não encontrado - adiciona à lista de não encontrados
-          produtosNaoEncontrados.push(item.codigo);
-          
-          // Adiciona como produto livre (sem ID)
-          handleAddProduct({
-            id: `free-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            codigo: item.codigo,
-            nome: `Produto não cadastrado (${item.codigo})`,
-            pallets: 0,
-            lastros: 0,
-            pacotes: 0,
+        if (!produto) {
+          const codigoOuId = item.codigo || id;
+          if (codigoOuId && !codigoOuId.startsWith('code-')) {
+            return { success: false, id: codigoOuId };
+          }
+          return { success: false, id: 'id-desconhecido' };
             unidades: 0,
             totalPacotes: 0,
           });
@@ -722,94 +512,315 @@ export default function NewCount() {
     }
   };
 
+  // Interface para o tipo de linha da planilha
+  interface ExcelRow {
+    codigo?: string;
+    nome?: string;
+    pallets?: number;
+    lastros?: number;
+    pacotes?: number;
+    unidades?: number;
+    totalPacotes?: number;
+    preco_medio?: number;
+    valor_total?: number;
+  }
+
+  // Interface para o tipo de célula do Excel
+  interface ExcelCell {
+    value: any;
+    fill?: {
+      type: 'pattern';
+      pattern: 'solid' | 'gray125' | 'darkGray' | 'mediumGray' | 'lightGray' | 'darkHorizontal' | 'darkVertical' | 'darkDown' | 'darkUp' | 'darkGrid' | 'darkTrellis' | 'lightHorizontal' | 'lightVertical' | 'lightDown' | 'lightUp' | 'lightGrid' | 'lightTrellis' | 'darkGray' | 'mediumGray' | 'lightGray' | 'darkHorizontal' | 'darkVertical' | 'darkDown' | 'darkUp' | 'darkGrid' | 'darkTrellis' | 'lightHorizontal' | 'lightVertical' | 'lightDown' | 'lightUp' | 'lightGrid' | 'lightTrellis';
+      fgColor: { argb: string };
+    };
+  }
+
+  // Interface para o tipo de linha do Excel
+  interface ExcelRowType {
+    getCell: (index: number) => ExcelCell;
+  }
+
+  // Função auxiliar para calcular o total de pacotes
+  const calculateTotalPacotes = (product: ProductItem | Omit<ProductItem, 'id' | 'created_at'>): number => {
+    const { pallets = 0, lastros = 0, pacotes = 0, unidades = 0 } = product;
+    const pacotesPorLastro = 'pacotesPorLastro' in product ? product.pacotesPorLastro || 0 : 0;
+    const lastrosPorPallet = 'lastrosPorPallet' in product ? product.lastrosPorPallet || 0 : 0;
+    
+    const totalPacotes = 
+      (Number(pallets) * Number(lastrosPorPallet) * Number(pacotesPorLastro)) + 
+      (Number(lastros) * Number(pacotesPorLastro)) + 
+      Number(pacotes) + 
+      (Number(unidades) > 0 ? 1 : 0); // Considera 1 pacote se houver unidades avulsas
+      
+    return Math.max(0, totalPacotes); // Garante que não retorne valores negativos
+  };
+
+  // Função auxiliar para calcular o valor total do produto
+  const calculateProductTotal = (product: ProductItem | Omit<ProductItem, 'id' | 'created_at'>): number => {
+    const preco_medio = 'preco_medio' in product ? Number(product.preco_medio) || 0 : 0;
+    const quantidade_contada = 'quantidade_contada' in product ? Number(product.quantidade_contada) || 0 : 0;
+    return preco_medio * quantidade_contada;
+  };
+
+  /**
+   * Adiciona um novo produto à lista de produtos da contagem atual
+   * @param product Produto a ser adicionado
+   * @returns O produto adicionado com valores padrão
+   */
+  const handleAddProduct = (product: Omit<ProductItem, 'id' | 'created_at'>) => {
+    const newProduct: ProductItem = {
+      ...product,
+      id: `prod-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      created_at: new Date().toISOString(),
+      totalPacotes: calculateTotalPacotes({ ...product, id: 'temp' } as ProductItem),
+      valor_total: calculateProductTotal({ ...product, id: 'temp' } as ProductItem)
+    };
+    
+    console.log('Adicionando produto ao estado:', { 
+      id: newProduct.id, 
+      codigo: product.codigo,
+      quantidade: product.quantidade_sistema,
+      totalPacotes: newProduct.totalPacotes,
+      valor_total: newProduct.valor_total
+    });
+    
+    setProducts(prevProducts => [...prevProducts, newProduct]);
+    return newProduct;
+  };
+
+  /**
+   * Processa os produtos importados e os adiciona à contagem
+   * @param importedProducts Lista de produtos importados
+   */
+  const handleImportComplete = async (importedProducts: Array<{ id: string; quantidade: number; codigo?: string } | { codigo: string; quantidade: number; id?: string }>) => {
+    if (!importedProducts.length) {
+      toast({
+        title: "Nenhum produto para importar",
+        description: "A planilha não contém produtos válidos para importação.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      // Primeiro, obter todos os IDs de produtos únicos
+      const produtoIds = importedProducts
+        .filter((p): p is { id: string; quantidade: number; codigo?: string } => 
+          !!p.id && typeof p.id === 'string' && !p.id.startsWith('free-'))
+        .map(p => p.id);
+      
+      // Busca os produtos do banco de dados para obter os detalhes completos
+      const { data: produtos, error } = await supabase
+        .from('produtos')
+        .select('*')
+        .in('id', produtoIds);
+      
+      if (error) {
+        console.error("Erro ao buscar produtos:", error);
+        throw new Error("Não foi possível buscar os detalhes dos produtos");
+      }
+      
+      // Mapeia os produtos encontrados por ID para busca rápida
+      const produtosPorId = new Map(
+        (produtos || []).map(p => [p.id, p])
+      );
+      
+      // Processa cada produto importado
+      let produtosAdicionados = 0;
+      let produtosNaoEncontrados: string[] = [];
+      
+      // Usar um Map para evitar duplicatas
+      const produtosUnicos = new Map<string, {id: string; quantidade: number; codigo?: string; }>();
+      
+      // Agrupa produtos pelo ID para evitar duplicatas
+      for (const item of importedProducts) {
+        if (item.id && typeof item.id === 'string') {
+          // Se tiver ID, usa como chave
+          produtosUnicos.set(item.id, { 
+            id: item.id, 
+            quantidade: item.quantidade, 
+            codigo: 'codigo' in item ? item.codigo : undefined 
+          });
+        } else if (item.codigo) {
+          // Se não tiver ID, mas tiver código, usa o código como chave
+          produtosUnicos.set(`code-${item.codigo}`, { 
+            id: `code-${item.codigo}`, 
+            quantidade: item.quantidade, 
+            codigo: item.codigo 
+          });
+        }
+        // Ignora itens sem ID nem código
+      }
+      
+      console.log('Iniciando processamento de', produtosUnicos.size, 'produtos únicos');
+      
+      // Cria um array de Promises para processar cada produto
+      const promises = Array.from(produtosUnicos.entries()).map(async ([id, item]) => {
+        const produto = produtosPorId.get(id);
+        
+        if (!produto) {
+          const codigoOuId = item.codigo || id;
+          if (codigoOuId && !codigoOuId.startsWith('code-')) {
+            return { success: false, id: codigoOuId };
+          }
+          return { success: false, id: 'id-desconhecido' };
+        }
+        
+        try {
+          console.log('Adicionando produto:', { id: produto.id, codigo: produto.codigo, quantidade: item.quantidade });
+          
+          // Cria uma promessa para adicionar o produto
+          await new Promise<void>((resolve) => {
+            handleAddProduct({
+              id: produto.id,
+              codigo: produto.codigo,
+              nome: produto.nome,
+              pallets: 0,
+              lastros: 0,
+              pacotes: 0,
+              unidades: 0,
+              totalPacotes: 0,
+              quantidade_sistema: item.quantidade,
+              quantidade_contada: 0,
+              diferenca: 0,
+              preco_medio: produto.preco_medio || 0,
+              valor_total: 0,
+              ativo: produto.ativo || true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              quantidade_pacs_por_pallet: produto.quantidade_pacs_por_pallet || 0
+            });
+            // Dá um pequeno delay entre as adições para evitar sobrecarga
+            setTimeout(resolve, 50);
+          });
+          
+          return { success: true, id: produto.id };
+        } catch (error) {
+          console.error('Erro ao adicionar produto:', { id: produto.id, error });
+          return { success: false, id: produto.id, error };
+        }
+      });
+      
+      // Aguarda todas as operações de adição serem concluídas
+      const results = await Promise.all(promises);
+      
+      // Conta os sucessos e falhas
+      const sucessos = results.filter(r => r.success).length;
+      const falhas = results.length - sucessos;
+      
+      console.log('Resultado da importação:', { total: results.length, sucessos, falhas });
+      
+      // Atualiza os contadores
+      produtosAdicionados = sucessos;
+      produtosNaoEncontrados = results
+        .filter(r => !r.success && r.id !== 'id-desconhecido')
+        .map(r => r.id);
+      
+      // Exibe feedback para o usuário
+      if (produtosAdicionados > 0) {
+        toast({
+          title: "Importação concluída",
+          description: `${produtosAdicionados} produtos importados com sucesso.`,
+        });
+      }
+      
+      if (produtosNaoEncontrados.length > 0) {
+        toast({
+          title: "Atenção",
+          description: `${produtosNaoEncontrados.length} produtos não foram encontrados no sistema.`,
+          variant: "destructive",
+        });
+      }
+      
+    } catch (error) {
+      console.error("Erro ao importar produtos:", error);
+      toast({
+        title: "Erro ao importar produtos",
+        description: error instanceof Error ? error.message : "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const generateAndSaveExcel = async (countId: string, countData: any, items: any[]): Promise<string> => {
     console.log('=== INÍCIO DA GERAÇÃO DO EXCEL ===');
     console.log('countData:', JSON.stringify(countData, null, 2));
     console.log('items:', JSON.stringify(items, null, 2));
     
-    // Busca os códigos dos produtos no banco de dados
-    console.log('Itens recebidos para geração do Excel:', JSON.stringify(items, null, 2));
-    
-    // Extrai os IDs dos produtos, garantindo que são válidos
-    const productEntries = items
-      .filter(item => {
-        // Verifica se o item tem um ID válido (não é produto livre)
-        const hasValidId = item && item.id && !item.id.startsWith('free-');
-        // Verifica se tem product_id (caso o ID principal seja diferente)
-        const hasProductId = item && item.product_id && !item.product_id.startsWith('free-');
-        
-        if (!hasValidId && !hasProductId) {
-          console.log('Item inválido ou é produto livre:', item);
-          return false;
-        }
-        return true;
-      })
-      .map(item => {
-        // Usa product_id se disponível, senão usa id
-        const productId = item.product_id || item.id;
-        console.log(`Processando item - ID: ${item.id}, ` +
-                   `Product ID: ${item.product_id || 'N/A'}, ` +
-                   `Nome: ${item.nome || 'Sem nome'}, ` +
-                   `Usando ID: ${productId}`);
-        
-        return {
-          id: item.id,
-          product_id: productId,
-          nome: item.nome
-        };
-      });
-    
-    // Extrai apenas os IDs únicos para busca
-    const productIds = productEntries
-      .map(entry => entry.product_id)
-      .filter((item): item is string => !!item) // Filtra valores nulos/undefined e faz type assertion
-      .filter((item, index, self) => self.indexOf(item) === index); // Remove duplicados
-    
-    // Log para depuração
-    console.log('Entradas de produtos processadas:', productEntries);
-    console.log('IDs de produtos únicos para busca:', productIds);
-    
-    console.log('IDs de produtos únicos para busca:', productIds);
-    
-    // Busca os códigos dos produtos no banco
-    const productCodesMap = await fetchProductCodes(productIds);
-    console.log('Mapa de códigos de produtos:', Object.fromEntries(productCodesMap));
-    
-    // Verifica se todos os produtos foram encontrados
-    const missingProducts = productIds.filter(id => !productCodesMap.has(id));
-    if (missingProducts.length > 0) {
-      console.warn('Os seguintes produtos não foram encontrados no banco de dados:', missingProducts);
-    }
-    
-    const { Workbook } = await import('exceljs');
-    
-    // Criar workbook
-    const workbook = new Workbook();
-    const worksheet = workbook.addWorksheet("Contagem");
-    
-    // Configurar propriedades da planilha
-    worksheet.properties.defaultColWidth = 15;
-    
-    // Adicionar título
-    const titleRow = worksheet.addRow(['CONTAGEM DE ESTOQUE']);
-    titleRow.font = { bold: true, size: 18, color: { argb: 'FF2F5496' } };
-    titleRow.alignment = { horizontal: 'center', vertical: 'middle' };
-    titleRow.height = 30;
-    worksheet.mergeCells('A1:H1');
-    
-    // Formatar a data
-    let dataFormatada = 'NÃO INFORMADA';
     try {
-      const dataContagem = countData.data ? new Date(countData.data) : new Date();
-      dataFormatada = dataContagem.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+      const { Workbook } = await import('exceljs');
+      const workbook = new Workbook();
+      const worksheet = workbook.addWorksheet('Contagem');
+      
+      // Configuração do cabeçalho
+      worksheet.columns = [
+        { header: 'Código', key: 'codigo', width: 15 },
+        { header: 'Produto', key: 'nome', width: 40 },
+        { header: 'Pallets', key: 'pallets', width: 10 },
+        { header: 'Lastros', key: 'lastros', width: 10 },
+        { header: 'Pacotes', key: 'pacotes', width: 10 },
+        { header: 'Unidades', key: 'unidades', width: 10 },
+        { header: 'Total Pacotes', key: 'totalPacotes', width: 15 },
+        { header: 'Preço Médio', key: 'preco_medio', width: 15 },
+        { header: 'Valor Total', key: 'valor_total', width: 15 }
+      ];
+      
+      // Adiciona os dados dos itens
+      items.forEach((item: any) => {
+        worksheet.addRow({
+          codigo: item.codigo || '',
+          nome: item.nome || '',
+          pallets: item.pallets || 0,
+          lastros: item.lastros || 0,
+          pacotes: item.pacotes || 0,
+          unidades: item.unidades || 0,
+          totalPacotes: item.totalPacotes || 0,
+          preco_medio: item.preco_medio || 0,
+          valor_total: item.valor_total || 0
+        });
       });
+      
+      // Adiciona formatação condicional para destacar valores
+      worksheet.eachRow((row: ExcelRowType, rowNumber: number) => {
+        if (rowNumber > 1) { // Pula o cabeçalho
+          const valorTotalCell = row.getCell(9); // Coluna I (9) = Valor Total
+          const valorTotal = Number(valorTotalCell.value) || 0;
+          
+          if (valorTotal > 0) {
+            // Usando type assertion para evitar erros de tipo
+            (valorTotalCell as any).fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFE6F3FF' }
+            };
+          }
+        }
+      });
+      
+      // Gera o buffer do arquivo
+      const buffer = await workbook.xlsx.writeBuffer();
+      
+      // Cria um blob e URL para download
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      
+      // Cria um link temporário para download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `contagem_${countId}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Limpa o link após o download
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+      return url;
     } catch (error) {
-      console.error('Erro ao formatar data:', error);
+      console.error('Erro ao gerar Excel:', error);
+      throw error;
     }
     
     // Adicionar informações do estoque e data
