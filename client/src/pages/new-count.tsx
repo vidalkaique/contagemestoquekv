@@ -531,23 +531,108 @@ const handleRemoveProduct = (index: number) => {
   setProducts(prev => prev.filter((_, i) => i !== index));
 };
 
-const handleEditFieldChange = (field: keyof ProductItem, value: any) => {
-  if (editingProductIndex === null || !editingProduct) return;
-  
-  setEditingProduct(prev => ({
-    ...prev!,
-    [field]: value
-  }));
-};
+  const handleEditFieldChange = (field: keyof ProductItem, value: any) => {
+    if (editingProductIndex === null || !editingProduct) return;
+    
+    setEditingProduct(prev => ({
+      ...prev!,
+      [field]: value
+    }));
+  };
 
-// ... (rest of the code remains the same)
+  // Função para salvar as alterações de um produto em edição
+  const handleSaveEdit = (index: number) => {
+    if (editingProduct === null) return;
+    
+    setProducts(prev => {
+      const newProducts = [...prev];
+      newProducts[index] = editingProduct;
+      
+      // Atualiza o localStorage
+      saveCurrentCount({
+        id: currentCountId || 'temp',
+        date: countDate || new Date().toISOString().split('T')[0],
+        products: newProducts,
+        createdAt: new Date().toISOString()
+      });
+      
+      return newProducts;
+    });
+    
+    // Limpa o estado de edição
+    setEditingProduct(null);
+    setEditingProductIndex(null);
+  };
 
-try {
-  const { data, error } = await supabase
-    .from('produtos')
-    .select('id, codigo, codigo_barras, referencia, nome')
-    .eq('id', id)
-    .maybeSingle();
+  // Função para cancelar a edição de um produto
+  const handleCancelEdit = () => {
+    setEditingProduct(null);
+    setEditingProductIndex(null);
+  };
+
+  // ... (rest of the code remains the same)
+
+  // Função para gerar e salvar o Excel
+  const generateAndSaveExcel = async (countId: string, countData: any, items: any[]): Promise<string> => {
+    console.log('=== INÍCIO DA GERAÇÃO DO EXCEL ===');
+    console.log('countData:', JSON.stringify(countData, null, 2));
+    console.log('items:', JSON.stringify(items, null, 2));
+    
+    try {
+      const { Workbook } = await import('exceljs');
+      const excelWorkbook = new Workbook();
+      const excelWorksheet = excelWorkbook.addWorksheet('Contagem');
+      
+      // Configuração do cabeçalho
+      excelWorksheet.columns = [
+        { header: 'Código', key: 'codigo', width: 15 },
+        { header: 'Produto', key: 'produto', width: 40 },
+        { header: 'Pallets', key: 'pallets', width: 10 },
+        { header: 'Lastros', key: 'lastros', width: 10 },
+        { header: 'Pacotes', key: 'pacotes', width: 10 },
+        { header: 'Unidades', key: 'unidades', width: 10 },
+        { header: 'Total', key: 'total', width: 15 },
+        { header: 'Total Pacotes', key: 'total_pacotes', width: 15 }
+      ];
+
+      // Adiciona os dados dos itens
+      items.forEach(item => {
+        excelWorksheet.addRow({
+          codigo: item.codigo || 'N/A',
+          produto: item.nome,
+          pallets: item.pallets || 0,
+          lastros: item.lastros || 0,
+          pacotes: item.pacotes || 0,
+          unidades: item.unidades || 0,
+          total: item.total || 0,
+          total_pacotes: item.totalPacotes || 0
+        });
+      });
+
+      // Gera o buffer do arquivo Excel
+      const buffer = await excelWorkbook.xlsx.writeBuffer();
+      
+      // Cria um Blob e uma URL para download
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      
+      // Cria um link temporário para download
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `contagem_${countId}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Limpa o link temporário
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      return url;
+    } catch (error) {
+      console.error('Erro ao gerar o Excel:', error);
+      throw error;
+    }
+  };
 
 // ... (rest of the code remains the same)
 
@@ -806,12 +891,8 @@ const handleImportComplete = async (importedProducts: Array<{ id?: string; quant
       throw error;
     }
     
-    // Adicionar informações do estoque e data
-    console.log('=== DADOS DO ESTOQUE ===');
-    console.log('countData completo:', JSON.stringify(countData, null, 2));
-    console.log('countData.estoques:', countData.estoques);
-    console.log('countData.estoque:', countData.estoque);
-    console.log('countData.estoque_id:', countData.estoque_id);
+    // O código após o bloco try-catch não será executado devido ao return dentro do bloco try
+    // Removendo código inalcançável
     
     // Tenta obter o nome do estoque de várias fontes possíveis
     let estoqueNome = 'NÃO INFORMADO';
@@ -852,9 +933,9 @@ const handleImportComplete = async (importedProducts: Array<{ id?: string; quant
     
     // Adiciona a linha com as informações do estoque e data
     const estoqueInfo = excelWorksheet.addRow([
-      `Estoque: ${estoqueNome}`,
+      `Estoque: ${countData.estoque?.nome || countData.estoques?.[0]?.nome || countData.estoque_id || 'N/A'}`,
       '', '', '', '', '', '',
-      `Data: ${dataFormatada}`
+      `Data: ${new Date().toLocaleDateString('pt-BR')}`
     ]);
     
     // Estilizar informações do estoque
