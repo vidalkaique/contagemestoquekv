@@ -577,17 +577,12 @@ const handleImportComplete = async (importedProducts: Array<{ id?: string; quant
     return;
   }
 
-  // ... (rest of the code remains the same)
-      });
-      return;
-    }
-    
-    try {
-      // Primeiro, obter todos os IDs de produtos únicos
-      const produtoIds = importedProducts
-        .filter((p): p is { id: string; quantidade: number; codigo?: string } => 
-          !!p.id && typeof p.id === 'string' && !p.id.startsWith('free-'))
-        .map(p => p.id);
+  try {
+    // Primeiro, obter todos os IDs de produtos únicos
+    const produtoIds = importedProducts
+      .filter((p): p is { id: string; quantidade: number; codigo?: string } => 
+        !!p.id && typeof p.id === 'string' && !p.id.startsWith('free-'))
+      .map(p => p.id);
       
       // Busca os produtos do banco de dados para obter os detalhes completos
       const { data: produtos, error } = await supabase
