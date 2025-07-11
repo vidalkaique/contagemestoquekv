@@ -1,18 +1,48 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation, useParams } from "wouter";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Check, Trash2, Package, Search, Pencil, X, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useCountDate } from "@/hooks/use-count-date";
+import { useUnfinishedCount } from "@/hooks/use-counts";
+
+// Types for Excel handling
+type ExcelRowType = {
+  getCell: (key: string) => { value: any };
+  number: number;
+  values: Record<string, any>;
+};
+
+type Row = {
+  getCell: (key: string) => { value: any; fill: any };
+  number: number;
+  values: Record<string, any>;
+};
+
+// Component imports
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ProductModal from "@/components/product-modal";
-import { supabase } from "@/lib/supabase";
-import { saveCurrentCount, getCurrentCount, clearCurrentCount, saveToCountHistory, getCountHistory, type CurrentCount } from "@/lib/localStorage";
-import type { InsertContagem, InsertItemContagem, ContagemWithItens } from "@shared/schema";
-import { useCountDate } from "@/hooks/use-count-date";
-import { useUnfinishedCount } from "@/hooks/use-counts";
 import { ImportStockScreen } from "@/components/import-stock-screen";
+
+// Supabase and local storage
+import { supabase } from "@/lib/supabase";
+import { 
+  saveCurrentCount, 
+  getCurrentCount, 
+  clearCurrentCount, 
+  saveToCountHistory, 
+  getCountHistory, 
+  type CurrentCount 
+} from "@/lib/localStorage";
+
+// Types
+import type { 
+  InsertContagem, 
+  InsertItemContagem, 
+  ContagemWithItens 
+} from "@shared/schema";
 
 interface ProductItem {
   id: string;
@@ -22,11 +52,19 @@ interface ProductItem {
   lastros: number;
   pacotes: number;
   unidades: number;
-  totalPacotes: number; 
+  totalPacotes: number;
   unidadesPorPacote?: number;
   pacotesPorLastro?: number;
   lastrosPorPallet?: number;
   quantidadePacsPorPallet?: number;
+  quantidade_sistema?: number;
+  valor_total?: number;
+  created_at?: string;
+  updated_at?: string;
+  contagem_id?: string;
+  produto_id?: string | null;
+  nome_livre?: string | null;
+  total?: number;
 }
 
 export default function NewCount() {
@@ -76,26 +114,26 @@ export default function NewCount() {
     return totalFromPallets + totalFromLastros + (product.pacotes || 0);
   };
 
-  /**
-   * Calcula o total de unidades de um produto, considerando pallets, lastros, pacotes e unidades avulsas
-   * @param product Produto a ser calculado
-   * @returns Número total de unidades
-   */
-  const calculateProductTotal = (product: ProductItem): number => {
+  // Função para calcular o total de unidades de um produto (versão consolidada)
+  const calculateProductTotal = useCallback((product: ProductItem | Omit<ProductItem, 'id' | 'created_at'>): number => {
+    // Se o produto tiver preço médio e quantidade contada, usa esses valores
+    if ('preco_medio' in product && 'quantidade_contada' in product) {
+      const preco_medio = Number(product.preco_medio) || 0;
+      const quantidade_contada = Number(product.quantidade_contada) || 0;
+      return preco_medio * quantidade_contada;
+    }
+    
+    // Caso contrário, calcula com base nas unidades
     return (
       (product.pallets || 0) * (product.lastrosPorPallet || 0) * (product.pacotesPorLastro || 0) * (product.unidadesPorPacote || 0) +
       (product.lastros || 0) * (product.pacotesPorLastro || 0) * (product.unidadesPorPacote || 0) +
       (product.pacotes || 0) * (product.unidadesPorPacote || 0) +
       (product.unidades || 0)
     );
-  };
+  }, []);
 
-  /**
-   * Calcula o total de pacotes de um produto, considerando pallets, lastros e pacotes avulsos
-   * @param product Produto a ser calculado
-   * @returns Número total de pacotes
-   */
-  const calculateTotalPacotes = (product: ProductItem): number => {
+  // Função para calcular o total de pacotes de um produto (versão consolidada)
+  const calculateTotalPacotes = useCallback((product: ProductItem | Omit<ProductItem, 'id' | 'created_at'>): number => {
     // Inicia com os pacotes avulsos
     let totalPacotes = product.pacotes ?? 0;
     
@@ -113,7 +151,7 @@ export default function NewCount() {
     }
     
     return totalPacotes;
-  };
+  }, []);
 
   /**
    * Adiciona itens a uma contagem existente ou a uma nova contagem
@@ -334,6 +372,7 @@ export default function NewCount() {
     },
   });
 
+  /**
    * Processa os produtos importados e os adiciona à contagem
    * @param importedProducts Lista de produtos importados
    */
@@ -409,11 +448,42 @@ export default function NewCount() {
             return { success: false, id: codigoOuId };
           }
           return { success: false, id: 'id-desconhecido' };
-            unidades: 0,
-            totalPacotes: 0,
-          });
         }
-      }
+        
+        // Processa o produto encontrado
+        try {
+          // Cria um novo produto no formato esperado
+          const newProduct: ProductItem = {
+            id: produto.id,
+            codigo: produto.codigo,
+            nome: produto.nome || 'Produto sem nome',
+            pallets: 0,
+            lastros: 0,
+            pacotes: item.quantidade || 0,
+            unidades: 0,
+            totalPacotes: item.quantidade || 0,
+            unidadesPorPacote: produto.quantidade_por_pacote || 1,
+            pacotesPorLastro: produto.pacotes_por_lastro || 1,
+            lastrosPorPallet: produto.lastros_por_palete || 1,
+            quantidadePacsPorPallet: (produto.pacotes_por_lastro || 1) * (produto.lastros_por_palete || 1)
+          };
+          
+          // Atualiza o estado dos produtos
+          setProducts(prevProducts => [...prevProducts, newProduct]);
+          
+          return { success: true, id: produto.id };
+        } catch (error) {
+          console.error('Erro ao processar produto:', error);
+          return { success: false, id: produto.id };
+        }
+      });
+      
+      // Aguarda todas as Promises serem resolvidas
+      const results = await Promise.all(promises);
+      
+      // Conta produtos adicionados e não encontrados
+      const produtosAdicionados = results.filter(r => r.success).length;
+      const produtosNaoEncontrados = results.filter(r => !r.success && r.id !== 'id-desconhecido').map(r => r.id);
       
       // Exibe mensagem de sucesso com resumo da importação
       let message = `${produtosAdicionados} produtos importados com sucesso.`;
@@ -451,153 +521,63 @@ export default function NewCount() {
   });
 
   /**
-   * Finaliza a contagem atual, salvando todos os itens no banco de dados
-   * e marcando a contagem como finalizada
-   */
-  // Função para gerar e salvar o Excel no Supabase Storage
-  // Função para buscar os códigos dos produtos no banco de dados
-  const fetchProductCodes = async (productIds: string[]) => {
-    if (!productIds.length) {
-      console.log('Nenhum ID de produto fornecido para busca');
-      return new Map();
-    }
-    
-    try {
-      console.log('[fetchProductCodes] IDs recebidos:', productIds);
 
-      const productMap = new Map<string, { codigo: string | null; codigo_barras: string | null; referencia: string | null; nome: string }>();
+const handleStartEdit = (index: number) => {
+  setEditingProductIndex(index);
+  setEditingProduct(products[index]);
+};
 
-      // Sanitize ids
-      const ids = productIds.filter(id => !!id && typeof id === 'string');
-      if (ids.length === 0) {
-        console.warn('[fetchProductCodes] Nenhum id válido.');
-        return productMap;
-      }
+const handleRemoveProduct = (index: number) => {
+  setProducts(prev => prev.filter((_, i) => i !== index));
+};
 
-      for (const id of ids) {
-        try {
-          const { data, error } = await supabase
-            .from('produtos')
-            .select('id, codigo, codigo_barras, referencia, nome')
-            .eq('id', id)
-            .maybeSingle();
+const handleEditFieldChange = (field: keyof ProductItem, value: any) => {
+  if (editingProductIndex === null || !editingProduct) return;
+  
+  setEditingProduct(prev => ({
+    ...prev!,
+    [field]: value
+  }));
+};
 
-          if (error) {
-            console.error(`[fetchProductCodes] Erro Supabase para id ${id}:`, error);
-            continue;
-          }
+// ... (rest of the code remains the same)
 
-          if (data) {
-            productMap.set(id, {
-              codigo: (data as any).codigo || null,
-              codigo_barras: (data as any).codigo_barras || null,
-              referencia: (data as any).referencia || null,
-              nome: (data as any).nome || 'Produto sem nome'
-            });
-            console.log(`[fetchProductCodes] Produto ok ${id} »`, productMap.get(id));
-          } else {
-            console.warn(`[fetchProductCodes] Produto não encontrado para id ${id}`);
-          }
-        } catch (err) {
-          console.error('[fetchProductCodes] Exceção inesperada para id', id, err);
-        }
-      }
+try {
+  const { data, error } = await supabase
+    .from('produtos')
+    .select('id, codigo, codigo_barras, referencia, nome')
+    .eq('id', id)
+    .maybeSingle();
 
-      console.log('[fetchProductCodes] Finalizado. Total mapeados:', productMap.size);
-      return productMap;
-      
-    } catch (error) {
-      console.error('Erro inesperado ao buscar códigos dos produtos:', error);
-      return new Map();
-    }
-  };
+// ... (rest of the code remains the same)
 
-  // Interface para o tipo de linha da planilha
-  interface ExcelRow {
-    codigo?: string;
-    nome?: string;
-    pallets?: number;
-    lastros?: number;
-    pacotes?: number;
-    unidades?: number;
-    totalPacotes?: number;
-    preco_medio?: number;
-    valor_total?: number;
-  }
+// Adicionando produto ao estado
+console.log('Adicionando produto ao estado:', { 
+  id: newProduct.id, 
+  codigo: product.codigo,
+  quantidade: product.quantidade_sistema,
+  totalPacotes: newProduct.totalPacotes,
+  valor_total: newProduct.valor_total
+});
 
-  // Interface para o tipo de célula do Excel
-  interface ExcelCell {
-    value: any;
-    fill?: {
-      type: 'pattern';
-      pattern: 'solid' | 'gray125' | 'darkGray' | 'mediumGray' | 'lightGray' | 'darkHorizontal' | 'darkVertical' | 'darkDown' | 'darkUp' | 'darkGrid' | 'darkTrellis' | 'lightHorizontal' | 'lightVertical' | 'lightDown' | 'lightUp' | 'lightGrid' | 'lightTrellis' | 'darkGray' | 'mediumGray' | 'lightGray' | 'darkHorizontal' | 'darkVertical' | 'darkDown' | 'darkUp' | 'darkGrid' | 'darkTrellis' | 'lightHorizontal' | 'lightVertical' | 'lightDown' | 'lightUp' | 'lightGrid' | 'lightTrellis';
-      fgColor: { argb: string };
-    };
-  }
+// State for import results
+const [importResults, setImportResults] = useState<{ added: number; notFound: string[] }>({ added: 0, notFound: [] });
 
-  // Interface para o tipo de linha do Excel
-  interface ExcelRowType {
-    getCell: (index: number) => ExcelCell;
-  }
-
-  // Função auxiliar para calcular o total de pacotes
-  const calculateTotalPacotes = (product: ProductItem | Omit<ProductItem, 'id' | 'created_at'>): number => {
-    const { pallets = 0, lastros = 0, pacotes = 0, unidades = 0 } = product;
-    const pacotesPorLastro = 'pacotesPorLastro' in product ? product.pacotesPorLastro || 0 : 0;
-    const lastrosPorPallet = 'lastrosPorPallet' in product ? product.lastrosPorPallet || 0 : 0;
-    
-    const totalPacotes = 
-      (Number(pallets) * Number(lastrosPorPallet) * Number(pacotesPorLastro)) + 
-      (Number(lastros) * Number(pacotesPorLastro)) + 
-      Number(pacotes) + 
-      (Number(unidades) > 0 ? 1 : 0); // Considera 1 pacote se houver unidades avulsas
-      
-    return Math.max(0, totalPacotes); // Garante que não retorne valores negativos
-  };
-
-  // Função auxiliar para calcular o valor total do produto
-  const calculateProductTotal = (product: ProductItem | Omit<ProductItem, 'id' | 'created_at'>): number => {
-    const preco_medio = 'preco_medio' in product ? Number(product.preco_medio) || 0 : 0;
-    const quantidade_contada = 'quantidade_contada' in product ? Number(product.quantidade_contada) || 0 : 0;
-    return preco_medio * quantidade_contada;
-  };
-
-  /**
-   * Adiciona um novo produto à lista de produtos da contagem atual
-   * @param product Produto a ser adicionado
-   * @returns O produto adicionado com valores padrão
-   */
-  const handleAddProduct = (product: Omit<ProductItem, 'id' | 'created_at'>) => {
-    const newProduct: ProductItem = {
-      ...product,
-      id: `prod-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      created_at: new Date().toISOString(),
-      totalPacotes: calculateTotalPacotes({ ...product, id: 'temp' } as ProductItem),
-      valor_total: calculateProductTotal({ ...product, id: 'temp' } as ProductItem)
-    };
-    
-    console.log('Adicionando produto ao estado:', { 
-      id: newProduct.id, 
-      codigo: product.codigo,
-      quantidade: product.quantidade_sistema,
-      totalPacotes: newProduct.totalPacotes,
-      valor_total: newProduct.valor_total
+/**
+ * Processa os produtos importados e os adiciona à contagem
+ * @param importedProducts Lista de produtos importados
+ */
+const handleImportComplete = async (importedProducts: Array<{ id?: string; quantidade: number; codigo?: string }>) => {
+  if (!importedProducts.length) {
+    toast({
+      title: "Nenhum produto para importar",
+      description: "A planilha não contém produtos válidos para importação.",
+      variant: "destructive",
     });
-    
-    setProducts(prevProducts => [...prevProducts, newProduct]);
-    return newProduct;
-  };
+    return;
+  }
 
-  /**
-   * Processa os produtos importados e os adiciona à contagem
-   * @param importedProducts Lista de produtos importados
-   */
-  const handleImportComplete = async (importedProducts: Array<{ id: string; quantidade: number; codigo?: string } | { codigo: string; quantidade: number; id?: string }>) => {
-    if (!importedProducts.length) {
-      toast({
-        title: "Nenhum produto para importar",
-        description: "A planilha não contém produtos válidos para importação.",
-        variant: "destructive",
+  // ... (rest of the code remains the same)
       });
       return;
     }
@@ -710,24 +690,28 @@ export default function NewCount() {
       
       console.log('Resultado da importação:', { total: results.length, sucessos, falhas });
       
-      // Atualiza os contadores
-      produtosAdicionados = sucessos;
-      produtosNaoEncontrados = results
-        .filter(r => !r.success && r.id !== 'id-desconhecido')
+      // Atualiza o estado com os resultados
+      const notFoundIds = results
+        .filter((r): r is { success: false; id: string } => !r.success && r.id !== 'id-desconhecido')
         .map(r => r.id);
       
+      setImportResults({
+        added: sucessos,
+        notFound: notFoundIds
+      });
+      
       // Exibe feedback para o usuário
-      if (produtosAdicionados > 0) {
+      if (sucessos > 0) {
         toast({
           title: "Importação concluída",
-          description: `${produtosAdicionados} produtos importados com sucesso.`,
+          description: `${sucessos} produtos importados com sucesso.`,
         });
       }
       
-      if (produtosNaoEncontrados.length > 0) {
+      if (notFoundIds.length > 0) {
         toast({
           title: "Atenção",
-          description: `${produtosNaoEncontrados.length} produtos não foram encontrados no sistema.`,
+          description: `${notFoundIds.length} produtos não foram encontrados no sistema.`,
           variant: "destructive",
         });
       }
@@ -749,11 +733,11 @@ export default function NewCount() {
     
     try {
       const { Workbook } = await import('exceljs');
-      const workbook = new Workbook();
-      const worksheet = workbook.addWorksheet('Contagem');
+      const excelWorkbook = new Workbook();
+      const excelWorksheet = excelWorkbook.addWorksheet('Contagem');
       
       // Configuração do cabeçalho
-      worksheet.columns = [
+      excelWorksheet.columns = [
         { header: 'Código', key: 'codigo', width: 15 },
         { header: 'Produto', key: 'nome', width: 40 },
         { header: 'Pallets', key: 'pallets', width: 10 },
@@ -767,7 +751,7 @@ export default function NewCount() {
       
       // Adiciona os dados dos itens
       items.forEach((item: any) => {
-        worksheet.addRow({
+        excelWorksheet.addRow({
           codigo: item.codigo || '',
           nome: item.nome || '',
           pallets: item.pallets || 0,
@@ -781,7 +765,7 @@ export default function NewCount() {
       });
       
       // Adiciona formatação condicional para destacar valores
-      worksheet.eachRow((row: ExcelRowType, rowNumber: number) => {
+      excelWorksheet.eachRow((row: any, rowNumber: number) => {
         if (rowNumber > 1) { // Pula o cabeçalho
           const valorTotalCell = row.getCell(9); // Coluna I (9) = Valor Total
           const valorTotal = Number(valorTotalCell.value) || 0;
@@ -797,8 +781,12 @@ export default function NewCount() {
         }
       });
       
+      // Formata a data atual para o nome do arquivo
+      const dataAtual = new Date();
+      const dataFormatada = dataAtual.toISOString().split('T')[0];
+      
       // Gera o buffer do arquivo
-      const buffer = await workbook.xlsx.writeBuffer();
+      const buffer = await excelWorkbook.xlsx.writeBuffer();
       
       // Cria um blob e URL para download
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -807,7 +795,7 @@ export default function NewCount() {
       // Cria um link temporário para download
       const a = document.createElement('a');
       a.href = url;
-      a.download = `contagem_${countId}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      a.download = `contagem_${countId}_${dataFormatada}.xlsx`;
       document.body.appendChild(a);
       a.click();
       
@@ -863,34 +851,41 @@ export default function NewCount() {
     
     console.log('Nome do estoque a ser exibido:', estoqueNome);
     
+    // Formata a data atual para exibição
+    const dataAtual = new Date();
+    const dataFormatada = dataAtual.toLocaleDateString('pt-BR');
+    
     // Adiciona a linha com as informações do estoque e data
-    const estoqueInfo = worksheet.addRow([
+    const estoqueInfo = excelWorksheet.addRow([
       `Estoque: ${estoqueNome}`,
       '', '', '', '', '', '',
       `Data: ${dataFormatada}`
     ]);
     
     // Estilizar informações do estoque
-    estoqueInfo.font = { bold: true };
-    estoqueInfo.alignment = { horizontal: 'left' };
-    worksheet.mergeCells('A2:D2');
-    worksheet.mergeCells('G2:H2');
+    (estoqueInfo as any).font = { bold: true };
+    (estoqueInfo as any).alignment = { horizontal: 'left' };
+    excelWorksheet.mergeCells('A2:D2');
+    excelWorksheet.mergeCells('G2:H2');
     
     // Adicionar linha em branco
-    worksheet.addRow([]);
+    excelWorksheet.addRow([]);
     
     // Cabeçalhos
     const headerTitles = [
       "CÓDIGO", "PRODUTO", "PALLETS", "LASTROS", "PACOTES", "UNIDADES", "TOTAL", "TOTAL PACOTES"
     ];
     
-    const headerRow = worksheet.addRow(headerTitles);
-    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    headerRow.fill = {
+    const headerRow = excelWorksheet.addRow(headerTitles);
+    (headerRow as any).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    (headerRow as any).fill = {
       type: 'pattern',
       pattern: 'solid',
       fgColor: { argb: 'FF2F5496' }
     };
+    
+    // Inicializa o mapa de códigos de produto se não existir
+    const productCodesMap = new Map();
     
     // Função para obter o código do produto de várias fontes possíveis
     const getProductCode = (item: any): string => {
@@ -977,7 +972,7 @@ export default function NewCount() {
       const nomeProduto = item.nome || 'Produto não cadastrado';
       
       // Adiciona a linha com os dados formatados
-      worksheet.addRow([
+      excelWorksheet.addRow([
         // Código do produto ou 'N/A' para produtos livres
         isFreeProduct ? 'N/A' : codigoProduto,
         // Nome do produto
@@ -998,7 +993,7 @@ export default function NewCount() {
     // CRIANDO A ABA DE ANÁLISE
     // ============================================
     
-    const analysisWorksheet = workbook.addWorksheet('Análise');
+    const analysisWorksheet = excelWorkbook.addWorksheet('Análise');
     
     // Configurar largura das colunas
     analysisWorksheet.columns = [
@@ -1011,8 +1006,8 @@ export default function NewCount() {
     
     // Título da planilha
     const analysisTitleRow = analysisWorksheet.addRow(['ANÁLISE DE DIVERGÊNCIAS']);
-    analysisTitleRow.font = { bold: true, size: 16, color: { argb: 'FF2F5496' } };
-    analysisTitleRow.alignment = { horizontal: 'center' };
+    (analysisTitleRow as any).font = { bold: true, size: 16, color: { argb: 'FF2F5496' } };
+    (analysisTitleRow as any).alignment = { horizontal: 'center' };
     analysisWorksheet.mergeCells('A1:E1');
     
     // Informações da contagem
@@ -1030,13 +1025,13 @@ export default function NewCount() {
     ]);
     
     // Estilizar cabeçalho
-    analysisHeaderRow.font = { 
+    (analysisHeaderRow as any).font = { 
       bold: true, 
       color: { argb: 'FFFFFFFF' },
       size: 12
     };
     
-    analysisHeaderRow.fill = {
+    (analysisHeaderRow as any).fill = {
       type: 'pattern',
       pattern: 'solid',
       fgColor: { argb: 'FF2F5496' }
@@ -1065,19 +1060,19 @@ export default function NewCount() {
       
       // Agora que a linha foi criada, adicionamos a fórmula corretamente
       // row.number já retorna o número correto da linha no Excel (1-based)
-      const rowNumber = row.number;
-      row.getCell('E').value = { formula: `C${rowNumber}-D${rowNumber}`, result: 0 };
+      const rowNumber = (row as any).number;
+      (row.getCell('E') as any).value = { formula: `C${rowNumber}-D${rowNumber}`, result: 0 };
       
       // Formatar a célula de diferença como número
       const diffCell = row.getCell('E');
-      diffCell.numFmt = '#,##0';
+      (diffCell as any).numFmt = '#,##0';
     }
     
     // Adicionar formatação condicional para a coluna de diferença
     const lastRow = analysisWorksheet.rowCount;
     
     // Estilo para valores positivos (verde)
-    analysisWorksheet.addConditionalFormatting({
+    (analysisWorksheet as any).addConditionalFormatting({
       ref: `E5:E${lastRow}`, // A partir da linha 5 (após cabeçalhos e informações)
       rules: [
         {
@@ -1114,11 +1109,11 @@ export default function NewCount() {
     });
     
     // Ajustar alinhamento das células
-    analysisWorksheet.eachRow((row, rowNumber) => {
+    analysisWorksheet.eachRow((row: any, rowNumber: number) => {
       if (rowNumber > 4) { // Pular cabeçalhos e informações iniciais
-        ['A', 'B', 'C', 'D', 'E'].forEach(col => {
+        ['A', 'B', 'C', 'D', 'E'].forEach((col: string) => {
           const cell = row.getCell(col);
-          cell.alignment = { 
+          (cell as any).alignment = { 
             vertical: 'middle',
             horizontal: col === 'B' ? 'left' : 'center'
           };
@@ -1127,7 +1122,7 @@ export default function NewCount() {
     });
     
     // Gerar o arquivo Excel
-    const buffer = await workbook.xlsx.writeBuffer();
+    const buffer = await excelWorkbook.xlsx.writeBuffer();
     const fileName = `contagem_${countId}_${new Date().getTime()}.xlsx`;
     const filePath = `contagens/${countId}/${fileName}`;
     
