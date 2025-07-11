@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ProductModal from "@/components/product-modal";
+import EditProductModal from "@/components/edit-product-modal";
 import { supabase } from "@/lib/supabase";
 import { saveCurrentCount, getCurrentCount, clearCurrentCount, saveToCountHistory, getCountHistory, type CurrentCount } from "@/lib/localStorage";
 import type { InsertContagem, InsertItemContagem, ContagemWithItens } from "@shared/schema";
@@ -14,7 +15,7 @@ import { useCountDate } from "@/hooks/use-count-date";
 import { useUnfinishedCount } from "@/hooks/use-counts";
 import { ImportStockScreen, type ImportedProduct } from "@/components/import-stock-screen";
 
-interface ProductItem {
+export interface ProductItem {
   id: string;
   codigo?: string;
   nome: string;
@@ -466,35 +467,12 @@ export default function NewCount() {
     setEditingProduct({ ...products[index] });
   };
 
-  // Cancelar edição
-  const handleCancelEdit = () => {
-    setEditingProductIndex(null);
-    setEditingProduct(null);
-  };
-
-  // Atualiza um campo específico do produto em edição
-  const handleEditFieldChange = (field: keyof ProductItem, value: any) => {
-    if (editingProduct) {
-      setEditingProduct({
-        ...editingProduct,
-        [field]: value,
-        totalPacotes: calculateTotalPacotes({
-          ...editingProduct,
-          [field]: value
-        })
-      });
-    }
-  };
-
-  // Salvar edição
-  const handleSaveEdit = (index: number) => {
-    if (!editingProduct) return;
+  // Salvar edição do produto (chamado pelo modal)
+  const handleSaveEdit = (updatedProduct: ProductItem) => {
+    if (editingProductIndex === null || !updatedProduct) return;
     
     const updatedProducts = [...products];
-    updatedProducts[index] = {
-      ...editingProduct,
-      totalPacotes: calculateTotalPacotes(editingProduct),
-    };
+    updatedProducts[editingProductIndex] = updatedProduct;
     
     setProducts(updatedProducts);
     setEditingProductIndex(null);
@@ -514,11 +492,6 @@ export default function NewCount() {
     
     saveCurrentCount(currentCount);
     saveToCountHistory(currentCount);
-    
-    toast({
-      title: "Produto atualizado",
-      description: `As alterações em ${editingProduct.nome} foram salvas.`,
-    });
   };
 
   /**
@@ -1549,104 +1522,35 @@ export default function NewCount() {
                     )}
                   </h3>
                   <div className="flex space-x-1">
-                    {editingProductIndex === index ? (
-                      <>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleSaveEdit(index)}
-                          className="h-8 w-8"
-                        >
-                          <Check className="h-4 w-4 text-green-600" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={handleCancelEdit}
-                          className="h-8 w-8"
-                        >
-                          <X className="h-4 w-4 text-gray-500" />
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleStartEdit(index)}
-                          className="h-8 w-8"
-                        >
-                          <Pencil className="h-4 w-4 text-blue-600" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleRemoveProduct(index)}
-                          className="h-8 w-8"
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </>
-                    )}
+                    <div className="flex items-center space-x-2">
+                      <span>{product.pallets}</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleStartEdit(index)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 text-sm">
                   <div>
                     <span className="text-gray-500">Pallets:</span>
-                    {editingProductIndex === index ? (
-                      <Input 
-                        type="number" 
-                        min="0" 
-                        value={editingProduct?.pallets || ''}
-                        onChange={(e) => handleEditFieldChange('pallets', parseInt(e.target.value) || 0)}
-                        className="h-8 w-20 inline-block ml-1"
-                      />
-                    ) : (
-                      <span className="font-medium ml-1">{product.pallets}</span>
-                    )}
+                    <span>{product.pallets}</span>
                   </div>
                   <div>
                     <span className="text-gray-500">Lastros:</span>
-                    {editingProductIndex === index ? (
-                      <Input 
-                        type="number" 
-                        min="0" 
-                        value={editingProduct?.lastros || ''}
-                        onChange={(e) => handleEditFieldChange('lastros', parseInt(e.target.value) || 0)}
-                        className="h-8 w-20 inline-block ml-1"
-                      />
-                    ) : (
-                      <span className="font-medium ml-1">{product.lastros}</span>
-                    )}
+                    <span>{product.lastros}</span>
                   </div>
                   <div>
                     <span className="text-gray-500">Pacotes:</span>
-                    {editingProductIndex === index ? (
-                      <Input 
-                        type="number" 
-                        min="0" 
-                        value={editingProduct?.pacotes || ''}
-                        onChange={(e) => handleEditFieldChange('pacotes', parseInt(e.target.value) || 0)}
-                        className="h-8 w-20 inline-block ml-1"
-                      />
-                    ) : (
-                      <span className="font-medium ml-1">{product.pacotes}</span>
-                    )}
+                    <span>{product.pacotes}</span>
                   </div>
                   <div>
                     <span className="text-gray-500">Unidades:</span>
-                    {editingProductIndex === index ? (
-                      <Input 
-                        type="number" 
-                        min="0" 
-                        value={editingProduct?.unidades || ''}
-                        onChange={(e) => handleEditFieldChange('unidades', parseInt(e.target.value) || 0)}
-                        className="h-8 w-20 inline-block ml-1"
-                      />
-                    ) : (
-                      <span className="font-medium ml-1">{product.unidades}</span>
-                    )}
+                    <span>{product.unidades}</span>
                   </div>
                 </div>
 
@@ -1708,11 +1612,24 @@ export default function NewCount() {
         estoqueId={unfinishedCount?.estoqueId || undefined}
       />
       
-      <ImportStockScreen
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        contagemId={currentCountId || `draft-${Date.now()}`}
-        onImportComplete={handleImportComplete}
+      {isImportModalOpen && (
+        <ImportStockScreen
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          contagemId={currentCountId || `draft-${Date.now()}`}
+          onImportComplete={handleImportComplete}
+        />
+      )}
+      
+      {/* Modal de edição de produto */}
+      <EditProductModal
+        isOpen={editingProductIndex !== null && editingProduct !== null}
+        onClose={() => {
+          setEditingProductIndex(null);
+          setEditingProduct(null);
+        }}
+        product={editingProduct}
+        onSave={handleSaveEdit}
       />
     </>
   );
