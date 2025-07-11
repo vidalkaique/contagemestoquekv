@@ -524,7 +524,7 @@ export default function NewCount() {
    * Processa os produtos importados e os adiciona à contagem
    * @param importedProducts Lista de produtos importados
    */
-  const handleImportComplete = async (importedProducts: Array<{ codigo: string; quantidade: number }>) => {
+  const handleImportComplete = async (importedProducts: Array<{ id: string; quantidade: number; codigo?: string }>) => {
     if (!importedProducts.length) {
       toast({
         title: "Nenhum produto para importar",
@@ -535,28 +535,42 @@ export default function NewCount() {
     }
     
     try {
+      // Primeiro, obter todos os IDs de produtos únicos
+      const produtoIds = importedProducts
+        .filter(p => !p.id.startsWith('free-'))
+        .map(p => p.id);
+      
       // Busca os produtos do banco de dados para obter os detalhes completos
       const { data: produtos, error } = await supabase
         .from('produtos')
         .select('*')
-        .in('codigo', importedProducts.map(p => p.codigo));
+        .in('id', produtoIds);
       
       if (error) {
         console.error("Erro ao buscar produtos:", error);
         throw new Error("Não foi possível buscar os detalhes dos produtos");
       }
       
-      // Mapeia os produtos encontrados por código para busca rápida
-      const produtosPorCodigo = new Map(
-        (produtos || []).map(p => [p.codigo, p])
+      // Mapeia os produtos encontrados por ID para busca rápida
+      const produtosPorId = new Map(
+        (produtos || []).map(p => [p.id, p])
       );
       
       // Processa cada produto importado
       let produtosAdicionados = 0;
       let produtosNaoEncontrados: string[] = [];
       
+      // Usar um Set para evitar duplicatas
+      const produtosUnicos = new Map<string, {id: string; quantidade: number; codigo?: string}>();
+      
+      // Agrupa produtos pelo ID para evitar duplicatas
       for (const item of importedProducts) {
-        const produto = produtosPorCodigo.get(item.codigo);
+        produtosUnicos.set(item.id, item);
+      }
+      
+      // Processa cada produto único
+      for (const [id, item] of produtosUnicos.entries()) {
+        const produto = produtosPorId.get(id);
         
         if (produto) {
           // Produto encontrado - adiciona com os detalhes completos
@@ -575,7 +589,7 @@ export default function NewCount() {
             quantidadePacsPorPallet: produto.quantidade_pacs_por_pallet,
           });
           produtosAdicionados++;
-        } else {
+        } else if (item.codigo) {
           // Produto não encontrado - adiciona à lista de não encontrados
           produtosNaoEncontrados.push(item.codigo);
           
