@@ -147,8 +147,7 @@ export function ImportStockScreen({ isOpen, onClose, contagemId, onImportComplet
       const { error: insertError } = await supabase
         .from('contagem_importacoes')
         .upsert(dadosParaInserir, { 
-          onConflict: 'contagem_id,produto_id',
-          onConflictUpdateColumns: ['quantidade_sistema'] 
+          onConflict: 'contagem_id,produto_id'
         });
       
       if (insertError) throw insertError;
