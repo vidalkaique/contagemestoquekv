@@ -112,16 +112,32 @@ export function ImportStockScreen({ isOpen, onClose, contagemId, onImportComplet
       // Mapear códigos para IDs
       const codigoParaId = new Map(produtos.map(p => [p.codigo, p.id]));
       
-      // Preparar dados para inserção
-      const dadosParaInserir = previewData
-        .filter(item => codigoParaId.has(item.codigo))
-        .map(item => ({
-          contagem_id: contagemId,
-          produto_id: codigoParaId.get(item.codigo)!,
-          quantidade_sistema: item.quantidade,
-        }));
+      // Agrupar produtos por ID para lidar com duplicatas
+      const produtosAgrupados = new Map();
       
-      console.log('Dados para inserir:', dadosParaInserir);
+      previewData
+        .filter(item => codigoParaId.has(item.codigo))
+        .forEach(item => {
+          const produtoId = codigoParaId.get(item.codigo)!;
+          const chave = `${contagemId}-${produtoId}`;
+          
+          if (produtosAgrupados.has(chave)) {
+            // Se já existe, soma a quantidade
+            produtosAgrupados.get(chave).quantidade_sistema += item.quantidade;
+          } else {
+            // Se não existe, adiciona novo
+            produtosAgrupados.set(chave, {
+              contagem_id: contagemId,
+              produto_id: produtoId,
+              quantidade_sistema: item.quantidade,
+            });
+          }
+        });
+      
+      // Converter o Map de volta para array
+      const dadosParaInserir = Array.from(produtosAgrupados.values());
+      
+      console.log('Dados para inserir (após agrupamento):', dadosParaInserir);
       
       if (dadosParaInserir.length === 0) {
         throw new Error('Nenhum produto válido para importar. Verifique se os códigos dos produtos existem no sistema.');
@@ -130,7 +146,10 @@ export function ImportStockScreen({ isOpen, onClose, contagemId, onImportComplet
       // Inserir no banco de dados
       const { error: insertError } = await supabase
         .from('contagem_importacoes')
-        .upsert(dadosParaInserir, { onConflict: 'contagem_id,produto_id' });
+        .upsert(dadosParaInserir, { 
+          onConflict: 'contagem_id,produto_id',
+          onConflictUpdateColumns: ['quantidade_sistema'] 
+        });
       
       if (insertError) throw insertError;
       
