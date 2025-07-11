@@ -1453,11 +1453,14 @@ export default function NewCount() {
   };
 
   /**
-   * Exporta os produtos para um arquivo Excel
+   * Exporta os produtos para um arquivo Excel com abas de contagem e análise
    */
   const exportToExcel = () => {
     try {
-      // Mapeia os produtos para o formato de planilha
+      // Cria um novo livro de trabalho
+      const wb = XLSX.utils.book_new();
+      
+      // ===== PRIMEIRA ABA: CONTAGEM DETALHADA =====
       const data = products.map(product => ({
         'Código': product.codigo || '',
         'Produto': product.nome,
@@ -1474,7 +1477,7 @@ export default function NewCount() {
         'Lastros por Pallet': product.lastrosPorPallet || ''
       }));
 
-      // Cria uma nova planilha
+      // Cria a planilha de contagem detalhada
       const ws = XLSX.utils.json_to_sheet(data);
       
       // Ajusta a largura das colunas
@@ -1494,10 +1497,64 @@ export default function NewCount() {
         { wch: 15 }, // Lastros por Pallet
       ];
       ws['!cols'] = wscols;
-
-      // Cria um novo livro de trabalho
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Contagem de Estoque');
+      
+      // Adiciona a planilha ao livro de trabalho
+      XLSX.utils.book_append_sheet(wb, ws, 'Contagem Detalhada');
+      
+      // ===== SEGUNDA ABA: ANÁLISE DE DIVERGÊNCIAS =====
+      const analysisData = products.map(product => ({
+        'CÓDIGO': product.codigo || 'N/A',
+        'PRODUTO': product.nome,
+        'SISTEMA': product.quantidadeSistema || '',
+        'CONTADO': calculateProductTotal(product),
+        'DIFERENÇA (SISTEMA - CONTADO)': (product.quantidadeSistema || 0) - calculateProductTotal(product)
+      }));
+      
+      // Cria a planilha de análise
+      const wsAnalysis = XLSX.utils.json_to_sheet(analysisData, { header: ['CÓDIGO', 'PRODUTO', 'SISTEMA', 'CONTADO', 'DIFERENÇA (SISTEMA - CONTADO)'] });
+      
+      // Ajusta a largura das colunas
+      wsAnalysis['!cols'] = [
+        { wch: 15 }, // CÓDIGO
+        { wch: 40 }, // PRODUTO
+        { wch: 15 }, // SISTEMA
+        { wch: 15 }, // CONTADO
+        { wch: 25 }, // DIFERENÇA
+      ];
+      
+      // Adiciona título e informações à planilha de análise
+      const analysisTitle = [['ANÁLISE DE DIVERGÊNCIAS']];
+      const analysisInfo = [
+        [`Data: ${new Date(countDate).toLocaleDateString('pt-BR')}`],
+        [''] // Linha em branco
+      ];
+      
+      // Combina os dados
+      const analysisSheetData = [
+        ...analysisTitle,
+        ...analysisInfo,
+        [], // Linha em branco
+        [
+          'CÓDIGO',
+          'PRODUTO',
+          'SISTEMA',
+          'CONTADO',
+          'DIFERENÇA (SISTEMA - CONTADO)'
+        ],
+        ...analysisData.map(item => [
+          item['CÓDIGO'],
+          item['PRODUTO'],
+          item['SISTEMA'],
+          item['CONTADO'],
+          { f: `C${analysisData.indexOf(item) + 6}-D${analysisData.indexOf(item) + 6}`, v: item['DIFERENÇA (SISTEMA - CONTADO)'] }
+        ])
+      ];
+      
+      // Atualiza a planilha de análise com os dados formatados
+      XLSX.utils.sheet_add_aoa(wsAnalysis, analysisSheetData);
+      
+      // Adiciona a planilha de análise ao livro de trabalho
+      XLSX.utils.book_append_sheet(wb, wsAnalysis, 'Análise de Divergências');
 
       // Gera o arquivo Excel
       const fileName = `contagem_${new Date().toISOString().split('T')[0]}.xlsx`;
