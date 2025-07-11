@@ -536,32 +536,31 @@ export default function NewCount() {
     }
     
     try {
-      // Contadores para feedback ao usuário
+      // Criar uma lista para armazenar os produtos a serem adicionados
+      const produtosParaAdicionar: Omit<ProductItem, 'totalPacotes'>[] = [];
+      const produtosAdicionadosIds = new Set(products.map(p => p.id));
       let produtosAdicionados = 0;
       let produtosNaoEncontrados: string[] = [];
-      
-      // Usar um Set para rastrear produtos já adicionados e evitar duplicatas
-      const produtosAdicionadosIds = new Set(products.map(p => p.id));
       
       // Processar cada produto importado
       for (const item of importedProducts) {
         try {
-          // Verificar se o produto já foi adicionado
+          // Criar um ID único para o produto
           const productId = item.id || `free-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          
+          // Verificar se o produto já foi adicionado
           if (produtosAdicionadosIds.has(productId)) {
             console.log(`Produto ${item.codigo || productId} já adicionado, pulando...`);
             continue;
           }
-          
-          // Adicionar o ID à lista de produtos já processados
-          produtosAdicionadosIds.add(productId);
           
           // Extrair as propriedades com valores padrão seguros
           const nome = item.nome || `Produto ${item.codigo || productId}`;
           const codigo = item.codigo || '';
           
           // Criar o objeto do produto com as informações fornecidas
-          const newProduct: ProductItem = {
+          // O totalPacotes será calculado posteriormente
+          const newProduct: Omit<ProductItem, 'totalPacotes'> = {
             id: productId,
             codigo,
             nome,
@@ -569,7 +568,6 @@ export default function NewCount() {
             lastros: 0,
             pacotes: 0,
             unidades: 0,
-            totalPacotes: 0,
             unidadesPorPacote: item.unidadesPorPacote,
             pacotesPorLastro: item.pacotesPorLastro,
             lastrosPorPallet: item.lastrosPorPallet,
@@ -577,14 +575,12 @@ export default function NewCount() {
             quantidadeSistema: item.quantidade
           };
           
-          // Adicionar o produto à lista
-          await new Promise<void>((resolve) => {
-            setTimeout(() => {
-              handleAddProduct(newProduct);
-              produtosAdicionados++;
-              resolve();
-            }, 0);
-          });
+          // Adicionar à lista de produtos a serem adicionados
+          produtosParaAdicionar.push(newProduct);
+          produtosAdicionados++;
+          
+          // Adicionar o ID à lista de produtos já processados
+          produtosAdicionadosIds.add(productId);
           
         } catch (error) {
           console.error(`Erro ao processar produto ${item.codigo || item.id}:`, error);
@@ -592,6 +588,67 @@ export default function NewCount() {
             produtosNaoEncontrados.push(item.codigo);
           }
         }
+      }
+      
+      // Adicionar todos os produtos de uma vez para evitar múltiplas renderizações
+      if (produtosParaAdicionar.length > 0) {
+        // Usar uma função de atualização de estado para garantir que estamos trabalhando com o estado mais recente
+        setProducts(prevProducts => {
+          // Criar um mapa para evitar duplicatas
+          const produtosMap = new Map(prevProducts.map(p => [p.id, p]));
+          
+          // Adicionar novos produtos ao mapa
+          produtosParaAdicionar.forEach(produto => {
+            produtosMap.set(produto.id, {
+              ...produto,
+              totalPacotes: calculateTotalPacotes({
+                ...produto,
+                totalPacotes: 0
+              })
+            } as ProductItem);
+          });
+          
+          // Converter o mapa de volta para array
+          return Array.from(produtosMap.values());
+        });
+        
+        // Atualizar o histórico de contagem
+        const currentCount: CurrentCount = {
+          id: currentCountId || `draft-${Date.now()}`,
+          date: new Date(countDate).toISOString().split('T')[0],
+          products: [...products, ...produtosParaAdicionar.map(p => {
+            const totalPacotes = calculateTotalPacotes({
+              ...p,
+              totalPacotes: 0
+            });
+            
+            // Garantir que o objeto esteja no formato CurrentCountProduct
+            return {
+              id: p.id,
+              nome: p.nome,
+              pallets: p.pallets,
+              lastros: p.lastros,
+              pacotes: p.pacotes,
+              unidades: p.unidades,
+              produtoId: p.codigo,
+              unidadesPorPacote: p.unidadesPorPacote,
+              pacotesPorLastro: p.pacotesPorLastro,
+              lastrosPorPallet: p.lastrosPorPallet,
+              quantidadePacsPorPallet: p.quantidadePacsPorPallet,
+              totalPacotes: totalPacotes
+            };
+          })],
+          lastUpdated: new Date().toISOString()
+        };
+        
+        // Atualiza o ID da contagem se ainda não existir
+        if (!currentCountId) {
+          setCurrentCountId(currentCount.id);
+        }
+        
+        // Salva no localStorage
+        saveCurrentCount(currentCount);
+        saveToCountHistory(currentCount);
       }
       
       // Exibe mensagem de sucesso com resumo da importação
@@ -608,9 +665,6 @@ export default function NewCount() {
       
       // Fecha o modal de importação
       setIsImportModalOpen(false);
-      
-      // Forçar atualização do estado
-      setProducts(prevProducts => [...prevProducts]);
       
     } catch (error) {
       console.error("Erro ao processar importação:", error);
