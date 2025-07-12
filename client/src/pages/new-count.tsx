@@ -1471,7 +1471,7 @@ export default function NewCount() {
         'Total de Pacotes': product.totalPacotes,
         'Total de Unidades': calculateProductTotal(product),
         'Quantidade do Sistema': product.quantidadeSistema || 0,
-        'Divergência': (product.quantidadeSistema || 0) - calculateProductTotal(product),
+        'Divergência': calculateProductTotal(product) - (product.quantidadeSistema || 0),
         'Unidades por Pacote': product.unidadesPorPacote || '',
         'Pacotes por Lastro': product.pacotesPorLastro || '',
         'Lastros por Pallet': product.lastrosPorPallet || ''
@@ -1507,11 +1507,11 @@ export default function NewCount() {
         'PRODUTO': product.nome,
         'SISTEMA': product.quantidadeSistema || '',
         'CONTADO': calculateProductTotal(product),
-        'DIFERENÇA (SISTEMA - CONTADO)': (product.quantidadeSistema || 0) - calculateProductTotal(product)
+        'DIFERENÇA (CONTADO - SISTEMA)': calculateProductTotal(product) - (product.quantidadeSistema || 0)
       }));
       
       // Cria a planilha de análise
-      const wsAnalysis = XLSX.utils.json_to_sheet(analysisData, { header: ['CÓDIGO', 'PRODUTO', 'SISTEMA', 'CONTADO', 'DIFERENÇA (SISTEMA - CONTADO)'] });
+      const wsAnalysis = XLSX.utils.json_to_sheet(analysisData, { header: ['CÓDIGO', 'PRODUTO', 'SISTEMA', 'CONTADO', 'DIFERENÇA (CONTADO - SISTEMA)'] });
       
       // Ajusta a largura das colunas
       wsAnalysis['!cols'] = [
@@ -1539,14 +1539,14 @@ export default function NewCount() {
           'PRODUTO',
           'SISTEMA',
           'CONTADO',
-          'DIFERENÇA (SISTEMA - CONTADO)'
+          'DIFERENÇA (CONTADO - SISTEMA)'
         ],
         ...analysisData.map(item => [
           item['CÓDIGO'],
           item['PRODUTO'],
           item['SISTEMA'],
           item['CONTADO'],
-          { f: `C${analysisData.indexOf(item) + 6}-D${analysisData.indexOf(item) + 6}`, v: item['DIFERENÇA (SISTEMA - CONTADO)'] }
+          { f: `D${analysisData.indexOf(item) + 6}-C${analysisData.indexOf(item) + 6}`, v: item['DIFERENÇA (CONTADO - SISTEMA)'] }
         ])
       ];
       

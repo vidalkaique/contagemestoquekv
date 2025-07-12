@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { X, AlertCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NumberInputWithButtons } from "@/components/ui/number-input-with-buttons";
 import { RoundingSuggestion } from "@/components/rounding-suggestion";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import type { ProductItem } from "@/pages/new-count";
 
 interface EditProductModalProps {
@@ -29,6 +30,18 @@ export default function EditProductModal({ isOpen, onClose, product, onSave }: E
     quantidadePacsPorPallet: 0,
     quantidadeSistema: 0
   });
+
+  // Função para calcular o total de unidades
+  const calculateTotalUnidades = useCallback((): number => {
+    const { pallets = 0, lastros = 0, pacotes = 0, unidades = 0, 
+            unidadesPorPacote = 1, pacotesPorLastro = 0, lastrosPorPallet = 0 } = formData;
+    
+    const totalFromPallets = pallets * (lastrosPorPallet || 0) * (pacotesPorLastro || 0) * (unidadesPorPacote || 0);
+    const totalFromLastros = lastros * (pacotesPorLastro || 0) * (unidadesPorPacote || 0);
+    const totalFromPacotes = pacotes * (unidadesPorPacote || 0);
+    
+    return totalFromPallets + totalFromLastros + totalFromPacotes + (unidades || 0);
+  }, [formData]);
 
   // Atualiza o formulário quando o produto muda
   useEffect(() => {
@@ -193,14 +206,50 @@ export default function EditProductModal({ isOpen, onClose, product, onSave }: E
             
             {/* Quantidade no Sistema (se disponível) */}
             {formData.quantidadeSistema !== undefined && (
-              <div className="space-y-2">
-                <Label>Quantidade no Sistema</Label>
-                <Input
-                  value={formData.quantidadeSistema}
-                  readOnly
-                  className="bg-gray-100"
-                />
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label>Quantidade no Sistema</Label>
+                  <Input
+                    value={formData.quantidadeSistema.toLocaleString()}
+                    readOnly
+                    className="bg-gray-100 font-medium"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Total Contado (Unidades)</Label>
+                  <Input
+                    value={calculateTotalUnidades().toLocaleString()}
+                    readOnly
+                    className="bg-gray-100 font-medium"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Diferença (Contado - Sistema)</Label>
+                  <div className={cn(
+                    "p-2 rounded font-bold text-center flex items-center justify-center gap-2",
+                    calculateTotalUnidades() > formData.quantidadeSistema 
+                      ? "text-green-700 bg-green-50" 
+                      : calculateTotalUnidades() < formData.quantidadeSistema 
+                        ? "text-red-700 bg-red-50" 
+                        : "text-gray-700 bg-gray-100"
+                  )}>
+                    {calculateTotalUnidades() > formData.quantidadeSistema && (
+                      <AlertCircle className="h-4 w-4" />
+                    )}
+                    {calculateTotalUnidades() < formData.quantidadeSistema && (
+                      <AlertCircle className="h-4 w-4" />
+                    )}
+                    {calculateTotalUnidades() === formData.quantidadeSistema && (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                    {calculateTotalUnidades() - formData.quantidadeSistema > 0 
+                      ? `+${(calculateTotalUnidades() - formData.quantidadeSistema).toLocaleString()}` 
+                      : (calculateTotalUnidades() - formData.quantidadeSistema).toLocaleString()}
+                  </div>
+                </div>
+              </>
             )}
           </div>
           
