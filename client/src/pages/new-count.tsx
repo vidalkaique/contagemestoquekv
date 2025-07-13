@@ -417,6 +417,32 @@ export default function NewCount() {
    * @param index Índice do produto a ser removido
    * @returns O produto removido ou undefined se o índice for inválido
    */
+  const handleDeleteProduct = (productId: string) => {
+    if (window.confirm("Tem certeza que deseja excluir este produto da contagem?")) {
+      const updatedProducts = products.filter(p => p.id !== productId);
+      setProducts(updatedProducts);
+
+      const currentCount: CurrentCount = {
+        id: currentCountId || `draft-${Date.now()}`,
+        date: new Date(countDate).toISOString().split('T')[0],
+        products: updatedProducts,
+        lastUpdated: new Date().toISOString()
+      };
+
+      if (!currentCountId) {
+        setCurrentCountId(currentCount.id);
+      }
+
+      saveCurrentCount(currentCount);
+      saveToCountHistory(currentCount);
+
+      toast({
+        title: "Produto removido",
+        description: "O produto foi removido da contagem com sucesso.",
+      });
+    }
+  };
+
   const handleRemoveProduct = (index: number): ProductItem | undefined => {
     try {
       // Valida o índice
@@ -1650,44 +1676,28 @@ export default function NewCount() {
           <div className="space-y-3">
             {filteredProducts.map((product, index) => (
               <div key={product.id} className="bg-white p-4 rounded-lg border">
-                <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-lg flex-1 pr-2">
-                    {product.nome}
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg">{product.nome}</h3>
                     {product.codigo && (
-                      <span className="text-sm text-gray-500 ml-2">(Código: {product.codigo})</span>
+                      <p className="text-sm text-gray-500">Código: {product.codigo}</p>
                     )}
-                  </h3>
-                  <div className="flex space-x-1">
-                    <div className="flex items-center space-x-2">
-                      <span>{product.pallets}</span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleStartEdit(index)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => handleStartEdit(index)} className="p-1 text-gray-500 hover:text-gray-700">
+                      <Pencil className="h-5 w-5" />
+                    </button>
+                    <button onClick={() => handleDeleteProduct(product.id)} className="p-1 text-red-500 hover:text-red-700">
+                      <Trash2 className="h-5 w-5" />
+                    </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 text-sm">
-                  <div>
-                    <span className="text-gray-500">Pallets:</span>
-                    <span>{product.pallets}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Lastros:</span>
-                    <span>{product.lastros}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Pacotes:</span>
-                    <span>{product.pacotes}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Unidades:</span>
-                    <span>{product.unidades}</span>
-                  </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                  <div><span className="font-medium">Pallets:</span> {product.pallets}</div>
+                  <div><span className="font-medium">Lastros:</span> {product.lastros}</div>
+                  <div><span className="font-medium">Pacotes:</span> {product.pacotes}</div>
+                  <div><span className="font-medium">Unidades:</span> {product.unidades}</div>
                 </div>
 
                 {(product.unidadesPorPacote !== undefined || product.pacotesPorLastro !== undefined || product.lastrosPorPallet !== undefined || product.quantidadePacsPorPallet !== undefined) && (
