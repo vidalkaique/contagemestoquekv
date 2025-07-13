@@ -1613,16 +1613,6 @@ export default function NewCount() {
               {contagemId ? `Contagem #${contagemId}` : "Nova Contagem"}
             </h1>
           </div>
-          {products.length > 0 && (
-            <Button 
-              variant="outline" 
-              onClick={exportToExcel}
-              className="flex items-center gap-2"
-            >
-              <Download size={18} />
-              Exportar para Excel
-            </Button>
-          )}
         </div>
 
         <div className="mb-4">
@@ -1675,7 +1665,7 @@ export default function NewCount() {
         ) : (
           <div className="space-y-3">
             {filteredProducts.map((product, index) => (
-              <div key={product.id} className="bg-white p-4 rounded-lg border">
+              <div key={product.id} className="bg-white p-4 rounded-lg border shadow-sm">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg">{product.nome}</h3>
@@ -1724,15 +1714,32 @@ export default function NewCount() {
                   </div>
                 )}
                 
-                {(calculateProductTotal(product) > 0 || (product.totalPacotes ?? 0) > 0) && (
-                  <div className="bg-red-50 p-3 rounded-lg mt-3 text-center">
-                    <div className="text-sm font-medium text-red-900">
-                      Total Unidades: <span className="font-bold">{calculateProductTotal(product).toLocaleString()}</span>
-                    </div>
-                    <div className="text-sm font-medium text-red-900 mt-1">
-                      Total Pacotes: <span className="font-bold">{(product.totalPacotes ?? 0).toLocaleString()}</span>
-                    </div>
-                  </div>
+                {(calculateProductTotal(product) > 0 || (product.totalPacotes ?? 0) > 0 || (product.quantidadeSistema ?? 0) > 0) && (
+                  (() => {
+                    const totalPacotes = product.totalPacotes ?? 0;
+                    const quantidadeSistema = product.quantidadeSistema ?? 0;
+                    const difference = totalPacotes - quantidadeSistema;
+                    const differenceColor = difference > 0 ? 'text-green-700' : difference < 0 ? 'text-red-700' : 'text-gray-700';
+                    const differenceBg = difference > 0 ? 'bg-green-100' : difference < 0 ? 'bg-red-100' : 'bg-gray-100';
+
+                    return (
+                      <div className={`p-3 rounded-lg mt-3 text-sm font-medium ${differenceBg}`}>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                          <div className="text-left">Total Unidades:</div>
+                          <div className="text-right font-bold">{calculateProductTotal(product).toLocaleString()}</div>
+                          
+                          <div className="text-left">Total Pacotes:</div>
+                          <div className="text-right font-bold">{totalPacotes.toLocaleString()}</div>
+
+                          <div className="text-left">Sistema (Pacotes):</div>
+                          <div className="text-right font-bold">{quantidadeSistema.toLocaleString()}</div>
+
+                          <div className={`text-left font-bold ${differenceColor}`}>Diferença (Pacotes):</div>
+                          <div className={`text-right font-bold ${differenceColor}`}>{difference.toLocaleString()}</div>
+                        </div>
+                      </div>
+                    );
+                  })()
                 )}
               </div>
             ))}
