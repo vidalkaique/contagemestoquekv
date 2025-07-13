@@ -1470,8 +1470,8 @@ export default function NewCount() {
         'Unidades': product.unidades,
         'Total de Pacotes': product.totalPacotes,
         'Total de Unidades': calculateProductTotal(product),
-        'Quantidade do Sistema': product.quantidadeSistema || 0,
-        'Divergência': calculateProductTotal(product) - (product.quantidadeSistema || 0),
+        'Quantidade do Sistema (Pacotes)': product.quantidadeSistema || 0,
+        'Divergência (Pacotes)': product.totalPacotes - (product.quantidadeSistema || 0),
         'Unidades por Pacote': product.unidadesPorPacote || '',
         'Pacotes por Lastro': product.pacotesPorLastro || '',
         'Lastros por Pallet': product.lastrosPorPallet || ''
@@ -1505,13 +1505,13 @@ export default function NewCount() {
       const analysisData = products.map(product => ({
         'CÓDIGO': product.codigo || 'N/A',
         'PRODUTO': product.nome,
-        'SISTEMA': product.quantidadeSistema || '',
-        'CONTADO': calculateProductTotal(product),
-        'DIFERENÇA (CONTADO - SISTEMA)': calculateProductTotal(product) - (product.quantidadeSistema || 0)
+        'SISTEMA (PACOTES)': product.quantidadeSistema || '',
+        'CONTADO (PACOTES)': product.totalPacotes,
+        'DIFERENÇA (PACOTES)': product.totalPacotes - (product.quantidadeSistema || 0)
       }));
       
       // Cria a planilha de análise
-      const wsAnalysis = XLSX.utils.json_to_sheet(analysisData, { header: ['CÓDIGO', 'PRODUTO', 'SISTEMA', 'CONTADO', 'DIFERENÇA (CONTADO - SISTEMA)'] });
+      const wsAnalysis = XLSX.utils.json_to_sheet(analysisData, { header: ['CÓDIGO', 'PRODUTO', 'SISTEMA (PACOTES)', 'CONTADO (PACOTES)', 'DIFERENÇA (PACOTES)'] });
       
       // Ajusta a largura das colunas
       wsAnalysis['!cols'] = [
@@ -1537,16 +1537,16 @@ export default function NewCount() {
         [
           'CÓDIGO',
           'PRODUTO',
-          'SISTEMA',
-          'CONTADO',
-          'DIFERENÇA (CONTADO - SISTEMA)'
+          'SISTEMA (PACOTES)',
+          'CONTADO (PACOTES)',
+          'DIFERENÇA (PACOTES)'
         ],
-        ...analysisData.map(item => [
+        ...analysisData.map((item, index) => [
           item['CÓDIGO'],
           item['PRODUTO'],
-          item['SISTEMA'],
-          item['CONTADO'],
-          { f: `D${analysisData.indexOf(item) + 6}-C${analysisData.indexOf(item) + 6}`, v: item['DIFERENÇA (CONTADO - SISTEMA)'] }
+          item['SISTEMA (PACOTES)'],
+          item['CONTADO (PACOTES)'],
+          { f: `D${index + 6}-C${index + 6}`, v: item['DIFERENÇA (PACOTES)'] }
         ])
       ];
       
