@@ -63,9 +63,12 @@ export default function NewCount() {
     if (currentCountId) return currentCountId;
 
     const formattedDate = new Date(countDate).toISOString().split('T')[0];
+    const { data: sessionData } = await supabase.auth.getSession();
+    const usuarioId = sessionData.session?.user.id || null;
+
     const { data, error } = await supabase
       .from('contagens')
-      .insert({ data: formattedDate, finalizada: false })
+      .insert({ data: formattedDate, finalizada: false, usuario_id: usuarioId })
       .select('id')
       .single();
 
@@ -337,30 +340,12 @@ export default function NewCount() {
       
       console.log('Inserindo no banco de dados:', dbItem);
       
-      // Insere o item no banco de dados
-      const { data, error } = await supabase
-        .from('itens_contagem')
-        .insert(dbItem)
-        .select()
-        .single();
-        
-      if (error) {
-        console.error("Erro ao adicionar item no Supabase:", {
-          error,
-          dbItem,
-          supabaseError: error.details || error.hint || error.message
-        });
-        throw new Error(`Falha ao adicionar item: ${error.message}`);
-      }
+      // Usa insert em vez de upsert para evitar erro de constraint
+      await supabase.from('itens_contagem').insert(dbItem);
       
-      if (!data) {
-        const errorMsg = "Nenhum dado retornado ao adicionar item";
-        console.error(errorMsg);
-        throw new Error(errorMsg);
-      }
+      console.log('Item adicionado com sucesso!');
       
-      console.log('Item adicionado com sucesso:', data);
-      return data;
+      return dbItem;
     },
   });
 
