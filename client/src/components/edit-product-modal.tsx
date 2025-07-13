@@ -71,13 +71,17 @@ export default function EditProductModal({ isOpen, onClose, product, onSave }: E
 
   // Atualiza um campo do formulário
   const handleFieldChange = (field: keyof typeof formData, value: number) => {
-    const newFormData = {
-      ...formData,
-      [field]: value,
-      totalPacotes: calculateTotalPacotes()
-    };
-    
-    setFormData(newFormData);
+    // Cria uma cópia atualizada dos dados do formulário
+    const updatedFormData = { ...formData, [field]: value };
+
+    // Calcula o total de pacotes com base nos dados atualizados
+    const { pallets = 0, lastros = 0, pacotes = 0, pacotesPorLastro = 0, lastrosPorPallet = 0 } = updatedFormData;
+    const totalFromPallets = pallets * (lastrosPorPallet || 0) * (pacotesPorLastro || 0);
+    const totalFromLastros = lastros * (pacotesPorLastro || 0);
+    const newTotalPacotes = totalFromPallets + totalFromLastros + (pacotes || 0);
+
+    // Atualiza o estado com os novos valores
+    setFormData({ ...updatedFormData, totalPacotes: newTotalPacotes });
   };
 
   // Submete o formulário
