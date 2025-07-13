@@ -3,6 +3,7 @@ import { useLocation, useParams } from "wouter";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Check, Trash2, Package, Search, Pencil, X, Upload, Download } from "lucide-react";
 import * as XLSX from 'xlsx';
+import type { Worksheet, Row, Workbook, Cell } from 'exceljs';
 import { useToast } from "@/hooks/use-toast";
 import { useCountRealtime, type RealtimeProductItem } from "@/hooks/use-count-realtime";
 import { supabase } from "@/lib/supabase";
@@ -798,16 +799,94 @@ export default function NewCount() {
     }
   };
 
-  const generateAndSaveExcel = async (countId: string, countData: any, items: any[]): Promise<string> => {
+  // Define types for count data
+  interface CountData {
+    data?: string | Date;
+    estoque?: { nome: string };
+    estoques?: { nome: string };
+    estoque_id?: string;
+  }
+
+  // Define item type for Excel generation
+  interface ExcelItem {
+    id: string;
+    product_id?: string;
+    nome: string;
+    codigo?: string;
+    codigo_barras?: string;
+    referencia?: string;
+    produto?: {
+      codigo?: string;
+      codigo_barras?: string;
+      referencia?: string;
+      id?: string;
+      nome?: string;
+    };
+    pallets?: number;
+    lastros?: number;
+    pacotes?: number;
+    unidades?: number;
+    totalPacotes: number;
+    unidadesPorPacote?: number;
+    pacotesPorLastro?: number;
+    lastrosPorPallet?: number;
+    quantidadePacsPorPallet?: number;
+    quantidadeSistema?: number;
+    total?: number;
+  }
+
+  const generateAndSaveExcel = async (countId: string, countData: CountData, items: (ProductItem | ExcelItem)[]): Promise<string> => {
+    // Convert ProductItem to ExcelItem if needed
+    const excelItems: ExcelItem[] = items.map(item => {
+      // Create a base item with all possible fields
+      const baseItem: Partial<ExcelItem> = {
+        ...item,
+        id: 'id' in item ? item.id : `temp-${Math.random().toString(36).substr(2, 9)}`,
+        nome: 'nome' in item ? item.nome : 'Produto não cadastrado',
+        totalPacotes: 'totalPacotes' in item ? item.totalPacotes : 0,
+        pallets: 'pallets' in item ? item.pallets : 0,
+        lastros: 'lastros' in item ? item.lastros : 0,
+        pacotes: 'pacotes' in item ? item.pacotes : 0,
+        unidades: 'unidades' in item ? item.unidades : 0,
+      };
+      
+      // Ensure all required ExcelItem fields are present
+      const excelItem: ExcelItem = {
+        id: baseItem.id!,
+        nome: baseItem.nome!,
+        totalPacotes: baseItem.totalPacotes!,
+        // Optional fields
+        product_id: baseItem.product_id,
+        codigo: baseItem.codigo,
+        codigo_barras: baseItem.codigo_barras,
+        referencia: baseItem.referencia,
+        produto: baseItem.produto,
+        pallets: baseItem.pallets,
+        lastros: baseItem.lastros,
+        pacotes: baseItem.pacotes,
+        unidades: baseItem.unidades,
+        unidadesPorPacote: baseItem.unidadesPorPacote,
+        pacotesPorLastro: baseItem.pacotesPorLastro,
+        lastrosPorPallet: baseItem.lastrosPorPallet,
+        quantidadePacsPorPallet: baseItem.quantidadePacsPorPallet,
+        quantidadeSistema: baseItem.quantidadeSistema,
+        total: baseItem.total,
+      };
+      
+      return excelItem;
+    });
     console.log('=== INÍCIO DA GERAÇÃO DO EXCEL ===');
     console.log('countData:', JSON.stringify(countData, null, 2));
     console.log('items:', JSON.stringify(items, null, 2));
     
+    // Use the converted items
+    const itemsToProcess = excelItems;
+    
     // Busca os códigos dos produtos no banco de dados
-    console.log('Itens recebidos para geração do Excel:', JSON.stringify(items, null, 2));
+    console.log('Itens recebidos para geração do Excel:', JSON.stringify(itemsToProcess, null, 2));
     
     // Extrai os IDs dos produtos, garantindo que são válidos
-    const productEntries = items
+    const productEntries = itemsToProcess
       .filter(item => {
         // Verifica se o item tem um ID válido (não é produto livre)
         const hasValidId = item && item.id && !item.id.startsWith('free-');
@@ -860,8 +939,8 @@ export default function NewCount() {
     const { Workbook } = await import('exceljs');
     
     // Criar workbook
-    const workbook = new Workbook();
-    const worksheet = workbook.addWorksheet("Contagem");
+    const workbook: Workbook = new Workbook();
+    const worksheet: Worksheet = workbook.addWorksheet("Contagem");
     
     // Configurar propriedades da planilha
     worksheet.properties.defaultColWidth = 15;
@@ -874,7 +953,7 @@ export default function NewCount() {
     worksheet.mergeCells('A1:H1');
     
     // Formatar a data
-    let dataFormatada = 'NÃO INFORMADA';
+    let dataFormatada: string = 'NÃO INFORMADA';
     try {
       const dataContagem = countData.data ? new Date(countData.data) : new Date();
       dataFormatada = dataContagem.toLocaleDateString('pt-BR', {
@@ -890,14 +969,10 @@ export default function NewCount() {
     
     // Adicionar informações do estoque e data
     console.log('=== DADOS DO ESTOQUE ===');
-    console.log('countData completo:', JSON.stringify(countData, null, 2));
-    console.log('countData.estoques:', countData.estoques);
-    console.log('countData.estoque:', countData.estoque);
-    console.log('countData.estoque_id:', countData.estoque_id);
+    
+    let estoqueNome: string = 'NÃO INFORMADO';
     
     // Tenta obter o nome do estoque de várias fontes possíveis
-    let estoqueNome = 'NÃO INFORMADO';
-    
     if (countData.estoques?.nome) {
       estoqueNome = countData.estoques.nome;
       console.log('Usando nome do estoque de countData.estoques.nome');
@@ -940,246 +1015,124 @@ export default function NewCount() {
     estoqueInfo.alignment = { horizontal: 'left' };
     worksheet.mergeCells('A2:D2');
     worksheet.mergeCells('G2:H2');
-    
     // Adicionar linha em branco
     worksheet.addRow([]);
     
     // Cabeçalhos
-    const headerTitles = [
-      "CÓDIGO", "PRODUTO", "PALLETS", "LASTROS", "PACOTES", "UNIDADES", "TOTAL", "TOTAL PACOTES"
-    ];
-    
-    const headerRow = worksheet.addRow(headerTitles);
-    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    headerRow.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FF2F5496' }
-    };
-    
-    // Função para obter o código do produto de várias fontes possíveis
-    const getProductCode = (item: any): string => {
-      // 1. Primeiro tenta pegar o código diretamente do item
-      if (item.codigo) {
-        console.log('Usando código direto do item:', item.codigo);
-        return item.codigo;
-      }
-
-      // 2. Tenta pegar de propriedades aninhadas
-      const nestedCode = item.produto?.codigo || 
-                        item.produto?.codigo_barras || 
-                        item.produto?.referencia ||
-                        item.codigo_barras ||
-                        item.referencia;
-      
-      if (nestedCode) {
-        console.log('Usando código de propriedades aninhadas:', nestedCode);
-        return nestedCode;
-      }
-
-      // 3. Tenta usar o mapa de códigos (se disponível)
-      const possibleIds = [
-        item.product_id,
-        item.id,
-        item.produto_id,
-        item.produto?.id
-      ].filter(Boolean);
-
-      for (const id of possibleIds) {
-        if (productCodesMap?.has(id)) {
-          const productInfo = productCodesMap.get(id);
-          if (productInfo?.codigo) {
-            console.log('Usando código do mapa:', productInfo.codigo);
-            return productInfo.codigo;
-          }
-        }
-      }
-
-      // 4. Tenta extrair de qualquer campo que possa conter o código
-      const codeFields = [
-        'codigo', 'codigo_barras', 'referencia', 'code', 'barcode', 'sku',
-        'produto.codigo', 'produto.codigo_barras', 'produto.referencia',
-        'produto.code', 'produto.barcode', 'produto.sku'
-      ];
-      
-      for (const field of codeFields) {
-        try {
-          const value = field.split('.').reduce((obj, key) => obj?.[key], item);
-          if (value) {
-            console.log(`Usando código do campo ${field}:`, value);
-            return value.toString();
-          }
-        } catch (error) {
-          console.warn(`Erro ao acessar campo ${field}:`, error);
-        }
-      }
-
-      // 5. Se nada mais funcionar, retorna o ID como último recurso
-      console.log('Nenhum código encontrado, usando ID como fallback:', item.id);
-      return item.id || 'N/A';
-    };
-    
-    // Adicionar dados
-    for (let index = 0; index < items.length; index++) {
-      const item: any = items[index];
-      console.log(`\n=== Processando item ${index + 1}/${items.length} ===`);
-      console.log('Estrutura completa do item:', JSON.stringify(item, null, 2));
-      
-      // Verifica se é um produto livre (sem ID de produto cadastrado)
-      const isFreeProduct = item.id?.startsWith('free-');
-      console.log('É produto livre?', isFreeProduct);
-      
-      // Calcula totais se não estiverem definidos
-      const totalPacotes = item.totalPacotes || calculateTotalPacotes(item);
-      const totalUnidades = item.total || calculateProductTotal(item);
-
-      // Obtém o código do produto usando a função auxiliar
-      const codigoProduto = isFreeProduct ? 'N/A' : getProductCode(item);
-      
-      console.log('Código do produto a ser exibido:', codigoProduto);
-      
-      // Obtém o nome do produto
-      const nomeProduto = item.nome || 'Produto não cadastrado';
-      
-      // Adiciona a linha com os dados formatados
-      worksheet.addRow([
-        // Código do produto ou 'N/A' para produtos livres
-        isFreeProduct ? 'N/A' : codigoProduto,
-        // Nome do produto
-        nomeProduto,
-        // Quantidades
-        item.pallets || 0,
-        item.lastros || 0,
-        item.pacotes || 0,
-        item.unidades || 0,
-        // Total de unidades
-        totalUnidades,
-        // Total de pacotes
-        totalPacotes
-      ]);
-    }
-    
-    // ============================================
-    // CRIANDO A ABA DE ANÁLISE
-    // ============================================
-    
-    const analysisWorksheet = workbook.addWorksheet('Análise');
-    
-    // Configurar largura das colunas
-    analysisWorksheet.columns = [
-      { key: 'codigo', width: 15 },
-      { key: 'produto', width: 40 },
-      { key: 'sistema', width: 15 },
-      { key: 'contado', width: 15 },
-      { key: 'diferenca', width: 15 }
-    ];
-    
-    // Título da planilha
-    const analysisTitleRow = analysisWorksheet.addRow(['ANÁLISE DE DIVERGÊNCIAS']);
-    analysisTitleRow.font = { bold: true, size: 16, color: { argb: 'FF2F5496' } };
-    analysisTitleRow.alignment = { horizontal: 'center' };
-    analysisWorksheet.mergeCells('A1:E1');
-    
-    // Informações da contagem
-    analysisWorksheet.addRow([`Data: ${dataFormatada}`]);
-    analysisWorksheet.addRow([`Estoque: ${estoqueNome}`]);
-    analysisWorksheet.addRow([]); // Linha em branco
-    
-    // Cabeçalhos
-    const analysisHeaderRow = analysisWorksheet.addRow([
+    const analysisHeaderTitles = [
       'CÓDIGO',
       'PRODUTO',
       'SISTEMA',
       'CONTADO',
       'DIFERENÇA (SISTEMA - CONTADO)'
-    ]);
+    ] as const;
     
-    // Estilizar cabeçalho
-    analysisHeaderRow.font = { 
-      bold: true, 
-      color: { argb: 'FFFFFFFF' },
-      size: 12
-    };
-    
+    const analysisHeaderRow = worksheet.addRow([...analysisHeaderTitles]);
+    analysisHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     analysisHeaderRow.fill = {
-      type: 'pattern',
-      pattern: 'solid',
+      type: 'pattern' as const,
+      pattern: 'solid' as const,
       fgColor: { argb: 'FF2F5496' }
     };
     
-    // Adicionar dados dos itens
-    for (const item of items) {
-      const isFreeProduct = item.id?.startsWith('free-');
-      const codigoProduto = isFreeProduct ? 'N/A' : getProductCode(item);
-      const nomeProduto = item.nome || 'Produto não cadastrado';
-      const totalPacotes = item.totalPacotes || calculateTotalPacotes(item);
-      
-      // Primeiro, adiciona a linha com os dados básicos
-      const row = analysisWorksheet.addRow([
-        // Código do produto ou 'N/A' para produtos livres
-        isFreeProduct ? 'N/A' : codigoProduto,
-        // Nome do produto
-        nomeProduto,
-        // Sistema (em branco para preenchimento manual)
-        '',
-        // Total de pacotes contados
-        totalPacotes,
-        // Inicialmente vazio, será preenchido com a fórmula abaixo
-        ''
-      ]);
-      
-      // Agora que a linha foi criada, adicionamos a fórmula corretamente
-      // row.number já retorna o número correto da linha no Excel (1-based)
-      const rowNumber = row.number;
-      row.getCell('E').value = { formula: `C${rowNumber}-D${rowNumber}`, result: 0 };
-      
-      // Formatar a célula de diferença como número
-      const diffCell = row.getCell('E');
-      diffCell.numFmt = '#,##0';
-    }
-    
-    // Adicionar formatação condicional para a coluna de diferença
-    const lastRow = analysisWorksheet.rowCount;
-    
-    // Estilo para valores positivos (verde)
-    analysisWorksheet.addConditionalFormatting({
-      ref: `E5:E${lastRow}`, // A partir da linha 5 (após cabeçalhos e informações)
-      rules: [
-        {
-          type: 'cellIs',
-          operator: 'greaterThan',
-          priority: 1,
-          formulae: ['0'],
-          style: { 
-            font: { color: { argb: 'FF107C41' } }, // Verde escuro
-            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } } // Verde claro
-          }
-        },
-        {
-          type: 'cellIs',
-          operator: 'lessThan',
-          priority: 2,
-          formulae: ['0'],
-          style: { 
-            font: { color: { argb: 'FF9C0006' } }, // Vermelho escuro
-            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } } // Vermelho claro
-          }
-        },
-        {
-          type: 'cellIs',
-          operator: 'equal',
-          priority: 3,
-          formulae: ['0'],
-          style: { 
-            font: { color: { argb: 'FF9C5700' } }, // Laranja escuro
-            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEB9C' } } // Amarelo claro
-          }
+    // Função para obter o código do produto de várias fontes possíveis
+    const getProductCode = (item: ExcelItem): string => {
+      // Verifica se o produto tem um código no banco de dados
+      if (item.product_id && productCodesMap.has(item.product_id)) {
+        const produtoInfo = productCodesMap.get(item.product_id);
+        if (produtoInfo) {
+          return produtoInfo.codigo || produtoInfo.codigo_barras || produtoInfo.referencia || 'N/A';
         }
-      ]
+      }
+      
+      // Se não encontrar no banco de dados, usa o código fornecido no item
+      return item.codigo || item.codigo_barras || item.referencia || 'N/A';
+    };
+    
+    // Adicionar dados dos itens
+    excelItems.forEach((item) => {
+      try {
+        const isFreeProduct = item.id?.startsWith('free-');
+        const codigoProduto = isFreeProduct ? 'N/A' : (getProductCode(item) || 'N/A');
+        const nomeProduto = item.nome || 'Produto não cadastrado';
+        const totalPacotes = item.totalPacotes || 0;
+        
+        // Primeiro, adiciona a linha com os dados básicos
+        const row = worksheet.addRow([
+          // Código do produto ou 'N/A' para produtos livres
+          isFreeProduct ? 'N/A' : codigoProduto,
+          // Nome do produto
+          nomeProduto,
+          // Sistema (em branco para preenchimento manual)
+          '',
+          // Total de pacotes contados
+          totalPacotes,
+          // Inicialmente vazio, será preenchido com a fórmula abaixo
+          ''
+        ]);
+        
+        // Agora que a linha foi criada, adicionamos a fórmula corretamente
+        // row.number já retorna o número correto da linha no Excel (1-based)
+        const rowNumber = row.number;
+        const cellE = row.getCell('E');
+        
+        // Define o valor da célula E como uma fórmula que subtrai a coluna D da coluna C
+        // Usando tipo any temporariamente para evitar erros de tipo com ExcelJS
+        (cellE as any).value = { 
+          formula: `C${rowNumber}-D${rowNumber}`, 
+          result: 0 
+        };
+        
+        // Formatar a célula de diferença como número
+        // Usando tipo any temporariamente para evitar erros de tipo com ExcelJS
+        (cellE as any).numFmt = '#,##0';
+      } catch (error) {
+        console.error('Erro ao adicionar item à planilha de análise:', error);
+      }
     });
     
+    // Adicionar formatação condicional para a coluna de diferença
+    const lastRow = worksheet.lastRow?.number || 0;
+    if (lastRow > 4) { // Apenas adiciona se houver linhas de dados
+      const conditionalFormatting = {
+        ref: `E5:E${lastRow}`, // Coluna de diferença
+        rules: [
+          {
+            type: 'cellIs' as const,
+            operator: 'greaterThan' as const,
+            priority: 1,
+            formulae: ['0'],
+            style: {
+              font: { color: { argb: 'FF0000' } }, // Texto vermelho
+              fill: {
+                type: 'pattern' as const,
+                pattern: 'solid' as const,
+                fgColor: { argb: 'FFFFC7CE' } // Fundo vermelho claro
+              }
+            }
+          },
+          {
+            type: 'cellIs' as const,
+            operator: 'lessThan' as const,
+            priority: 2,
+            formulae: ['0'],
+            style: {
+              font: { color: { argb: 'FF0000' } }, // Texto vermelho
+              fill: {
+                type: 'pattern' as const,
+                pattern: 'solid' as const,
+                fgColor: { argb: 'FFFFC7CE' } // Fundo vermelho claro
+              }
+            }
+          }
+        ]
+      };
+      
+      worksheet.addConditionalFormatting(conditionalFormatting);
+    }
+    
     // Ajustar alinhamento das células
-    analysisWorksheet.eachRow((row, rowNumber) => {
+    worksheet.eachRow((row: Row, rowNumber: number) => {
       if (rowNumber > 4) { // Pular cabeçalhos e informações iniciais
         ['A', 'B', 'C', 'D', 'E'].forEach(col => {
           const cell = row.getCell(col);
