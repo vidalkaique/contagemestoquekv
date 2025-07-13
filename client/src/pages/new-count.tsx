@@ -5,12 +5,12 @@ import { ArrowLeft, Plus, Check, Trash2, Package, Search, Pencil, X, Upload, Dow
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/use-toast";
 import { useCountRealtime, type RealtimeProductItem } from "@/hooks/use-count-realtime";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ProductModal from "@/components/product-modal";
 import EditProductModal from "@/components/edit-product-modal";
-import { supabase } from "@/lib/supabase";
 import { saveCurrentCount, getCurrentCount, clearCurrentCount, saveToCountHistory, getCountHistory, type CurrentCount } from "@/lib/localStorage";
 import type { InsertContagem, InsertItemContagem, ContagemWithItens } from "@shared/schema";
 import { useCountDate } from "@/hooks/use-count-date";
@@ -57,6 +57,26 @@ export default function NewCount() {
   const [editingProductIndex, setEditingProductIndex] = useState<number | null>(null);
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
+
+  // Garante que exista uma contagem rascunho no Supabase e devolve o ID
+  const ensureCountExists = async (): Promise<string> => {
+    if (currentCountId) return currentCountId;
+
+    const formattedDate = new Date(countDate).toISOString().split('T')[0];
+    const { data, error } = await supabase
+      .from('contagens')
+      .insert({ data: formattedDate, finalizada: false })
+      .select('id')
+      .single();
+
+    if (error || !data) {
+      console.error('Erro ao criar contagem:', error);
+      throw new Error(error?.message || 'Falha ao criar contagem');
+    }
+
+    setCurrentCountId(data.id);
+    return data.id;
+  };
 
   // Define o ID da contagem atual com base no parâmetro da rota ou na contagem não finalizada carregada
   useEffect(() => {
@@ -405,7 +425,37 @@ export default function NewCount() {
       // Persiste os dados
       saveCurrentCount(currentCount);
       saveToCountHistory(currentCount);
-      
+
+      // ---------- Persistência no Supabase ----------
+      (async () => {
+        try {
+          const contagemId = await ensureCountExists();
+
+          const dbPayload = {
+            contagem_id: contagemId,
+            produto_id: productWithDefaults.id.startsWith('free-') ? null : productWithDefaults.id,
+            nome_livre: productWithDefaults.id.startsWith('free-') ? productWithDefaults.nome : null,
+            pallets: productWithDefaults.pallets ?? 0,
+            lastros: productWithDefaults.lastros ?? 0,
+            pacotes: productWithDefaults.pacotes ?? 0,
+            unidades: productWithDefaults.unidades ?? 0,
+            total: calculateProductTotal(productWithDefaults),
+            total_pacotes: productWithDefaults.totalPacotes ?? 0,
+          };
+
+          if (dbPayload.produto_id) {
+            // upsert evita duplicata por contagem/produto
+            await supabase.from('itens_contagem').upsert(dbPayload, {
+              onConflict: 'contagem_id,produto_id',
+            });
+          } else {
+            await supabase.from('itens_contagem').insert(dbPayload);
+          }
+        } catch (err) {
+          console.error('Erro ao persistir item no Supabase:', err);
+        }
+      })();
+
       return productWithDefaults;
       
     } catch (error) {
