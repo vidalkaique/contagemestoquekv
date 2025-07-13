@@ -341,11 +341,19 @@ export default function NewCount() {
       console.log('Inserindo no banco de dados:', dbItem);
       
       // Usa insert em vez de upsert para evitar erro de constraint
-      await supabase.from('itens_contagem').insert(dbItem);
+      const { data, error } = await supabase.from('itens_contagem').insert(dbItem).select().single();
       
-      console.log('Item adicionado com sucesso!');
+      if (error) {
+        console.error("Erro ao adicionar item no Supabase:", {
+          error,
+          dbItem,
+          supabaseError: error.details || error.hint || error.message
+        });
+        throw new Error(`Falha ao adicionar item: ${error.message}`);
+      }
       
-      return dbItem;
+      console.log('Item adicionado com sucesso:', data);
+      return data;
     },
   });
 
