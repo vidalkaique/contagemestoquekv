@@ -4,6 +4,7 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Check, Trash2, Package, Search, Pencil, X, Upload, Download } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/use-toast";
+import { useCountRealtime, type RealtimeProductItem } from "@/hooks/use-count-realtime";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,6 +47,12 @@ export default function NewCount() {
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [currentCountId, setCurrentCountId] = useState<string | undefined>(undefined);
+
+  // Sincroniza os itens da contagem em tempo real
+  useCountRealtime(
+    currentCountId,
+    setProducts as unknown as React.Dispatch<React.SetStateAction<RealtimeProductItem[]>>,
+  );
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [editingProductIndex, setEditingProductIndex] = useState<number | null>(null);
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
