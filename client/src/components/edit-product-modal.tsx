@@ -31,7 +31,17 @@ export default function EditProductModal({ isOpen, onClose, product, onSave }: E
     quantidadeSistema: 0
   });
 
-
+  // Função para calcular o total de unidades
+  const calculateTotalUnidades = useCallback((): number => {
+    const { pallets = 0, lastros = 0, pacotes = 0, unidades = 0, 
+            unidadesPorPacote = 1, pacotesPorLastro = 0, lastrosPorPallet = 0 } = formData;
+    
+    const totalFromPallets = pallets * (lastrosPorPallet || 0) * (pacotesPorLastro || 0) * (unidadesPorPacote || 0);
+    const totalFromLastros = lastros * (pacotesPorLastro || 0) * (unidadesPorPacote || 0);
+    const totalFromPacotes = pacotes * (unidadesPorPacote || 0);
+    
+    return totalFromPallets + totalFromLastros + totalFromPacotes + (unidades || 0);
+  }, [formData]);
 
   // Atualiza o formulário quando o produto muda
   useEffect(() => {
@@ -206,6 +216,15 @@ export default function EditProductModal({ isOpen, onClose, product, onSave }: E
                   />
                 </div>
                 
+                <div className="space-y-2">
+                  <Label>Total Contado (Unidades)</Label>
+                  <Input
+                    value={calculateTotalUnidades().toLocaleString()}
+                    readOnly
+                    className="bg-gray-100 font-medium"
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <Label>Diferença (Pacotes)</Label>
                   <div className={cn(
