@@ -20,6 +20,9 @@ export default function StartCount() {
   const { countDate, setCountDate } = useCountDate();
   const [selectedStock, setSelectedStock] = useState<{id: string, nome: string} | null>(null);
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [userMatricula, setUserMatricula] = useState("");
   
   // Buscar contagens não finalizadas
   const { data: unfinishedCounts = [] } = useQuery<ContagemWithItens[]>({
@@ -42,7 +45,11 @@ export default function StartCount() {
     mutationFn: async (data: InsertContagem) => {
       const { data: newCount, error } = await supabase
         .from("contagens")
-        .insert([data])
+        .insert([{
+          ...data,
+          nome_responsavel: userName,
+          matricula_responsavel: userMatricula
+        }])
         .select()
         .single();
 
@@ -61,10 +68,6 @@ export default function StartCount() {
       });
     },
   });
-
-  const [userName, setUserName] = useState('');
-  const [userMatricula, setUserMatricula] = useState('');
-  const [showUserModal, setShowUserModal] = useState(false);
 
   const handleStartNewCount = () => {
     console.log('handleStartNewCount chamado');
@@ -92,42 +95,79 @@ export default function StartCount() {
     }
   };
 
-  const handleConfirmUserInfo = () => {
-    if (!userName.trim() || !userMatricula.trim()) {
-      toast({
-        title: "Erro",
-        description: "Por favor, preencha seu nome e matrícula",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleConfirmUserInfo = async () => {
+    console.log('handleConfirmUserInfo chamado');
+    
     if (!selectedStock) {
+      console.error('Nenhum estoque selecionado');
       toast({
         title: "Erro",
         description: "Nenhum estoque selecionado",
         variant: "destructive",
       });
-      setIsStockModalOpen(true);
       return;
     }
 
-    // Solução definitiva para fuso horário:
-    // Envia a data completa no formato ISO 8601 com fuso horário UTC (Z).
-    // O banco de dados (Postgres) irá extrair corretamente a parte da data.
-    const [year, month, day] = countDate.split('-').map(Number);
-    const utcDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+    if (!countDate) {
+      console.error('Nenhuma data selecionada');
+      toast({
+        title: "Erro",
+        description: "Selecione uma data para a contagem",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    createCountMutation.mutate({
-      data: utcDate.toISOString(),
-      finalizada: false,
-      estoqueId: selectedStock.id,
-      nome: userName.trim(),
-      matricula: userMatricula.trim(),
-      qntdProdutos: 0
-    });
-    
-    setShowUserModal(false);
+    if (!userName.trim() || !userMatricula.trim()) {
+      console.error('Nome ou matrícula não preenchidos');
+      toast({
+        title: "Erro",
+        description: "Preencha seu nome e matrícula",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      console.log('Criando nova contagem com dados:', {
+        data: countDate,
+        estoqueId: selectedStock.id,
+        finalizada: false,
+        nome: userName,
+        matricula: userMatricula
+      });
+
+      const newCount = await createCountMutation.mutateAsync({
+        data: countDate,
+        estoqueId: selectedStock.id,
+        finalizada: false,
+        nome: userName,
+        matricula: userMatricula
+      });
+
+      console.log('Nova contagem criada:', newCount);
+
+      // Salva a contagem atual no localStorage
+      saveCurrentCount({
+        id: newCount.id,
+        date: newCount.data,
+        estoqueId: newCount.estoqueId,
+        lastUpdated: new Date().toISOString(),
+        products: []
+      });
+
+      console.log('Redirecionando para a tela de contagem:', `/count/${newCount.id}`);
+      
+      // Redireciona para a tela de contagem
+      setLocation(`/count/${newCount.id}`);
+    } catch (error) {
+      console.error("Erro ao criar contagem:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível iniciar a contagem",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDateChange = (newDate: string) => {
