@@ -81,9 +81,15 @@ export function ImportStockScreen({ isOpen, onClose, contagemId, onImportComplet
       // Mapear colunas (pode ser personalizado conforme necessário)
       const processedData = jsonData
         .map(row => {
-          // Tenta encontrar o código e quantidade em diferentes formatos de coluna
-          const codigo = row['Código'] || row['codigo'] || row['CÓDIGO'] || row['CODIGO'] || '';
-          const quantidade = Number(row['Quantidade'] || row['quantidade'] || row['QUANTIDADE'] || 0);
+          // Tenta encontrar o código em diferentes formatos de coluna
+          const codigo = row['Código'] || row['codigo'] || row['CÓDIGO'] || row['CODIGO'] || 
+                        row['Material'] || row['material'] || row['MATERIAL'] || '';
+          
+          // Tenta encontrar a quantidade em diferentes formatos de coluna
+          const quantidade = Number(
+            row['Quantidade'] || row['quantidade'] || row['QUANTIDADE'] || 
+            row['Qtd'] || row['qtd'] || row['QTD'] || 0
+          );
           
           return {
             codigo: String(codigo).trim(),
