@@ -113,44 +113,7 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
     }
   }, [stocksError, refetch]);
 
-  const createCountMutation = useMutation({
-    mutationFn: async (estoqueId: string) => {
-      if (!estoqueId) {
-        throw new Error('ID do estoque não fornecido');
-      }
-
-      console.log('Criando nova contagem para o estoque:', estoqueId);
-      
-      const { data: contagem, error } = await supabase
-        .from('contagens')
-        .insert([
-          { 
-            estoque_id: estoqueId,
-            data: new Date().toISOString(),
-            finalizada: false
-          }
-        ])
-        .select('id, estoque_id')
-        .single();
-
-      if (error) {
-        console.error('Erro ao criar contagem:', error);
-        throw new Error('Erro ao criar contagem: ' + error.message);
-      }
-
-      console.log('Contagem criada com sucesso:', contagem);
-      return contagem;
-    },
-    onSuccess: (data) => {
-      toast.success('Contagem iniciada com sucesso!');
-      setLocation(`/count/${data.id}`);
-      onOpenChange(false);
-    },
-    onError: (error) => {
-      console.error('Erro na mutação de criar contagem:', error);
-      toast.error('Erro ao iniciar contagem. Tente novamente.');
-    },
-  });
+  // Removida a mutação de criação de contagem, pois agora será feita pelo componente pai
 
   const handleConfirm = () => {
     if (!selectedStock) {
@@ -162,9 +125,8 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
     
     if (onStockSelected && selectedStockData) {
       onStockSelected(selectedStockData);
-    } else if (selectedStock) {
-      // Usar diretamente o ID do estoque selecionado
-      createCountMutation.mutate(selectedStock);
+    } else {
+      toast.error('Erro: Nenhum manipulador de seleção de estoque definido');
     }
   };
 
@@ -306,7 +268,6 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
             <Button 
               variant="outline" 
               onClick={() => onOpenChange(false)}
-              disabled={createCountMutation.isPending}
               className="px-4"
               data-last-button
             >
@@ -314,15 +275,10 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
             </Button>
             <Button 
               onClick={handleConfirm} 
-              disabled={!selectedStock || createCountMutation.isPending || !stocks?.length}
+              disabled={!selectedStock || !stocks?.length}
               className="min-w-[120px]"
             >
-              {createCountMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Criando...
-                </>
-              ) : 'Confirmar'}
+              Confirmar
             </Button>
           </div>
         </DialogFooter>

@@ -77,11 +77,12 @@ export default function StartCount() {
     }
 
     if (!selectedStock) {
+      // Abre o modal de seleção de estoque
       setIsStockModalOpen(true);
       return;
     }
 
-    // Mostrar modal para coletar informações do usuário
+    // Se já tem um estoque selecionado, mostra o modal de informações do usuário
     setShowUserModal(true);
   };
 
@@ -153,19 +154,18 @@ export default function StartCount() {
     <>
       <SelectStockModal 
         isOpen={isStockModalOpen} 
-        onOpenChange={setIsStockModalOpen} 
+        onOpenChange={(isOpen) => {
+          setIsStockModalOpen(isOpen);
+          if (!isOpen) {
+            // Se o usuário fechar o modal sem selecionar um estoque, limpa a seleção
+            setSelectedStock(null);
+          }
+        }}
         onStockSelected={(stock) => {
           setSelectedStock(stock);
           setIsStockModalOpen(false);
-          // Após selecionar o estoque, inicia diretamente a criação da contagem
-          if (countDate) {
-            // Fuso horário UTC às 12h para evitar problemas de timezone
-            const [y, m, d] = countDate.split('-').map(Number);
-            const utcDate = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
-            // Não precisamos mais criar a contagem aqui, pois o usuário precisa preencher nome e matrícula primeiro
-            setSelectedStock(stock);
-            setShowUserModal(true);
-          }
+          // Mostra o modal de informações do usuário após selecionar o estoque
+          setShowUserModal(true);
         }}
       />
       {/* Header */}

@@ -989,7 +989,157 @@ export default function NewCount() {
     
     // Criar workbook
     const workbook: Workbook = new Workbook();
-    const worksheet: Worksheet = workbook.addWorksheet("Contagem");
+    
+    // ===== PRIMEIRA ABA: CONTAGEM DETALHADA =====
+    const detailedWorksheet: Worksheet = workbook.addWorksheet("Contagem Detalhada");
+    detailedWorksheet.properties.defaultColWidth = 15;
+    
+    // Adicionar cabeçalhos da planilha detalhada
+    const detailedHeaderTitles = [
+      'Código',
+      'Produto',
+      'Pallets',
+      'Lastros',
+      'Pacotes',
+      'Unidades',
+      'Total de Pacotes',
+      'Total de Unidades',
+      'Quantidade do Sistema (Pacotes)',
+      'Divergência (Pacotes)',
+      'Unidades por Pacote',
+      'Pacotes por Lastro',
+      'Lastros por Pallet'
+    ];
+    
+    // Adicionar título
+    const detailedTitleRow = detailedWorksheet.addRow(['CONTAGEM DETALHADA DE ESTOQUE']);
+    detailedTitleRow.font = { bold: true, size: 18, color: { argb: 'FF2F5496' } };
+    detailedTitleRow.alignment = { horizontal: 'center', vertical: 'middle' };
+    detailedTitleRow.height = 30;
+    detailedWorksheet.mergeCells('A1:M1');
+    
+    // Formatar a data e obter nome do estoque
+    let dataFormatada: string = 'NÃO INFORMADA';
+    let estoqueNome: string = 'NÃO INFORMADO';
+    
+    try {
+      // Formatar data
+      const dataContagem = countData.data ? new Date(countData.data) : new Date();
+      dataFormatada = dataContagem.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
+      // Obter nome do estoque
+      if (countData.estoques?.nome) {
+        estoqueNome = countData.estoques.nome;
+      } else if (countData.estoque?.nome) {
+        estoqueNome = countData.estoque.nome;
+      } else if (countData.estoque_id) {
+        // Tenta buscar o nome do estoque diretamente se tivermos o ID
+        try {
+          const { data: estoque, error } = await supabase
+            .from('estoques')
+            .select('nome')
+            .eq('id', countData.estoque_id)
+            .single();
+            
+          if (!error && estoque?.nome) {
+            estoqueNome = estoque.nome;
+          } else {
+            console.log('Estoque não encontrado no banco de dados, usando ID como referência');
+            estoqueNome = `Estoque ID: ${countData.estoque_id}`;
+          }
+        } catch (error) {
+          console.error('Erro ao buscar nome do estoque:', error);
+          estoqueNome = `Estoque ID: ${countData.estoque_id}`;
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao formatar dados:', error);
+    }
+    
+    // Adicionar informações do estoque e data
+    const detailedInfoRow = detailedWorksheet.addRow([
+      `Estoque: ${estoqueNome}`,
+      '', '', '', '', '', '', '', '', '', '', '',
+      `Data: ${dataFormatada}`
+    ]);
+    detailedInfoRow.font = { bold: true };
+    detailedInfoRow.alignment = { horizontal: 'left' };
+    detailedWorksheet.mergeCells('A2:L2');
+    detailedWorksheet.mergeCells('M2:M2');
+    
+    // Adicionar linha em branco
+    detailedWorksheet.addRow([]);
+    
+    // Adicionar cabeçalhos
+    const detailedHeaderRow = detailedWorksheet.addRow(detailedHeaderTitles);
+    detailedHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    detailedHeaderRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF2F5496' }
+    };
+    
+    // Adicionar dados dos itens
+    excelItems.forEach((item) => {
+      const isFreeProduct = item.id?.startsWith('free-');
+      const codigoProduto = isFreeProduct ? 'N/A' : (getProductCode(item) || 'N/A');
+      const nomeProduto = item.nome || 'Produto não cadastrado';
+      
+      detailedWorksheet.addRow([
+        // Código do produto ou 'N/A' para produtos livres
+        isFreeProduct ? 'N/A' : codigoProduto,
+        // Nome do produto
+        nomeProduto,
+        // Pallets
+        item.pallets || 0,
+        // Lastros
+        item.lastros || 0,
+        // Pacotes
+        item.pacotes || 0,
+        // Unidades
+        item.unidades || 0,
+        // Total de Pacotes
+        item.totalPacotes || 0,
+        // Total de Unidades
+        (item.totalPacotes || 0) * (item.unidadesPorPacote || 1),
+        // Quantidade do Sistema
+        item.quantidadeSistema || 0,
+        // Divergência
+        (item.totalPacotes || 0) - (item.quantidadeSistema || 0),
+        // Unidades por Pacote
+        item.unidadesPorPacote || '',
+        // Pacotes por Lastro
+        item.pacotesPorLastro || '',
+        // Lastros por Pallet
+        item.lastrosPorPallet || ''
+      ]);
+    });
+    
+    // Ajustar largura das colunas
+    detailedWorksheet.columns = [
+      { width: 15 }, // Código
+      { width: 30 }, // Produto
+      { width: 10 }, // Pallets
+      { width: 10 }, // Lastros
+      { width: 10 }, // Pacotes
+      { width: 10 }, // Unidades
+      { width: 15 }, // Total de Pacotes
+      { width: 15 }, // Total de Unidades
+      { width: 20 }, // Quantidade do Sistema
+      { width: 15 }, // Divergência
+      { width: 15 }, // Unidades por Pacote
+      { width: 15 }, // Pacotes por Lastro
+      { width: 15 }, // Lastros por Pallet
+    ];
+    
+    // ===== SEGUNDA ABA: ANÁLISE DE DIVERGÊNCIAS =====
+    const worksheet: Worksheet = workbook.addWorksheet("Análise de Divergências");
     
     // Configurar propriedades da planilha
     worksheet.properties.defaultColWidth = 15;
@@ -1001,55 +1151,9 @@ export default function NewCount() {
     titleRow.height = 30;
     worksheet.mergeCells('A1:H1');
     
-    // Formatar a data
-    let dataFormatada: string = 'NÃO INFORMADA';
-    try {
-      const dataContagem = countData.data ? new Date(countData.data) : new Date();
-      dataFormatada = dataContagem.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (error) {
-      console.error('Erro ao formatar data:', error);
-    }
-    
-    // Adicionar informações do estoque e data
+    // Usar as variáveis já definidas anteriormente
     console.log('=== DADOS DO ESTOQUE ===');
-    
-    let estoqueNome: string = 'NÃO INFORMADO';
-    
-    // Tenta obter o nome do estoque de várias fontes possíveis
-    if (countData.estoques?.nome) {
-      estoqueNome = countData.estoques.nome;
-      console.log('Usando nome do estoque de countData.estoques.nome');
-    } else if (countData.estoque?.nome) {
-      estoqueNome = countData.estoque.nome;
-      console.log('Usando nome do estoque de countData.estoque.nome');
-    } else if (countData.estoque_id) {
-      // Tenta buscar o nome do estoque diretamente se tivermos o ID
-      try {
-        const { data: estoque, error } = await supabase
-          .from('estoques')
-          .select('nome')
-          .eq('id', countData.estoque_id)
-          .single();
-          
-        if (!error && estoque?.nome) {
-          estoqueNome = estoque.nome;
-          console.log('Nome do estoque encontrado no banco de dados:', estoqueNome);
-        } else {
-          console.log('Estoque não encontrado no banco de dados, usando ID como referência');
-          estoqueNome = `Estoque ID: ${countData.estoque_id}`;
-        }
-      } catch (error) {
-        console.error('Erro ao buscar nome do estoque:', error);
-        estoqueNome = `Estoque ID: ${countData.estoque_id}`;
-      }
-    }
-    
+    console.log('Usando nome do estoque:', estoqueNome);
     console.log('Nome do estoque a ser exibido:', estoqueNome);
     
     // Adiciona a linha com as informações do estoque e data
@@ -1532,34 +1636,68 @@ export default function NewCount() {
 
   /**
    * Exporta os produtos para um arquivo Excel com abas de contagem e análise
+   * Mantém o mesmo layout da planilha gerada na finalização
    */
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     try {
       // Cria um novo livro de trabalho
       const wb = XLSX.utils.book_new();
       
       // ===== PRIMEIRA ABA: CONTAGEM DETALHADA =====
-      const data = products.map(product => ({
+      const detailedData = products.map(product => ({
         'Código': product.codigo || '',
         'Produto': product.nome,
-        'Pallets': product.pallets,
-        'Lastros': product.lastros,
-        'Pacotes': product.pacotes,
-        'Unidades': product.unidades,
-        'Total de Pacotes': product.totalPacotes,
-        'Total de Unidades': calculateProductTotal(product),
+        'Pallets': product.pallets || 0,
+        'Lastros': product.lastros || 0,
+        'Pacotes': product.pacotes || 0,
+        'Unidades': product.unidades || 0,
+        'Total de Pacotes': product.totalPacotes || 0,
+        'Total de Unidades': calculateProductTotal(product) || 0,
         'Quantidade do Sistema (Pacotes)': product.quantidadeSistema || 0,
-        'Divergência (Pacotes)': product.totalPacotes - (product.quantidadeSistema || 0),
+        'Divergência (Pacotes)': (product.totalPacotes || 0) - (product.quantidadeSistema || 0),
         'Unidades por Pacote': product.unidadesPorPacote || '',
         'Pacotes por Lastro': product.pacotesPorLastro || '',
         'Lastros por Pallet': product.lastrosPorPallet || ''
       }));
-
+      
       // Cria a planilha de contagem detalhada
-      const ws = XLSX.utils.json_to_sheet(data);
+      const wsDetailed = XLSX.utils.json_to_sheet([]);
+      
+      // Adiciona o título
+      XLSX.utils.sheet_add_aoa(wsDetailed, [["CONTAGEM DETALHADA DE ESTOQUE"]], { origin: "A1" });
+      
+      // Adiciona informações do estoque e data
+      const dataAtual = new Date().toLocaleDateString('pt-BR');
+      XLSX.utils.sheet_add_aoa(wsDetailed, [[`Data: ${dataAtual}`, "", "", "", "", "", "", "", "", "", "", "", "Estoque: " + (unfinishedCount?.estoque?.nome || 'NÃO INFORMADO')]], { origin: "A2" });
+      
+      // Adiciona linha em branco
+      XLSX.utils.sheet_add_aoa(wsDetailed, [[""]], { origin: "A4" });
+      
+      // Adiciona os cabeçalhos
+      const detailedHeaders = [
+        'Código',
+        'Produto',
+        'Pallets',
+        'Lastros',
+        'Pacotes',
+        'Unidades',
+        'Total de Pacotes',
+        'Total de Unidades',
+        'Quantidade do Sistema (Pacotes)',
+        'Divergência (Pacotes)',
+        'Unidades por Pacote',
+        'Pacotes por Lastro',
+        'Lastros por Pallet'
+      ];
+      
+      // Adiciona os cabeçalhos formatados
+      XLSX.utils.sheet_add_aoa(wsDetailed, [detailedHeaders], { origin: "A5" });
+      
+      // Adiciona os dados
+      XLSX.utils.sheet_add_json(wsDetailed, detailedData, { origin: "A6", skipHeader: true });
       
       // Ajusta a largura das colunas
-      const wscols = [
+      wsDetailed['!cols'] = [
         { wch: 15 }, // Código
         { wch: 30 }, // Produto
         { wch: 10 }, // Pallets
@@ -1574,66 +1712,67 @@ export default function NewCount() {
         { wch: 15 }, // Pacotes por Lastro
         { wch: 15 }, // Lastros por Pallet
       ];
-      ws['!cols'] = wscols;
       
-      // Adiciona a planilha ao livro de trabalho
-      XLSX.utils.book_append_sheet(wb, ws, 'Contagem Detalhada');
+      // Adiciona a planilha detalhada como a primeira aba
+      XLSX.utils.book_append_sheet(wb, wsDetailed, 'Contagem Detalhada');
       
       // ===== SEGUNDA ABA: ANÁLISE DE DIVERGÊNCIAS =====
       const analysisData = products.map(product => ({
         'CÓDIGO': product.codigo || 'N/A',
         'PRODUTO': product.nome,
-        'SISTEMA (PACOTES)': product.quantidadeSistema || '',
+        'SISTEMA (PACOTES)': product.quantidadeSistema || 0,
         'CONTADO (PACOTES)': product.totalPacotes,
         'DIFERENÇA (PACOTES)': product.totalPacotes - (product.quantidadeSistema || 0)
       }));
       
       // Cria a planilha de análise
-      const wsAnalysis = XLSX.utils.json_to_sheet(analysisData, { header: ['CÓDIGO', 'PRODUTO', 'SISTEMA (PACOTES)', 'CONTADO (PACOTES)', 'DIFERENÇA (PACOTES)'] });
+      const wsAnalysis = XLSX.utils.json_to_sheet([]);
+      
+      // Adiciona o título
+      XLSX.utils.sheet_add_aoa(wsAnalysis, [["ANÁLISE DE DIVERGÊNCIAS"]], { origin: "A1" });
+      
+      // Adiciona informações do estoque e data
+      XLSX.utils.sheet_add_aoa(wsAnalysis, [[`Data: ${dataAtual}`, "", "", "", "Estoque: " + (unfinishedCount?.estoque?.nome || 'NÃO INFORMADO')]], { origin: "A2" });
+      
+      // Adiciona linha em branco
+      XLSX.utils.sheet_add_aoa(wsAnalysis, [[""]], { origin: "A4" });
+      
+      // Adiciona os cabeçalhos
+      const analysisHeaders = [
+        'CÓDIGO',
+        'PRODUTO',
+        'SISTEMA (PACOTES)',
+        'CONTADO (PACOTES)',
+        'DIFERENÇA (PACOTES)'
+      ];
+      
+      // Adiciona os cabeçalhos formatados
+      XLSX.utils.sheet_add_aoa(wsAnalysis, [analysisHeaders], { origin: "A5" });
+      
+      // Adiciona os dados
+      XLSX.utils.sheet_add_json(wsAnalysis, analysisData, { origin: "A6", skipHeader: true });
+      
+      // Adiciona fórmulas para a coluna de diferença
+      const firstDataRow = 6; // Linha onde começam os dados (0-based)
+      const lastDataRow = firstDataRow + products.length - 1;
+      
+      for (let i = firstDataRow; i <= lastDataRow; i++) {
+        // Adiciona a fórmula para a diferença (coluna E = D - C)
+        wsAnalysis[`E${i}`] = { f: `D${i}-C${i}`, t: 'n' };
+      }
       
       // Ajusta a largura das colunas
       wsAnalysis['!cols'] = [
-        { wch: 15 }, // CÓDIGO
+        { wch: 20 }, // CÓDIGO
         { wch: 40 }, // PRODUTO
-        { wch: 15 }, // SISTEMA
-        { wch: 15 }, // CONTADO
-        { wch: 25 }, // DIFERENÇA
+        { wch: 20 }, // SISTEMA (PACOTES)
+        { wch: 20 }, // CONTADO (PACOTES)
+        { wch: 20 }, // DIFERENÇA (PACOTES)
       ];
-      
-      // Adiciona título e informações à planilha de análise
-      const analysisTitle = [['ANÁLISE DE DIVERGÊNCIAS']];
-      const analysisInfo = [
-        [`Data: ${new Date(countDate).toLocaleDateString('pt-BR')}`],
-        [''] // Linha em branco
-      ];
-      
-      // Combina os dados
-      const analysisSheetData = [
-        ...analysisTitle,
-        ...analysisInfo,
-        [], // Linha em branco
-        [
-          'CÓDIGO',
-          'PRODUTO',
-          'SISTEMA (PACOTES)',
-          'CONTADO (PACOTES)',
-          'DIFERENÇA (PACOTES)'
-        ],
-        ...analysisData.map((item, index) => [
-          item['CÓDIGO'],
-          item['PRODUTO'],
-          item['SISTEMA (PACOTES)'],
-          item['CONTADO (PACOTES)'],
-          { f: `D${index + 6}-C${index + 6}`, v: item['DIFERENÇA (PACOTES)'] }
-        ])
-      ];
-      
-      // Atualiza a planilha de análise com os dados formatados
-      XLSX.utils.sheet_add_aoa(wsAnalysis, analysisSheetData);
       
       // Adiciona a planilha de análise ao livro de trabalho
       XLSX.utils.book_append_sheet(wb, wsAnalysis, 'Análise de Divergências');
-
+      
       // Gera o arquivo Excel
       const fileName = `contagem_${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(wb, fileName);
