@@ -116,53 +116,26 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
   // Removida a mutação de criação de contagem, pois agora será feita pelo componente pai
 
   const handleConfirm = (e?: React.MouseEvent) => {
-    console.log('=== INÍCIO handleConfirm ===');
-    
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    
-    console.log('Estado selectedStock:', selectedStock);
-    console.log('Lista de estoques:', stocks);
+    e?.preventDefault();
+    e?.stopPropagation();
     
     if (!selectedStock) {
-      console.error('Nenhum estoque selecionado');
       toast.warning('Por favor, selecione um estoque.');
       return;
     }
 
     const selectedStockData = stocks?.find(s => s.id === selectedStock);
-    console.log('Dados do estoque selecionado:', selectedStockData);
     
     if (!selectedStockData) {
-      console.error('Nenhum dado de estoque encontrado para o ID:', selectedStock);
       toast.error('Erro: Dados do estoque não encontrados');
       return;
     }
     
-    console.log('Chamando onStockSelected com:', selectedStockData);
-    
-    // Fechar o modal primeiro
+    // Fechar o modal
     onOpenChange(false);
     
-    // Pequeno atraso para garantir que o modal foi fechado antes de chamar o callback
-    setTimeout(() => {
-      try {
-        onStockSelected(selectedStockData);
-        console.log('onStockSelected chamado com sucesso');
-      } catch (error) {
-        console.error('Erro ao chamar onStockSelected:', error);
-      }
-    }, 100);
-    
-    console.log('=== FIM handleConfirm ===');
-  };
-
-  // Função para lidar com a seleção de estoque
-  const handleStockSelected = (stock: { id: string; nome: string }) => {
-    console.log('handleStockSelected chamado com:', stock);
-    onStockSelected(stock);
+    // Chamar o callback com o estoque selecionado
+    onStockSelected(selectedStockData);
   };
 
   return (
@@ -308,23 +281,7 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
               Cancelar
             </Button>
             <Button 
-              onClick={(e) => {
-                console.log('=== BOTÃO CONFIRMAR CLICADO ===');
-                console.log('Evento:', e);
-                console.log('selectedStock:', selectedStock);
-                
-                e.preventDefault();
-                e.stopPropagation();
-                
-                if (!selectedStock) {
-                  console.error('Nenhum estoque selecionado');
-                  toast.warning('Por favor, selecione um estoque.');
-                  return;
-                }
-                
-                console.log('Chamando handleConfirm...');
-                handleConfirm(e);
-              }}
+              onClick={handleConfirm}
               disabled={!selectedStock}
               className="px-4 bg-primary text-primary-foreground hover:bg-primary/90"
               type="button"

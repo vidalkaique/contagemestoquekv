@@ -24,65 +24,6 @@ export default function StartCount() {
   const [userName, setUserName] = useState("");
   const [userMatricula, setUserMatricula] = useState("");
   
-  // Efeito para depuração do estado showUserModal
-  useEffect(() => {
-    console.log('=== EFEITO DE ESTADO ===');
-    console.log('showUserModal:', showUserModal, 'tipo:', typeof showUserModal);
-    console.log('isStockModalOpen:', isStockModalOpen, 'tipo:', typeof isStockModalOpen);
-    console.log('selectedStock:', selectedStock, 'tipo:', typeof selectedStock);
-    
-    // Verificar se o estado está sendo atualizado corretamente
-    if (selectedStock && !isStockModalOpen && !showUserModal) {
-      console.log('CONDIÇÃO ATENDIDA: Deveria abrir o modal de usuário!');
-    }
-    
-    console.log('========================');
-  }, [showUserModal, isStockModalOpen, selectedStock]);
-  
-  // Efeito para abrir o modal de usuário após selecionar um estoque
-  const openUserModal = useCallback(() => {
-    console.log('=== ABRINDO MODAL DE USUÁRIO ===');
-    
-    // Usando um atraso maior para garantir que o React tenha tempo de processar
-    const timer1 = setTimeout(() => {
-      console.log('Tentativa 1: setShowUserModal(true)');
-      setShowUserModal(true);
-      
-      // Segunda tentativa com um atraso maior
-      const timer2 = setTimeout(() => {
-        console.log('Tentativa 2: setShowUserModal(true)');
-        setShowUserModal(true);
-        
-        // Terceira tentativa com um atraso ainda maior
-        const timer3 = setTimeout(() => {
-          console.log('Tentativa 3: setShowUserModal(true)');
-          setShowUserModal(true);
-        }, 300);
-        
-        return () => clearTimeout(timer3);
-      }, 200);
-      
-      return () => clearTimeout(timer2);
-    }, 100);
-    
-    return () => {
-      console.log('Limpando timers...');
-      clearTimeout(timer1);
-    };
-  }, []);
-  
-  // Efeito para monitorar mudanças e abrir o modal quando necessário
-  useEffect(() => {
-    console.log('=== EFEITO PRINCIPAL: VERIFICANDO ESTADOS ===');
-    console.log('selectedStock:', selectedStock);
-    console.log('isStockModalOpen:', isStockModalOpen);
-    console.log('showUserModal:', showUserModal);
-    
-    if (selectedStock && !isStockModalOpen && !showUserModal) {
-      console.log('CONDIÇÃO ATENDIDA: Chamando openUserModal...');
-      openUserModal();
-    }
-  }, [selectedStock, isStockModalOpen, showUserModal, openUserModal]);
   
   // Buscar contagens não finalizadas
   const { data: unfinishedCounts = [] } = useQuery<ContagemWithItens[]>({
@@ -130,12 +71,7 @@ export default function StartCount() {
   });
 
   const handleStartNewCount = () => {
-    console.log('=== INÍCIO handleStartNewCount ===');
-    console.log('Data selecionada:', countDate);
-    console.log('Estoque selecionado:', selectedStock);
-    
     if (!countDate) {
-      console.error('Data não selecionada');
       toast({
         title: "Erro",
         description: "Selecione uma data para a contagem",
@@ -145,17 +81,12 @@ export default function StartCount() {
     }
 
     if (!selectedStock) {
-      console.log('Nenhum estoque selecionado, abrindo modal de seleção');
+      // Abre o modal de seleção de estoque
       setIsStockModalOpen(true);
     } else {
-      console.log('Estoque já selecionado, mostrando modal de informações do usuário');
-      // Pequeno atraso para garantir que o modal anterior foi fechado
-      setTimeout(() => {
-        setShowUserModal(true);
-      }, 100);
+      // Se já tiver um estoque selecionado, abre o modal de usuário
+      setShowUserModal(true);
     }
-    
-    console.log('=== FIM handleStartNewCount ===');
   };
 
   const handleConfirmUserInfo = async () => {
@@ -264,7 +195,6 @@ export default function StartCount() {
       <SelectStockModal 
         isOpen={isStockModalOpen} 
         onOpenChange={(isOpen) => {
-          console.log('onOpenChange chamado com:', isOpen);
           setIsStockModalOpen(isOpen);
           if (!isOpen) {
             // Se o usuário fechar o modal sem selecionar um estoque, limpa a seleção
@@ -272,17 +202,17 @@ export default function StartCount() {
           }
         }}
         onStockSelected={(stock) => {
-          console.log('=== CALLBACK onStockSelected INICIADO ===');
-          console.log('Estoque recebido no callback:', stock);
-          
-          // Atualiza o estado imediatamente
+          // Atualiza o estado com o estoque selecionado
           setSelectedStock(stock);
           
           // Fecha o modal de seleção de estoque
           setIsStockModalOpen(false);
           
-          // O efeito irá detectar a mudança e abrir o modal de usuário
-          console.log('=== CALLBACK onStockSelected FINALIZADO ===');
+          // Pequeno atraso para garantir que o modal de seleção foi fechado
+          // antes de abrir o modal de usuário
+          setTimeout(() => {
+            setShowUserModal(true);
+          }, 100);
         }}
       />
       {/* Header */}
