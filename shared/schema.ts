@@ -58,6 +58,8 @@ export const contagens = pgTable("contagens", {
   excelUrl: text("excel_url"),
   finalizada: boolean("finalizada").notNull().default(false),
   qntdProdutos: integer("qntd_produtos").notNull().default(0),
+  matricula: text("matricula"),
+  nome: text("nome"),
 });
 
 export const itensContagem = pgTable("itens_contagem", {
@@ -149,7 +151,9 @@ export const insertContagemSchema = createInsertSchema(contagens).omit({
       return false;
     }
   }, "Data inválida"),
-  finalizada: z.boolean().optional().default(false)
+  finalizada: z.boolean().optional().default(false),
+  matricula: z.string().min(1, "A matrícula é obrigatória"),
+  nome: z.string().min(1, "O nome é obrigatório"),
 });
 
 export const insertItemContagemSchema = createInsertSchema(itensContagem).omit({
@@ -189,6 +193,8 @@ export type ContagemWithItens = Contagem & {
   itens: (ItemContagem & { produto: Produto | null })[];
   produto: Produto | null;
   estoque: Estoque | null;
+  nome: string | null;
+  matricula: string | null;
 };
 
 export type EstoqueComProdutos = Estoque & {

@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
+import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Check, Trash2, Package, Search, Pencil, X, Upload, Download } from "lucide-react";
+import { UserInfoModal } from "@/components/user-info-modal";
 import * as XLSX from 'xlsx';
 import type { Worksheet, Row, Workbook, Cell } from 'exceljs';
 import { useToast } from "@/hooks/use-toast";
@@ -46,6 +48,8 @@ export default function NewCount() {
 
   // Estados do componente
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
+  const [isUserInfoModalOpen, setIsUserInfoModalOpen] = useState<boolean>(false);
+  const [pendingCountId, setPendingCountId] = useState<string | null>(null);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [currentCountId, setCurrentCountId] = useState<string | undefined>(undefined);
 
@@ -536,6 +540,51 @@ export default function NewCount() {
         variant: "destructive",
       });
       return undefined;
+    }
+  };
+  
+  // Manipular o envio das informações do usuário
+  const handleUserInfoSubmit = async (userInfo: { matricula: string; nome: string }) => {
+    if (!pendingCountId) return;
+    
+    try {
+      // Primeiro, adicione os itens à contagem
+      await addItemsToCount(pendingCountId);
+      
+      // Atualiza a contagem com as informações do usuário e finaliza
+      const { error } = await supabase
+        .from('contagens')
+        .update({ 
+          finalizada: true,
+          matricula: userInfo.matricula,
+          nome: userInfo.nome,
+          data: new Date(countDate).toISOString().split('T')[0]
+        })
+        .eq('id', pendingCountId);
+        
+      if (error) throw error;
+      
+      // Gera e salva o Excel
+      await generateAndSaveExcel(pendingCountId, { data: new Date(countDate).toISOString().split('T')[0] }, products);
+      
+      // Limpa o estado local e redireciona para a página inicial
+      clearCurrentCount();
+      setLocation("/");
+      
+      toast({
+        title: "Sucesso!",
+        description: "Contagem finalizada com sucesso!",
+      });
+    } catch (error) {
+      console.error("Erro ao finalizar contagem:", error);
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao finalizar a contagem.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUserInfoModalOpen(false);
+      setPendingCountId(null);
     }
   };
 
@@ -1798,6 +1847,13 @@ export default function NewCount() {
         }}
         product={editingProduct}
         onSave={handleSaveEdit}
+      />
+
+      {/* Modal de informações do usuário */}
+      <UserInfoModal
+        open={isUserInfoModalOpen}
+        onOpenChange={setIsUserInfoModalOpen}
+        onSave={handleUserInfoSubmit}
       />
     </>
   );

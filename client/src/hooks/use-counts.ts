@@ -98,6 +98,8 @@ export function useUnfinishedCount() {
         id: first.id,
         data: first.data,
         finalizada: first.finalizada,
+        nome: first.nome || null,
+        matricula: first.matricula || null,
         estoqueId: first.estoque_id,
         excelUrl: first.excel_url,
         qntdProdutos: (first as any).qntd_produtos || 0,

@@ -86,6 +86,9 @@ export default function StartCount() {
       data: utcDate.toISOString(), // Envia a string completa, ex: '2025-07-04T12:00:00.000Z'
       finalizada: false,
       estoqueId: selectedStock.id,
+      nome: null, // Será preenchido posteriormente
+      matricula: null, // Será preenchido posteriormente
+      qntdProdutos: 0
     });
   };
 
@@ -132,6 +135,9 @@ export default function StartCount() {
               data: utcDate.toISOString(),
               finalizada: false,
               estoqueId: stock.id,
+              nome: null, // Será preenchido posteriormente
+              matricula: null, // Será preenchido posteriormente
+              qntdProdutos: 0
             });
           }
         }}

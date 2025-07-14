@@ -34,7 +34,14 @@ interface ItemContagem {
 interface Contagem {
   id: string;
   data: string;
+  createdAt: string;
+  finalizada: boolean;
+  qntdProdutos: number;
+  itens?: any[];
   itens_contagem: ItemContagem[];
+  excelUrl?: string;
+  matricula?: string;
+  nome?: string;
 }
 
 export default function History() {
@@ -212,9 +219,9 @@ export default function History() {
   };
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center">
+      <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center sticky top-0 z-10">
         <Button
           variant="ghost"
           size="sm"
@@ -226,117 +233,146 @@ export default function History() {
         <h2 className="text-lg font-semibold text-gray-900 ml-3">Histórico de Contagens</h2>
       </div>
 
-      <div className="p-4">
+      <div className="p-4 max-w-4xl mx-auto">
         {/* Search/Filter */}
-        <div className="mb-4">
-          <div className="relative">
+        <div className="mb-6">
+          <div className="relative max-w-md mx-auto">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
             <Input
               type="text"
               placeholder="Buscar por data..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3"
+              className="w-full pl-10 pr-4 py-2.5 text-sm"
             />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           </div>
         </div>
 
-        {/* History List */}
+        {/* Loading State */}
         {isLoading ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded w-16"></div>
-                  </div>
-                  <div className="text-right">
-                    <div className="h-4 bg-gray-200 rounded w-20 mb-1"></div>
-                    <div className="h-3 bg-gray-200 rounded w-16"></div>
-                  </div>
+              <div key={i} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
+                <div className="h-3 bg-gray-100 rounded w-1/4 mb-3"></div>
+                <div className="flex justify-between items-center">
+                  <div className="h-4 bg-gray-100 rounded w-1/4"></div>
+                  <div className="h-3 bg-gray-100 rounded w-1/6"></div>
                 </div>
-                <div className="h-8 bg-gray-200 rounded"></div>
               </div>
             ))}
           </div>
-        ) : filteredContagens?.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <p className="text-sm">
+        ) : 
+        
+        /* Empty State */
+        filteredContagens?.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <Search className="text-gray-400" size={24} />
+            </div>
+            <p className="text-gray-700 font-medium mb-1">
               {searchQuery ? "Nenhuma contagem encontrada" : "Nenhuma contagem realizada ainda"}
             </p>
-            <p className="text-xs">
-              {searchQuery ? "Tente buscar por uma data diferente" : "Crie sua primeira contagem"}
+            <p className="text-sm text-gray-500">
+              {searchQuery 
+                ? "Tente buscar por uma data diferente" 
+                : "Crie sua primeira contagem clicando no botão abaixo"}
             </p>
+            {!searchQuery && (
+              <Button 
+                onClick={() => setLocation("/new")} 
+                className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                Nova Contagem
+              </Button>
+            )}
           </div>
-        ) : (
-          <div className="space-y-3">
-            {filteredContagens?.map((contagem) => {
-              // Log detalhado para cada contagem sendo renderizada
-              console.log(`\n=== RENDERIZANDO CONTAGEM ${contagem.id} ===`);
-              console.log(`- Data: ${contagem.data}`);
-              console.log(`- Finalizada: ${contagem.finalizada}`);
-              console.log(`- Número de itens: ${contagem.itens?.length || 0}`);
-              
-              if (contagem.itens && contagem.itens.length > 0) {
-                console.log('  Itens encontrados:');
-                contagem.itens.forEach((item, index) => {
-                  console.log(`  Item ${index + 1}:`);
-                  console.log(`  - ID: ${item.id}`);
-                  console.log(`  - Produto ID: ${item.produtoId || 'N/A'}`);
-                  console.log(`  - Nome Livre: ${item.nomeLivre || 'N/A'}`);
-                  console.log(`  - Total: ${item.total}`);
-                  console.log(`  - Total Pacotes: ${item.totalPacotes}`);
-                });
-              } else {
-                console.log('  Nenhum item encontrado nesta contagem');
-              }
-              
-              return (
-                <div key={contagem.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-3">
+        ) : 
+        
+        /* Counts List */
+        (
+          <div className="space-y-4">
+            {filteredContagens?.map((contagem) => (
+              <div key={contagem.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow transition-shadow">
+                <div className="p-4">
+                  <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-medium text-gray-900">
                         {format(new Date(contagem.data), "dd/MM/yyyy", { locale: ptBR })}
+                        {!contagem.finalizada && (
+                          <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Rascunho
+                          </span>
+                        )}
                       </h3>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 mt-1">
                         {format(new Date(contagem.createdAt), "HH:mm", { locale: ptBR })}
                       </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium text-gray-900">
-                        {contagem.qntdProdutos || contagem.itens?.length || 0} produtos
-                      </p>
-                      {contagem.finalizada ? (
-                        <p className="text-xs text-emerald-600">Concluída</p>
-                      ) : (
-                        <p className="text-xs text-yellow-600">Em andamento</p>
+                      
+                      {/* User Info */}
+                      {(contagem.matricula || contagem.nome) && (
+                        <div className="mt-2 flex items-center text-sm text-gray-600">
+                          <span className="inline-flex items-center">
+                            <svg className="mr-1.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            {contagem.nome || 'Sem nome'}
+                            {contagem.matricula && ` (${contagem.matricula})`}
+                          </span>
+                        </div>
                       )}
                     </div>
+                    
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-gray-900">
+                        {contagem.qntdProdutos || contagem.itens?.length || 0} produtos
+                      </p>
+                      <p className={`text-xs mt-1 ${
+                        contagem.finalizada ? 'text-emerald-600' : 'text-yellow-600'
+                      }`}>
+                        {contagem.finalizada ? 'Concluída' : 'Em andamento'}
+                      </p>
+                    </div>
                   </div>
+                </div>
+                
+                <div className="bg-gray-50 px-4 py-3 flex justify-end space-x-3">
                   {contagem.finalizada ? (
-                    <Button
-                      onClick={() => handleDownloadExcel(contagem.id, contagem.excelUrl)}
-                      className="w-full bg-primary/10 text-primary py-2 px-3 rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors"
-                    >
-                      <Download className="mr-2" size={16} />
-                      {contagem.excelUrl ? 'Abrir Excel' : 'Gerar Excel'}
-                    </Button>
+                    <>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDownloadExcel(contagem.id, contagem.excelUrl)}
+                        className="text-sm"
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        {contagem.excelUrl ? 'Abrir Excel' : 'Gerar Excel'}
+                      </Button>
+                      <Button 
+                        variant="default" 
+                        size="sm"
+                        onClick={() => setLocation(`/history/${contagem.id}`)}
+                        className="bg-blue-600 hover:bg-blue-700 text-sm"
+                      >
+                        Ver Detalhes
+                      </Button>
+                    </>
                   ) : (
-                    <Button
+                    <Button 
+                      variant="default" 
+                      size="sm"
                       onClick={() => setLocation(`/count/${contagem.id}`)}
-                      className="w-full bg-yellow-100 text-yellow-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-yellow-200 transition-colors"
+                      className="w-full bg-yellow-500 hover:bg-yellow-600 text-sm"
                     >
                       Continuar Contagem
                     </Button>
                   )}
                 </div>
-              );
-            })}
-
+              </div>
+            ))}
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }
