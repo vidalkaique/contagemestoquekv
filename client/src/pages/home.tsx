@@ -181,7 +181,11 @@ export default function Home() {
       </div>
     </div>
 
-      <SelectStockModal isOpen={isModalOpen} onOpenChange={setIsModalOpen} />
+      <SelectStockModal 
+        isOpen={isModalOpen} 
+        onOpenChange={setIsModalOpen} 
+        onStockSelected={() => {}} // Adicionando um manipulador vazio
+      />
     </>
   );
 

@@ -161,6 +161,7 @@ export default function StartCount() {
       <SelectStockModal 
         isOpen={isStockModalOpen} 
         onOpenChange={(isOpen) => {
+          console.log('onOpenChange chamado com:', isOpen);
           setIsStockModalOpen(isOpen);
           if (!isOpen) {
             // Se o usuário fechar o modal sem selecionar um estoque, limpa a seleção

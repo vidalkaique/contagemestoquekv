@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface SelectStockModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onStockSelected?: (stock: { id: string; nome: string }) => void;
+  onStockSelected: (stock: { id: string; nome: string }) => void;
 }
 
 export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: SelectStockModalProps) => {
@@ -135,16 +135,20 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
     console.log('selectedStockData:', selectedStockData);
     console.log('onStockSelected está definido?', !!onStockSelected);
     
-    if (onStockSelected && selectedStockData) {
-      console.log('Chamando onStockSelected com:', selectedStockData);
-      onStockSelected(selectedStockData);
-    } else if (!onStockSelected) {
-      console.error('onStockSelected não está definido');
-      toast.error('Erro: Nenhum manipulador de seleção de estoque definido');
-    } else {
+    if (!selectedStockData) {
       console.error('Nenhum dado de estoque encontrado para o ID:', selectedStock);
       toast.error('Erro: Dados do estoque não encontrados');
+      return;
     }
+    
+    console.log('Chamando handleStockSelected com:', selectedStockData);
+    handleStockSelected(selectedStockData);
+  };
+
+  // Função para lidar com a seleção de estoque
+  const handleStockSelected = (stock: { id: string; nome: string }) => {
+    console.log('handleStockSelected chamado com:', stock);
+    onStockSelected(stock);
   };
 
   return (
@@ -154,7 +158,6 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
         role="dialog"
         aria-labelledby="stock-selector-title"
         aria-modal="true"
-        
       >
         <DialogHeader>
           <div className="flex items-center justify-between">
