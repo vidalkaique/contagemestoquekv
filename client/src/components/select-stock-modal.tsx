@@ -116,24 +116,24 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
   // Removida a mutação de criação de contagem, pois agora será feita pelo componente pai
 
   const handleConfirm = (e?: React.MouseEvent) => {
-    console.log('handleConfirm chamado');
+    console.log('=== INÍCIO handleConfirm ===');
     
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
     
-    console.log('selectedStock:', selectedStock);
+    console.log('Estado selectedStock:', selectedStock);
+    console.log('Lista de estoques:', stocks);
     
     if (!selectedStock) {
-      console.log('Nenhum estoque selecionado');
+      console.error('Nenhum estoque selecionado');
       toast.warning('Por favor, selecione um estoque.');
       return;
     }
 
     const selectedStockData = stocks?.find(s => s.id === selectedStock);
-    console.log('selectedStockData:', selectedStockData);
-    console.log('onStockSelected está definido?', !!onStockSelected);
+    console.log('Dados do estoque selecionado:', selectedStockData);
     
     if (!selectedStockData) {
       console.error('Nenhum dado de estoque encontrado para o ID:', selectedStock);
@@ -141,8 +141,22 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
       return;
     }
     
-    console.log('Chamando handleStockSelected com:', selectedStockData);
-    handleStockSelected(selectedStockData);
+    console.log('Chamando onStockSelected com:', selectedStockData);
+    
+    // Fechar o modal primeiro
+    onOpenChange(false);
+    
+    // Pequeno atraso para garantir que o modal foi fechado antes de chamar o callback
+    setTimeout(() => {
+      try {
+        onStockSelected(selectedStockData);
+        console.log('onStockSelected chamado com sucesso');
+      } catch (error) {
+        console.error('Erro ao chamar onStockSelected:', error);
+      }
+    }, 100);
+    
+    console.log('=== FIM handleConfirm ===');
   };
 
   // Função para lidar com a seleção de estoque
@@ -295,14 +309,26 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
             </Button>
             <Button 
               onClick={(e) => {
-                console.log('Botão Confirmar clicado');
+                console.log('=== BOTÃO CONFIRMAR CLICADO ===');
+                console.log('Evento:', e);
+                console.log('selectedStock:', selectedStock);
+                
                 e.preventDefault();
-                console.log('Chamando handleConfirm');
+                e.stopPropagation();
+                
+                if (!selectedStock) {
+                  console.error('Nenhum estoque selecionado');
+                  toast.warning('Por favor, selecione um estoque.');
+                  return;
+                }
+                
+                console.log('Chamando handleConfirm...');
                 handleConfirm(e);
               }}
               disabled={!selectedStock}
               className="px-4 bg-primary text-primary-foreground hover:bg-primary/90"
               type="button"
+              data-testid="confirm-stock-button"
             >
               Confirmar
             </Button>

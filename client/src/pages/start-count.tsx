@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -23,6 +23,11 @@ export default function StartCount() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [userName, setUserName] = useState("");
   const [userMatricula, setUserMatricula] = useState("");
+  
+  // Efeito para depuração do estado showUserModal
+  useEffect(() => {
+    console.log('Estado showUserModal alterado para:', showUserModal);
+  }, [showUserModal]);
   
   // Buscar contagens não finalizadas
   const { data: unfinishedCounts = [] } = useQuery<ContagemWithItens[]>({
@@ -70,10 +75,12 @@ export default function StartCount() {
   });
 
   const handleStartNewCount = () => {
-    console.log('handleStartNewCount chamado');
+    console.log('=== INÍCIO handleStartNewCount ===');
+    console.log('Data selecionada:', countDate);
+    console.log('Estoque selecionado:', selectedStock);
     
     if (!countDate) {
-      console.log('Data não selecionada');
+      console.error('Data não selecionada');
       toast({
         title: "Erro",
         description: "Selecione uma data para a contagem",
@@ -82,17 +89,18 @@ export default function StartCount() {
       return;
     }
 
-    console.log('Estoque selecionado:', selectedStock);
-
     if (!selectedStock) {
       console.log('Nenhum estoque selecionado, abrindo modal de seleção');
-      // Abre o modal de seleção de estoque
       setIsStockModalOpen(true);
     } else {
       console.log('Estoque já selecionado, mostrando modal de informações do usuário');
-      // Se já tem um estoque selecionado, mostra o modal de informações do usuário
-      setShowUserModal(true);
+      // Pequeno atraso para garantir que o modal anterior foi fechado
+      setTimeout(() => {
+        setShowUserModal(true);
+      }, 100);
     }
+    
+    console.log('=== FIM handleStartNewCount ===');
   };
 
   const handleConfirmUserInfo = async () => {
@@ -209,13 +217,20 @@ export default function StartCount() {
           }
         }}
         onStockSelected={(stock) => {
-          console.log('onStockSelected chamado com estoque:', stock);
+          console.log('=== CALLBACK onStockSelected INICIADO ===');
+          console.log('Estoque recebido no callback:', stock);
+          
+          // Atualiza o estado com o estoque selecionado
           setSelectedStock(stock);
-          console.log('Fechando modal de seleção de estoque');
-          setIsStockModalOpen(false);
-          // Mostra o modal de informações do usuário após selecionar o estoque
-          console.log('Abrindo modal de informações do usuário');
-          setShowUserModal(true);
+          
+          // Pequeno atraso para garantir que o estado foi atualizado
+          setTimeout(() => {
+            console.log('Abrindo modal de informações do usuário...');
+            setShowUserModal(true);
+            console.log('Modal de usuário deve estar aberto agora');
+          }, 100);
+          
+          console.log('=== CALLBACK onStockSelected FINALIZADO ===');
         }}
       />
       {/* Header */}
@@ -300,7 +315,13 @@ export default function StartCount() {
       </div>
 
       {/* Modal de informações do usuário */}
-      <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
+      <Dialog 
+        open={showUserModal} 
+        onOpenChange={(isOpen) => {
+          console.log('Modal de usuário alterado para:', isOpen);
+          setShowUserModal(isOpen);
+        }}
+      >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Informações do Responsável</DialogTitle>
