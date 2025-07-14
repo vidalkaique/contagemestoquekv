@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { InsertContagem, ContagemWithItens } from "@shared/schema";
 import { saveCurrentCount } from "@/lib/localStorage";
 import { useCountDate } from "@/hooks/use-count-date";
@@ -61,6 +62,10 @@ export default function StartCount() {
     },
   });
 
+  const [userName, setUserName] = useState('');
+  const [userMatricula, setUserMatricula] = useState('');
+  const [showUserModal, setShowUserModal] = useState(false);
+
   const handleStartNewCount = () => {
     if (!countDate) {
       toast({
@@ -76,6 +81,30 @@ export default function StartCount() {
       return;
     }
 
+    // Mostrar modal para coletar informações do usuário
+    setShowUserModal(true);
+  };
+
+  const handleConfirmUserInfo = () => {
+    if (!userName.trim() || !userMatricula.trim()) {
+      toast({
+        title: "Erro",
+        description: "Por favor, preencha seu nome e matrícula",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedStock) {
+      toast({
+        title: "Erro",
+        description: "Nenhum estoque selecionado",
+        variant: "destructive",
+      });
+      setIsStockModalOpen(true);
+      return;
+    }
+
     // Solução definitiva para fuso horário:
     // Envia a data completa no formato ISO 8601 com fuso horário UTC (Z).
     // O banco de dados (Postgres) irá extrair corretamente a parte da data.
@@ -83,13 +112,15 @@ export default function StartCount() {
     const utcDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
 
     createCountMutation.mutate({
-      data: utcDate.toISOString(), // Envia a string completa, ex: '2025-07-04T12:00:00.000Z'
+      data: utcDate.toISOString(),
       finalizada: false,
       estoqueId: selectedStock.id,
-      nome: null, // Será preenchido posteriormente
-      matricula: null, // Será preenchido posteriormente
+      nome: userName.trim(),
+      matricula: userMatricula.trim(),
       qntdProdutos: 0
     });
+    
+    setShowUserModal(false);
   };
 
   const handleDateChange = (newDate: string) => {
@@ -131,14 +162,9 @@ export default function StartCount() {
             // Fuso horário UTC às 12h para evitar problemas de timezone
             const [y, m, d] = countDate.split('-').map(Number);
             const utcDate = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
-            createCountMutation.mutate({
-              data: utcDate.toISOString(),
-              finalizada: false,
-              estoqueId: stock.id,
-              nome: null, // Será preenchido posteriormente
-              matricula: null, // Será preenchido posteriormente
-              qntdProdutos: 0
-            });
+            // Não precisamos mais criar a contagem aqui, pois o usuário precisa preencher nome e matrícula primeiro
+            setSelectedStock(stock);
+            setShowUserModal(true);
           }
         }}
       />
@@ -222,6 +248,59 @@ export default function StartCount() {
           </div>
         )}
       </div>
+
+      {/* Modal de informações do usuário */}
+      <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Informações do Responsável</DialogTitle>
+            <DialogDescription>
+              Preencha suas informações para iniciar a contagem
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="userName">Nome Completo</Label>
+              <Input
+                id="userName"
+                type="text"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                placeholder="Digite seu nome completo"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="userMatricula">Matrícula</Label>
+              <Input
+                id="userMatricula"
+                type="text"
+                value={userMatricula}
+                onChange={(e) => setUserMatricula(e.target.value)}
+                placeholder="Digite sua matrícula"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowUserModal(false)}
+              type="button"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleConfirmUserInfo}
+              disabled={!userName.trim() || !userMatricula.trim()}
+              type="button"
+            >
+              Confirmar e Iniciar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
-} 
+}

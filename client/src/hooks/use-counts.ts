@@ -14,6 +14,8 @@ type DatabaseContagem = {
   excel_url: string | null;
   created_at: string;
   estoque_id: string | null;
+  nome: string | null;
+  matricula: string | null;
   estoques: Array<{
     id: string;
     nome: string;
@@ -57,6 +59,8 @@ export function useUnfinishedCount() {
           excel_url,
           created_at,
           estoque_id,
+          nome,
+          matricula,
           estoques (
             id,
             nome,
@@ -352,11 +356,13 @@ export function useCounts() {
       console.log('Total de contagens a processar:', data.length);
       
       // Convert to ContagemWithItens[] type
-      const resultArray = data.map((contagem, contagemIndex) => {
+      let resultArray = data.map((contagem, contagemIndex) => {
         console.log(`\n=== PROCESSANDO CONTAGEM ${contagemIndex + 1}/${data.length} ===`);
         console.log('ID da contagem:', contagem.id);
         console.log('Data da contagem:', contagem.data);
         console.log('Finalizada:', contagem.finalizada);
+        console.log('Nome do responsável:', contagem.nome || 'Não informado');
+        console.log('Matrícula:', contagem.matricula || 'Não informada');
         
         // Verifica se estoques é um array e pega o primeiro item
         const estoque = Array.isArray(contagem.estoques) && contagem.estoques.length > 0 
@@ -441,13 +447,16 @@ export function useCounts() {
           }
         }
 
-        const contagemWithItens: ContagemWithItens = {
+        // Criar objeto de contagem com todos os campos necessários
+        const contagemCompleta: ContagemWithItens = {
           id: contagem.id,
           data: contagem.data,
           finalizada: contagem.finalizada,
+          nome: contagem.nome || null,
+          matricula: contagem.matricula || null,
           estoqueId: contagem.estoque_id,
-          excelUrl: contagem.excel_url,
-          qntdProdutos: contagem.qntd_produtos || 0,
+          excelUrl: contagem.excel_url || null,
+          qntdProdutos: itens.length,
           createdAt: new Date(contagem.created_at),
           itens: itens,
           produto: primeiroProduto,
@@ -456,12 +465,12 @@ export function useCounts() {
             nome: estoque.nome,
             ativo: true,
             createdAt: new Date(estoque.created_at),
-            updatedAt: new Date(estoque.updated_at || estoque.created_at)
+            updatedAt: new Date(estoque.created_at)
           } : null
         };
 
-
-        return contagemWithItens;
+        console.log('Contagem mapeada:', contagemCompleta);
+        return contagemCompleta;
       });
 
       // sort locally by createdAt desc
@@ -556,6 +565,8 @@ export function useCreateCount() {
         excelUrl: contagem.excel_url,
         qntdProdutos: contagem.qntd_produtos || 0,
         produto: null, // Inicialmente não há produto associado
+        nome: payload.nome || null,
+        matricula: payload.matricula || null,
         createdAt: new Date(contagem.created_at),
         itens: [],
         estoque: null
