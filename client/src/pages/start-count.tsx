@@ -67,7 +67,10 @@ export default function StartCount() {
   const [showUserModal, setShowUserModal] = useState(false);
 
   const handleStartNewCount = () => {
+    console.log('handleStartNewCount chamado');
+    
     if (!countDate) {
+      console.log('Data não selecionada');
       toast({
         title: "Erro",
         description: "Selecione uma data para a contagem",
@@ -76,10 +79,14 @@ export default function StartCount() {
       return;
     }
 
+    console.log('Estoque selecionado:', selectedStock);
+
     if (!selectedStock) {
+      console.log('Nenhum estoque selecionado, abrindo modal de seleção');
       // Abre o modal de seleção de estoque
       setIsStockModalOpen(true);
     } else {
+      console.log('Estoque já selecionado, mostrando modal de informações do usuário');
       // Se já tem um estoque selecionado, mostra o modal de informações do usuário
       setShowUserModal(true);
     }
@@ -161,9 +168,12 @@ export default function StartCount() {
           }
         }}
         onStockSelected={(stock) => {
+          console.log('onStockSelected chamado com estoque:', stock);
           setSelectedStock(stock);
+          console.log('Fechando modal de seleção de estoque');
           setIsStockModalOpen(false);
           // Mostra o modal de informações do usuário após selecionar o estoque
+          console.log('Abrindo modal de informações do usuário');
           setShowUserModal(true);
         }}
       />

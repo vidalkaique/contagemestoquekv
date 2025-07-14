@@ -116,22 +116,34 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
   // Removida a mutação de criação de contagem, pois agora será feita pelo componente pai
 
   const handleConfirm = (e?: React.MouseEvent) => {
+    console.log('handleConfirm chamado');
+    
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
     
+    console.log('selectedStock:', selectedStock);
+    
     if (!selectedStock) {
+      console.log('Nenhum estoque selecionado');
       toast.warning('Por favor, selecione um estoque.');
       return;
     }
 
     const selectedStockData = stocks?.find(s => s.id === selectedStock);
+    console.log('selectedStockData:', selectedStockData);
+    console.log('onStockSelected está definido?', !!onStockSelected);
     
     if (onStockSelected && selectedStockData) {
+      console.log('Chamando onStockSelected com:', selectedStockData);
       onStockSelected(selectedStockData);
-    } else {
+    } else if (!onStockSelected) {
+      console.error('onStockSelected não está definido');
       toast.error('Erro: Nenhum manipulador de seleção de estoque definido');
+    } else {
+      console.error('Nenhum dado de estoque encontrado para o ID:', selectedStock);
+      toast.error('Erro: Dados do estoque não encontrados');
     }
   };
 
@@ -280,7 +292,9 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
             </Button>
             <Button 
               onClick={(e) => {
+                console.log('Botão Confirmar clicado');
                 e.preventDefault();
+                console.log('Chamando handleConfirm');
                 handleConfirm(e);
               }}
               disabled={!selectedStock}
