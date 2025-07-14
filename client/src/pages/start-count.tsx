@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogOverlay, DialogPortal } from "@/components/ui/dialog";
 import type { InsertContagem, ContagemWithItens } from "@shared/schema";
 import { saveCurrentCount } from "@/lib/localStorage";
 import { useCountDate } from "@/hooks/use-count-date";
@@ -26,8 +26,63 @@ export default function StartCount() {
   
   // Efeito para depuração do estado showUserModal
   useEffect(() => {
-    console.log('Estado showUserModal alterado para:', showUserModal);
-  }, [showUserModal]);
+    console.log('=== EFEITO DE ESTADO ===');
+    console.log('showUserModal:', showUserModal, 'tipo:', typeof showUserModal);
+    console.log('isStockModalOpen:', isStockModalOpen, 'tipo:', typeof isStockModalOpen);
+    console.log('selectedStock:', selectedStock, 'tipo:', typeof selectedStock);
+    
+    // Verificar se o estado está sendo atualizado corretamente
+    if (selectedStock && !isStockModalOpen && !showUserModal) {
+      console.log('CONDIÇÃO ATENDIDA: Deveria abrir o modal de usuário!');
+    }
+    
+    console.log('========================');
+  }, [showUserModal, isStockModalOpen, selectedStock]);
+  
+  // Efeito para abrir o modal de usuário após selecionar um estoque
+  const openUserModal = useCallback(() => {
+    console.log('=== ABRINDO MODAL DE USUÁRIO ===');
+    
+    // Usando um atraso maior para garantir que o React tenha tempo de processar
+    const timer1 = setTimeout(() => {
+      console.log('Tentativa 1: setShowUserModal(true)');
+      setShowUserModal(true);
+      
+      // Segunda tentativa com um atraso maior
+      const timer2 = setTimeout(() => {
+        console.log('Tentativa 2: setShowUserModal(true)');
+        setShowUserModal(true);
+        
+        // Terceira tentativa com um atraso ainda maior
+        const timer3 = setTimeout(() => {
+          console.log('Tentativa 3: setShowUserModal(true)');
+          setShowUserModal(true);
+        }, 300);
+        
+        return () => clearTimeout(timer3);
+      }, 200);
+      
+      return () => clearTimeout(timer2);
+    }, 100);
+    
+    return () => {
+      console.log('Limpando timers...');
+      clearTimeout(timer1);
+    };
+  }, []);
+  
+  // Efeito para monitorar mudanças e abrir o modal quando necessário
+  useEffect(() => {
+    console.log('=== EFEITO PRINCIPAL: VERIFICANDO ESTADOS ===');
+    console.log('selectedStock:', selectedStock);
+    console.log('isStockModalOpen:', isStockModalOpen);
+    console.log('showUserModal:', showUserModal);
+    
+    if (selectedStock && !isStockModalOpen && !showUserModal) {
+      console.log('CONDIÇÃO ATENDIDA: Chamando openUserModal...');
+      openUserModal();
+    }
+  }, [selectedStock, isStockModalOpen, showUserModal, openUserModal]);
   
   // Buscar contagens não finalizadas
   const { data: unfinishedCounts = [] } = useQuery<ContagemWithItens[]>({
@@ -220,16 +275,13 @@ export default function StartCount() {
           console.log('=== CALLBACK onStockSelected INICIADO ===');
           console.log('Estoque recebido no callback:', stock);
           
-          // Atualiza o estado com o estoque selecionado
+          // Atualiza o estado imediatamente
           setSelectedStock(stock);
           
-          // Pequeno atraso para garantir que o estado foi atualizado
-          setTimeout(() => {
-            console.log('Abrindo modal de informações do usuário...');
-            setShowUserModal(true);
-            console.log('Modal de usuário deve estar aberto agora');
-          }, 100);
+          // Fecha o modal de seleção de estoque
+          setIsStockModalOpen(false);
           
+          // O efeito irá detectar a mudança e abrir o modal de usuário
           console.log('=== CALLBACK onStockSelected FINALIZADO ===');
         }}
       />
@@ -315,20 +367,16 @@ export default function StartCount() {
       </div>
 
       {/* Modal de informações do usuário */}
-      <Dialog 
-        open={showUserModal} 
-        onOpenChange={(isOpen) => {
-          console.log('Modal de usuário alterado para:', isOpen);
-          setShowUserModal(isOpen);
-        }}
-      >
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Informações do Responsável</DialogTitle>
-            <DialogDescription>
-              Preencha suas informações para iniciar a contagem
-            </DialogDescription>
-          </DialogHeader>
+      <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
+        <DialogPortal>
+          <DialogOverlay className="fixed inset-0 z-50 bg-black/50" />
+          <DialogContent className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg sm:rounded-lg sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Informações do Responsável</DialogTitle>
+              <DialogDescription>
+                Preencha suas informações para iniciar a contagem
+              </DialogDescription>
+            </DialogHeader>
           
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -370,7 +418,8 @@ export default function StartCount() {
               Confirmar e Iniciar
             </Button>
           </div>
-        </DialogContent>
+          </DialogContent>
+        </DialogPortal>
       </Dialog>
     </>
   );
