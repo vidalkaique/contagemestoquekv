@@ -115,7 +115,12 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
 
   // Removida a mutação de criação de contagem, pois agora será feita pelo componente pai
 
-  const handleConfirm = () => {
+  const handleConfirm = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     if (!selectedStock) {
       toast.warning('Por favor, selecione um estoque.');
       return;
@@ -274,9 +279,13 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
               Cancelar
             </Button>
             <Button 
-              onClick={handleConfirm} 
-              disabled={!selectedStock || !stocks?.length}
-              className="min-w-[120px]"
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirm(e);
+              }}
+              disabled={!selectedStock}
+              className="px-4 bg-primary text-primary-foreground hover:bg-primary/90"
+              type="button"
             >
               Confirmar
             </Button>

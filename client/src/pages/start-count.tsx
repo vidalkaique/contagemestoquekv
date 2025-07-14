@@ -79,11 +79,10 @@ export default function StartCount() {
     if (!selectedStock) {
       // Abre o modal de seleção de estoque
       setIsStockModalOpen(true);
-      return;
+    } else {
+      // Se já tem um estoque selecionado, mostra o modal de informações do usuário
+      setShowUserModal(true);
     }
-
-    // Se já tem um estoque selecionado, mostra o modal de informações do usuário
-    setShowUserModal(true);
   };
 
   const handleConfirmUserInfo = () => {
