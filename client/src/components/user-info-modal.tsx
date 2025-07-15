@@ -33,11 +33,11 @@ export function UserInfoModal({ open, onOpenChange, onSave, onResetSaving }: Use
     if (!formData.matricula.trim() || !formData.nome.trim()) {
       return;
     }
-    setIsSaving(true);
-    onSave(formData);
 
-    // Resetar o estado de salvamento após o salvamento
+    // Resetar o estado de salvamento antes de salvar
+    setIsSaving(false);
     onResetSaving?.();
+    onSave(formData);
   };
 
   return (
