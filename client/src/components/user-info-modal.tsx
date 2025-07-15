@@ -31,13 +31,19 @@ export function UserInfoModal({ open, onOpenChange, onSave, onResetSaving }: Use
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.matricula.trim() || !formData.nome.trim()) {
+      console.log('Dados inválidos:', formData);
       return;
     }
+
+    console.log('Iniciando salvamento...', formData);
+    console.log('Estado atual:', { isSaving, open });
 
     // Resetar o estado de salvamento antes de salvar
     setIsSaving(false);
     onResetSaving?.();
     onSave(formData);
+
+    console.log('Depois do salvamento...', formData);
   };
 
   return (

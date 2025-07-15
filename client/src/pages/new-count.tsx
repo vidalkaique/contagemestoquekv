@@ -158,9 +158,12 @@ export default function NewCount() {
 
   // Função para salvar informações do usuário
   const saveUserInfo = async (info: UserInfo) => {
+    console.log('Iniciando saveUserInfo', { info, currentCountId });
+    
     try {
       // Verifica se temos um ID de contagem válido
       if (!currentCountId) {
+        console.error('ID da contagem não encontrado');
         throw new Error('ID da contagem não encontrado');
       }
 
@@ -172,17 +175,23 @@ export default function NewCount() {
         .select('id, matricula, nome')
         .single();
 
+      console.log('Resposta do Supabase:', { data, error });
+
       if (error) {
+        console.error('Erro do Supabase:', error);
         throw error;
       }
 
       if (!data?.id) {
+        console.error('Falha ao atualizar as informações');
         throw new Error('Falha ao atualizar as informações');
       }
 
       // Atualiza o estado local
       setUserInfo(info);
       setIsUserInfoModalOpen(false);
+
+      console.log('Informações salvas com sucesso:', info);
 
       // Mostra mensagem de sucesso
       toast({
