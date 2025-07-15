@@ -2336,6 +2336,7 @@ export default function NewCount() {
         open={isUserInfoModalOpen}
         onOpenChange={setIsUserInfoModalOpen}
         onSave={saveUserInfo}
+        onResetSaving={() => setIsUserInfoModalOpen(false)}
       />
 
       <ProductModal 

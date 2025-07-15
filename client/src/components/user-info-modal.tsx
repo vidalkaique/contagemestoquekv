@@ -13,9 +13,10 @@ interface UserInfoModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (info: UserInfo) => void;
+  onResetSaving?: () => void;
 }
 
-export function UserInfoModal({ open, onOpenChange, onSave }: UserInfoModalProps) {
+export function UserInfoModal({ open, onOpenChange, onSave, onResetSaving }: UserInfoModalProps) {
   const [formData, setFormData] = useState<UserInfo>({ matricula: "", nome: "" });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -26,6 +27,12 @@ export function UserInfoModal({ open, onOpenChange, onSave }: UserInfoModalProps
     }
     setIsSaving(true);
     onSave(formData);
+
+    // Resetar o estado de salvamento após 1 segundo
+    setTimeout(() => {
+      setIsSaving(false);
+      onResetSaving?.();
+    }, 1000);
   };
 
   return (
