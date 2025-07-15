@@ -1087,8 +1087,11 @@ export default function NewCount() {
       const productCodesMap = await fetchProductCodes(excelItems.map(item => item.id));
       console.log('Mapa de códigos de produtos:', Object.fromEntries(productCodesMap));
 
-      // Cria um novo livro de trabalho
+      // Cria um novo workbook
       const wb = XLSX.utils.book_new();
+      
+      // Cria a primeira planilha
+      const ws = XLSX.utils.aoa_to_sheet([]);
       
       // ===== PRIMEIRA ABA: CONTAGEM DETALHADA =====
       // Cabeçalho com informações da contagem
@@ -1204,7 +1207,7 @@ export default function NewCount() {
       XLSX.utils.book_append_sheet(wb, ws, 'Contagem Detalhada');
       
       // ===== SEGUNDA ABA: ANÁLISE DE DIVERGÊNCIAS =====
-      const analysisData = excelItems.map(item => {
+      const analysisData = excelItems.map((item: ExcelItem) => {
         const diferenca = calculateProductPackages(item) - (item.quantidadeSistema || 0);
         
         return {
@@ -1513,7 +1516,7 @@ export default function NewCount() {
     console.log('Nome do estoque a ser exibido:', estoqueNome);
     
     // Adiciona a linha com as informações do estoque e data
-    const estoqueInfo = worksheet.addRow([
+    const estoqueInfo = ws.addRow([
       `Estoque: ${estoqueNome}`,
       '', '', '', '', '', '',
       `Data: ${dataFormatada}`
@@ -1522,10 +1525,10 @@ export default function NewCount() {
     // Estilizar informações do estoque
     estoqueInfo.font = { bold: true };
     estoqueInfo.alignment = { horizontal: 'left' };
-    worksheet.mergeCells('A2:D2');
-    worksheet.mergeCells('G2:H2');
+    ws.mergeCells('A2:D2');
+    ws.mergeCells('G2:H2');
     // Adicionar linha em branco
-    worksheet.addRow([]);
+    ws.addRow([]);
     
     // Cabeçalhos
     const analysisHeaderTitles = [
@@ -1536,7 +1539,7 @@ export default function NewCount() {
       'DIFERENÇA (SISTEMA - CONTADO)'
     ] as const;
     
-    const analysisHeaderRow = worksheet.addRow([...analysisHeaderTitles]);
+    const analysisHeaderRow = ws.addRow([...analysisHeaderTitles]);
     analysisHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     analysisHeaderRow.fill = {
       type: 'pattern' as const,
@@ -1559,7 +1562,7 @@ export default function NewCount() {
     };
     
     // Adicionar dados dos itens
-    excelItems.forEach((item) => {
+    excelItems.forEach((item: ExcelItem) => {
       try {
         const isFreeProduct = item.id?.startsWith('free-');
         const codigoProduto = isFreeProduct ? 'N/A' : (getProductCode(item) || 'N/A');
@@ -1567,7 +1570,7 @@ export default function NewCount() {
         const totalPacotes = item.totalPacotes || 0;
         
         // Primeiro, adiciona a linha com os dados básicos
-        const row = worksheet.addRow([
+        const row = ws.addRow([
           // Código do produto ou 'N/A' para produtos livres
           isFreeProduct ? 'N/A' : codigoProduto,
           // Nome do produto
@@ -1654,7 +1657,7 @@ export default function NewCount() {
     });
     
     // Gerar o arquivo Excel
-    const buffer = await workbook.xlsx.writeBuffer();
+    const buffer = await wb.xlsx.writeBuffer();
     const fileName = `contagem_${countId}_${new Date().getTime()}.xlsx`;
     const filePath = `contagens/${countId}/${fileName}`;
     
