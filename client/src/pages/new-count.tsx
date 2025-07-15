@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { useLocation, useParams } from "wouter";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -19,6 +19,7 @@ import type { InsertContagem, InsertItemContagem, ContagemWithItens } from "@sha
 import { useCountDate } from "@/hooks/use-count-date";
 import { useUnfinishedCount } from "@/hooks/use-counts";
 import { ImportStockScreen, type ImportedProduct } from "@/components/import-stock-screen";
+import { SaveCountModal } from "@/components/modals/save-count-modal";
 
 export interface ProductItem {
   id: string;
@@ -42,6 +43,7 @@ export default function NewCount() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { countDate, setCountDate } = useCountDate();
+  const navigate = useNavigate();
   
   // Carrega a contagem não finalizada, se existir
   const { data: unfinishedCount } = useUnfinishedCount();
@@ -52,6 +54,8 @@ export default function NewCount() {
   const [pendingCountId, setPendingCountId] = useState<string | null>(null);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [currentCountId, setCurrentCountId] = useState<string | undefined>(undefined);
+  const [showExitModal, setShowExitModal] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
 
   // Sincroniza os itens da contagem em tempo real
   useCountRealtime(
@@ -62,6 +66,123 @@ export default function NewCount() {
   const [editingProductIndex, setEditingProductIndex] = useState<number | null>(null);
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
+
+
+  // Função para lidar com o clique no botão de voltar
+  const handleBack = () => {
+    // Verifica se existem itens na contagem
+    if (products.length > 0) {
+      // Se houver itens, mostra o modal de confirmação
+      setShowExitModal(true);
+    } else {
+      // Se não houver itens, apenas volta
+      navigate('/');
+    }
+  };
+
+  // Função para salvar a contagem como rascunho
+  const handleSaveDraft = async () => {
+    if (!currentCountId || products.length === 0) {
+      toast({
+        title: "Nada para salvar",
+        description: "Adicione itens à contagem antes de salvar.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    
+    try {
+      // 1. Atualiza o status da contagem para 'rascunho'
+      const { error: updateError } = await supabase
+        .from('contagens')
+        .update({ 
+          status: 'rascunho', 
+          atualizado_em: new Date().toISOString(),
+          // Garante que os campos de matrícula e nome estejam presentes
+          matricula: unfinishedCount?.matricula || null,
+          nome: unfinishedCount?.nome || null
+        })
+        .eq('id', currentCountId);
+
+      if (updateError) throw updateError;
+
+      // 2. Remove os itens antigos da contagem
+      const { error: deleteError } = await supabase
+        .from('itens_contagem')
+        .delete()
+        .eq('contagem_id', currentCountId);
+
+      if (deleteError) throw deleteError;
+
+      // 3. Adiciona os itens atuais
+      const itemsToSave = products.map(product => ({
+        contagem_id: currentCountId,
+        produto_id: product.id.startsWith('free-') ? null : product.id,
+        nome_livre: product.id.startsWith('free-') ? product.nome : null,
+        pallets: product.pallets || 0,
+        lastros: product.lastros || 0,
+        pacotes: product.pacotes || 0,
+        unidades: product.unidades || 0,
+        total_pacotes: calculateTotalPacotes(product),
+        total_unidades: calculateProductTotal(product),
+        unidade_medida: 'un',
+        codigo: product.codigo || null,
+        quantidade_sistema: product.quantidadeSistema || 0,
+      }));
+
+      const { error: insertError } = await supabase
+        .from('itens_contagem')
+        .insert(itemsToSave);
+
+      if (insertError) throw insertError;
+
+      toast({
+        title: "Contagem salva",
+        description: "Sua contagem foi salva como rascunho com sucesso.",
+      });
+
+      // Atualiza a lista de contagens
+      await queryClient.invalidateQueries({ queryKey: ['contagens'] });
+      
+      // Navega para a tela inicial
+      navigate('/');
+    } catch (error) {
+      console.error('Erro ao salvar rascunho:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar a contagem. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+      setShowExitModal(false);
+    }
+  };
+
+  // Função para descartar alterações e sair
+  const handleDiscardChanges = () => {
+    // Se for um rascunho, remove do banco de dados
+    if (currentCountId) {
+      supabase
+        .from('contagens')
+        .delete()
+        .eq('id', currentCountId)
+        .then(({ error }) => {
+          if (error) {
+            console.error('Erro ao remover rascunho:', error);
+          }
+        });
+    }
+    
+    // Limpa o estado local
+    setProducts([]);
+    setCurrentCountId(undefined);
+    
+    // Navega para a tela inicial
+    navigate('/');
+  };
 
   // Garante que exista uma contagem rascunho no Supabase e devolve o ID
   const ensureCountExists = async (): Promise<string> => {
@@ -1949,7 +2070,7 @@ export default function NewCount() {
       <div className="p-4 max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <Button variant="ghost" size="icon" onClick={() => setLocation("/")}>
+            <Button variant="ghost" size="icon" onClick={handleBack}>
               <ArrowLeft />
             </Button>
             <h1 className="text-2xl font-bold ml-2">
@@ -2145,6 +2266,15 @@ export default function NewCount() {
         open={isUserInfoModalOpen}
         onOpenChange={setIsUserInfoModalOpen}
         onSave={handleUserInfoSubmit}
+      />
+
+      {/* Modal de confirmação de saída */}
+      <SaveCountModal
+        isOpen={showExitModal}
+        onClose={() => setShowExitModal(false)}
+        onSave={handleSaveDraft}
+        onDiscard={handleDiscardChanges}
+        isLoading={isSaving}
       />
     </>
   );
