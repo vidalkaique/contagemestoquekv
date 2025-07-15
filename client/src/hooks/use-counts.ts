@@ -551,14 +551,15 @@ export function useCreateCount() {
           created_at,
           estoque_id,
           nome,
-          matricula
+          matricula,
+          qntd_produtos
         `)
         .single();
 
       if (error) throw error;
       if (!result) throw new Error('Nenhum dado retornado');
 
-      const contagem = result as ContagemRow & { 
+      const contagem = result as DatabaseContagem & { 
         estoque_id: string | null;
         qntd_produtos?: number;
       };
