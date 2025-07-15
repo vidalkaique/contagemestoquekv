@@ -38,12 +38,18 @@ export function UserInfoModal({ open, onOpenChange, onSave, onResetSaving }: Use
     console.log('Iniciando salvamento...', formData);
     console.log('Estado atual:', { isSaving, open });
 
-    // Resetar o estado de salvamento e fechar o modal
+    // Resetar o estado de salvamento
     setIsSaving(false);
-    onOpenChange(false);
+    onResetSaving?.();
     onSave(formData);
 
-    console.log('Modal fechado e salvamento iniciado...', formData);
+    // Adicionar um timeout para garantir que o salvamento seja concluído
+    setTimeout(() => {
+      console.log('Fechando modal após 1 segundo...');
+      onOpenChange(false);
+    }, 1000);
+
+    console.log('Salvamento iniciado...', formData);
   };
 
   return (
