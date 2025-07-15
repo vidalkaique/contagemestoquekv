@@ -170,7 +170,7 @@ export default function NewCount() {
       // Atualiza as informações no Supabase
       const { data, error } = await supabase
         .from('contagens')
-        .update({ matricula: info.matricula, nome: info.nome })
+        .update({ matricula: info.matricula.trim(), nome: info.nome.trim() })
         .eq('id', currentCountId)
         .select('id, matricula, nome')
         .single();
@@ -185,6 +185,12 @@ export default function NewCount() {
       if (!data?.id) {
         console.error('Falha ao atualizar as informações');
         throw new Error('Falha ao atualizar as informações');
+      }
+
+      // Verifica se as informações foram atualizadas corretamente
+      if (data?.matricula !== info.matricula.trim() || data?.nome !== info.nome.trim()) {
+        console.error('Dados não foram atualizados corretamente no Supabase');
+        throw new Error('Dados não foram atualizados corretamente no Supabase');
       }
 
       // Atualiza o estado local
