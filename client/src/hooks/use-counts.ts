@@ -532,12 +532,15 @@ export function useCreateCount() {
   
   return useMutation({
     mutationFn: async (payload: InsertContagem) => {
+      // Garantir que nome e matricula sejam salvos no Supabase
       const { data: result, error } = await supabase
         .from('contagens')
         .insert({
           data: payload.data,
           finalizada: payload.finalizada || false,
-          estoque_id: payload.estoqueId || null
+          estoque_id: payload.estoqueId || null,
+          nome: payload.nome,
+          matricula: payload.matricula
         })
         .select(`
           id,
@@ -545,7 +548,9 @@ export function useCreateCount() {
           finalizada,
           excel_url,
           created_at,
-          estoque_id
+          estoque_id,
+          nome,
+          matricula
         `)
         .single();
 
@@ -565,8 +570,8 @@ export function useCreateCount() {
         excelUrl: contagem.excel_url,
         qntdProdutos: contagem.qntd_produtos || 0,
         produto: null, // Inicialmente não há produto associado
-        nome: payload.nome || null,
-        matricula: payload.matricula || null,
+        nome: contagem.nome || null,
+        matricula: contagem.matricula || null,
         createdAt: new Date(contagem.created_at),
         itens: [],
         estoque: null
