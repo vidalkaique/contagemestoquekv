@@ -57,6 +57,13 @@ export default function NewCount() {
   const [showExitModal, setShowExitModal] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
+  // Define o currentCountId quando a contagem é carregada
+  useEffect(() => {
+    if (unfinishedCount?.id) {
+      setCurrentCountId(unfinishedCount.id);
+    }
+  }, [unfinishedCount?.id]);
+
   // Verifica se já existe matrícula/nome salvo
   useEffect(() => {
     if (currentCountId) {
@@ -158,13 +165,19 @@ export default function NewCount() {
       }
 
       // Atualiza as informações no Supabase
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('contagens')
         .update({ matricula: info.matricula, nome: info.nome })
-        .eq('id', currentCountId);
+        .eq('id', currentCountId)
+        .select('id, matricula, nome')
+        .single();
 
       if (error) {
         throw error;
+      }
+
+      if (!data?.id) {
+        throw new Error('Falha ao atualizar as informações');
       }
 
       // Atualiza o estado local
