@@ -1,6 +1,5 @@
 import { useState, useEffect, type ReactNode } from "react";
 import { useLocation, useParams } from "wouter";
-import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Check, Trash2, Package, Search, Pencil, X, Upload, Download } from "lucide-react";
 import { UserInfoModal } from "@/components/user-info-modal";
@@ -38,12 +37,11 @@ export interface ProductItem {
 }
 
 export default function NewCount() {
-  const [, setLocation] = useLocation();
+  const [, navigate] = useLocation();
   const { id: contagemId } = useParams();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { countDate, setCountDate } = useCountDate();
-  const navigate = useNavigate();
   
   // Carrega a contagem não finalizada, se existir
   const { data: unfinishedCount } = useUnfinishedCount();
@@ -364,7 +362,7 @@ export default function NewCount() {
       ]);
       
       // Redireciona para a tela de sucesso
-      setLocation(`/count/${newContagemId}/success`);
+      navigate(`/count/${newContagemId}/success`);
       
     } catch (error) {
       console.error("Erro ao adicionar itens:", error);
@@ -705,7 +703,7 @@ export default function NewCount() {
       
       // Limpa o estado local e redireciona para a página inicial
       clearCurrentCount();
-      setLocation("/");
+      navigate("/");
       
       toast({
         title: "Sucesso!",
@@ -1595,7 +1593,7 @@ export default function NewCount() {
       
       // Define rota de sucesso
       const targetId = successRedirectId || currentCountId;
-      setLocation(targetId ? `/count/${targetId}/success` : '/');
+      navigate(targetId ? `/count/${targetId}/success` : '/');
       
     } catch (error) {
       console.error("Erro ao finalizar contagem:", error);
