@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -20,6 +20,14 @@ export function UserInfoModal({ open, onOpenChange, onSave, onResetSaving }: Use
   const [formData, setFormData] = useState<UserInfo>({ matricula: "", nome: "" });
   const [isSaving, setIsSaving] = useState(false);
 
+  // Resetar o estado quando o modal é fechado
+  useEffect(() => {
+    if (!open) {
+      setFormData({ matricula: "", nome: "" });
+      setIsSaving(false);
+    }
+  }, [open]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.matricula.trim() || !formData.nome.trim()) {
@@ -27,6 +35,9 @@ export function UserInfoModal({ open, onOpenChange, onSave, onResetSaving }: Use
     }
     setIsSaving(true);
     onSave(formData);
+
+    // Resetar o estado de salvamento após o salvamento
+    onResetSaving?.();
   };
 
   return (
