@@ -3,6 +3,7 @@ import { useLocation, useParams } from "wouter";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Check, Trash2, Package, Search, Pencil, X, Upload, Download } from "lucide-react";
 import { UserInfoModal } from "@/components/user-info-modal";
+import type { UserInfo } from "@/components/user-info-modal";
 import * as XLSX from 'xlsx';
 import type { Worksheet, Row, Workbook, Cell } from 'exceljs';
 import { useToast } from "@/hooks/use-toast";
@@ -49,11 +50,40 @@ export default function NewCount() {
   // Estados do componente
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
   const [isUserInfoModalOpen, setIsUserInfoModalOpen] = useState<boolean>(false);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [pendingCountId, setPendingCountId] = useState<string | null>(null);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [currentCountId, setCurrentCountId] = useState<string | undefined>(undefined);
   const [showExitModal, setShowExitModal] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+
+  // Verifica se já existe matrícula/nome salvo
+  useEffect(() => {
+    if (currentCountId) {
+      const checkUserInfo = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('contagens')
+            .select('matricula, nome')
+            .eq('id', currentCountId)
+            .single();
+
+          if (error) throw error;
+          
+          if (data?.matricula && data?.nome) {
+            setUserInfo({ matricula: data.matricula, nome: data.nome });
+          } else {
+            setIsUserInfoModalOpen(true);
+          }
+        } catch (error) {
+          console.error('Erro ao verificar informações do usuário:', error);
+          setIsUserInfoModalOpen(true);
+        }
+      };
+
+      checkUserInfo();
+    }
+  }, [currentCountId]);
 
   // Sincroniza os itens da contagem em tempo real
   useCountRealtime(
@@ -118,6 +148,28 @@ export default function NewCount() {
     setEditingProduct(null);
   };
 
+
+  // Função para salvar informações do usuário
+  const saveUserInfo = async (info: UserInfo) => {
+    try {
+      const { error } = await supabase
+        .from('contagens')
+        .update({ matricula: info.matricula, nome: info.nome })
+        .eq('id', currentCountId);
+
+      if (error) throw error;
+
+      setUserInfo(info);
+      setIsUserInfoModalOpen(false);
+    } catch (error) {
+      console.error('Erro ao salvar informações do usuário:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar suas informações. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  };
 
   // Função para lidar com o clique no botão de voltar
   const handleBack = () => {
@@ -1069,393 +1121,114 @@ export default function NewCount() {
   }
 
   const generateAndSaveExcel = async (countId: string, countData: CountData, items: (ProductItem | ExcelItem)[]): Promise<string> => {
-    try {
-      // Convert ProductItem to ExcelItem if needed
-      const excelItems: ExcelItem[] = items.map(item => ({
+    // Convert ProductItem to ExcelItem if needed
+    const excelItems: ExcelItem[] = items.map(item => {
+      // Create a base item with all possible fields
+      const baseItem: Partial<ExcelItem> = {
         ...item,
-        id: item.id || `temp-${Math.random().toString(36).substr(2, 9)}`,
-        nome: item.nome || 'Produto não cadastrado',
-        totalPacotes: item.totalPacotes || 0,
-        pallets: item.pallets || 0,
-        lastros: item.lastros || 0,
-        pacotes: item.pacotes || 0,
-        unidades: item.unidades || 0,
-        total: item.total || 0
-      }));
-
-      // Busca os códigos dos produtos no banco de dados
-      const productCodesMap = await fetchProductCodes(excelItems.map(item => item.id));
-      console.log('Mapa de códigos de produtos:', Object.fromEntries(productCodesMap));
-
-      // Cria um novo workbook
-      const wb = XLSX.utils.book_new();
+        id: 'id' in item ? item.id : `temp-${Math.random().toString(36).substr(2, 9)}`,
+        nome: 'nome' in item ? item.nome : 'Produto não cadastrado',
+        totalPacotes: 'totalPacotes' in item ? item.totalPacotes : 0,
+        pallets: 'pallets' in item ? item.pallets : 0,
+        lastros: 'lastros' in item ? item.lastros : 0,
+        pacotes: 'pacotes' in item ? item.pacotes : 0,
+        unidades: 'unidades' in item ? item.unidades : 0,
+      };
       
-      // Cria a primeira planilha
-      const ws = XLSX.utils.aoa_to_sheet([]);
+      // Ensure all required ExcelItem fields are present
+      const excelItem: ExcelItem = {
+        id: baseItem.id!,
+        nome: baseItem.nome!,
+        totalPacotes: baseItem.totalPacotes!,
+        // Optional fields
+        product_id: baseItem.product_id,
+        codigo: baseItem.codigo,
+        codigo_barras: baseItem.codigo_barras,
+        referencia: baseItem.referencia,
+        produto: baseItem.produto,
+        pallets: baseItem.pallets,
+        lastros: baseItem.lastros,
+        pacotes: baseItem.pacotes,
+        unidades: baseItem.unidades,
+        unidadesPorPacote: baseItem.unidadesPorPacote,
+        pacotesPorLastro: baseItem.pacotesPorLastro,
+        lastrosPorPallet: baseItem.lastrosPorPallet,
+        quantidadePacsPorPallet: baseItem.quantidadePacsPorPallet,
+        quantidadeSistema: baseItem.quantidadeSistema,
+        total: baseItem.total,
+      };
       
-      // ===== PRIMEIRA ABA: CONTAGEM DETALHADA =====
-      // Cabeçalho com informações da contagem
-      const header = [
-        ['CONTAGEM DE ESTOQUE'],
-        ['', '', `Data: ${countData.data ? new Date(countData.data).toLocaleDateString('pt-BR') : 'Data não informada'}`],
-        [''] // Linha em branco
-      ];
-      
-      // Dados dos produtos
-      const data = items.map(item => ({
-        'CÓDIGO': item.codigo || 'N/A',
-        'PRODUTO': item.nome,
-        'PALLETS': (item.pallets || 0).toString(),
-        'LASTROS': (item.lastros || 0).toString(),
-        'PACOTES': (item.pacotes || 0).toString(),
-        'UNIDADES': (item.unidades || 0).toString(),
-        'TOTAL PACOTES': calculateProductPackages(item).toString(),
-        'TOTAL UNIDADES': calculateProductTotal(item).toString(),
-        'SISTEMA (PACOTES)': (item.quantidadeSistema || 0).toString(),
-        'DIVERGÊNCIA (PACOTES)': (calculateProductPackages(item) - (item.quantidadeSistema || 0)).toString(),
-        'UN/PACOTE': item.unidadesPorPacote?.toString() || 'N/A',
-        'PAC/LASTRO': item.pacotesPorLastro?.toString() || 'N/A',
-        'LAST/PALLET': item.lastrosPorPallet?.toString() || 'N/A'
-      }));
-
-      // Cabeçalhos da tabela
-      const headers = [Object.keys(data[0] || {})];
-      
-      // Converte os dados para o formato de matriz
-      const dataArray = data.map(item => Object.values(item));
-      
-      // Combina cabeçalho, cabeçalhos da tabela e dados
-      const sheetData = [
-        ...header,
-        ...headers,
-        ...dataArray
-      ];
-      
-      // Cria a planilha
-      const ws = XLSX.utils.aoa_to_sheet(sheetData);
-      
-      // Ajusta a largura das colunas
-      const wscols = [
-        { wch: 15 },  // CÓDIGO
-        { wch: 40 },  // PRODUTO
-        { wch: 10 },  // PALLETS
-        { wch: 10 },  // LASTROS
-        { wch: 10 },  // PACOTES
-        { wch: 10 },  // UNIDADES
-        { wch: 15 },  // TOTAL PACOTES
-        { wch: 15 },  // TOTAL UNIDADES
-        { wch: 20 },  // SISTEMA (PACOTES)
-        { wch: 20 },  // DIVERGÊNCIA (PACOTES)
-        { wch: 12 },  // UN/PACOTE
-        { wch: 12 },  // PAC/LASTRO
-        { wch: 12 }   // LAST/PALLET
-      ];
-      ws['!cols'] = wscols;
-      
-      // Adiciona bordas e formatação
-      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-      
-      // Aplica formatação ao cabeçalho
-      for (let C = range.s.c; C <= range.e.c; ++C) {
-        const headerCell = ws[XLSX.utils.encode_cell({r: 0, c: C})];
-        if (headerCell) {
-          headerCell.s = {
-            font: { bold: true, color: { rgb: 'FFFFFFFF' } },
-            fill: { fgColor: { rgb: '2F5496' } },
-            alignment: { horizontal: 'center', vertical: 'center' }
-          };
+      return excelItem;
+    });
+    console.log('=== INÍCIO DA GERAÇÃO DO EXCEL ===');
+    console.log('countData:', JSON.stringify(countData, null, 2));
+    console.log('items:', JSON.stringify(items, null, 2));
+    
+    // Use the converted items
+    const itemsToProcess = excelItems;
+    
+    // Busca os códigos dos produtos no banco de dados
+    console.log('Itens recebidos para geração do Excel:', JSON.stringify(itemsToProcess, null, 2));
+    
+    // Extrai os IDs dos produtos, garantindo que são válidos
+    const productEntries = itemsToProcess
+      .filter(item => {
+        // Verifica se o item tem um ID válido (não é produto livre)
+        const hasValidId = item && item.id && !item.id.startsWith('free-');
+        // Verifica se tem product_id (caso o ID principal seja diferente)
+        const hasProductId = item && item.product_id && !item.product_id.startsWith('free-');
+        
+        if (!hasValidId && !hasProductId) {
+          console.log('Item inválido ou é produto livre:', item);
+          return false;
         }
-      }
-      
-      // Aplica formatação aos cabeçalhos da tabela
-      for (let C = range.s.c; C <= range.e.c; ++C) {
-        const headerCell = ws[XLSX.utils.encode_cell({r: 3, c: C})];
-        if (headerCell) {
-          headerCell.s = {
-            font: { bold: true, color: { rgb: 'FFFFFFFF' } },
-            fill: { fgColor: { rgb: '4472C4' } },
-            alignment: { horizontal: 'center', vertical: 'center' }
-          };
-        }
-      }
-      
-      // Ajusta o alinhamento das células numéricas
-      for (let R = 4; R <= range.e.r; ++R) {
-        for (let C = 0; C <= range.e.c; ++C) {
-          const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
-          if (!ws[cellAddress]) continue;
-          
-          // Se for uma célula numérica (exceto as duas primeiras colunas)
-          if (C >= 2) {
-            ws[cellAddress].s = ws[cellAddress].s || {};
-            ws[cellAddress].s.alignment = { horizontal: 'center' };
-            
-            // Formata como número com separador de milhar
-            if (typeof ws[cellAddress].v === 'number') {
-              ws[cellAddress].t = 'n';
-              ws[cellAddress].z = '#,##0';
-            }
-          } else {
-            // Alinha texto à esquerda para as primeiras colunas
-            ws[cellAddress].s = ws[cellAddress].s || {};
-            ws[cellAddress].s.alignment = { horizontal: 'left' };
-          }
-        }
-      }
-      
-      // Adiciona a planilha ao livro de trabalho
-      XLSX.utils.book_append_sheet(wb, ws, 'Contagem Detalhada');
-      
-      // ===== SEGUNDA ABA: ANÁLISE DE DIVERGÊNCIAS =====
-      const analysisData = excelItems.map((item: ExcelItem) => {
-        const diferenca = calculateProductPackages(item) - (item.quantidadeSistema || 0);
+        return true;
+      })
+      .map(item => {
+        // Usa product_id se disponível, senão usa id
+        const productId = item.product_id || item.id;
+        console.log(`Processando item - ID: ${item.id}, ` +
+                   `Product ID: ${item.product_id || 'N/A'}, ` +
+                   `Nome: ${item.nome || 'Sem nome'}, ` +
+                   `Usando ID: ${productId}`);
         
         return {
-          'CÓDIGO': item.codigo || 'N/A',
-          'PRODUTO': item.nome,
-          'SISTEMA (PACOTES)': (item.quantidadeSistema || 0).toString(),
-          'CONTADO (PACOTES)': calculateProductPackages(item).toString(),
-          'DIFERENÇA (PACOTES)': diferenca.toString(),
-          'STATUS': diferenca === 0 ? 'OK' : (diferenca > 0 ? 'SOBRA' : 'FALTA')
+          id: item.id,
+          product_id: productId,
+          nome: item.nome
         };
       });
-
-      const analysisHeaders = [
-        'CÓDIGO',
-        'PRODUTO',
-        'SISTEMA (PACOTES)',
-        'CONTADO (PACOTES)',
-        'DIFERENÇA (PACOTES)',
-        'STATUS'
-      ];
-
-      const analysisArray = analysisData.map(item => [
-        item['CÓDIGO'],
-        item['PRODUTO'],
-        item['SISTEMA (PACOTES)'],
-        item['CONTADO (PACOTES)'],
-        item['DIFERENÇA (PACOTES)'],
-        item['STATUS']
-      ]);
-
-      const analysisSheetData = [
-        ['ANÁLISE DE DIVERGÊNCIAS'],
-        ['', `Data: ${new Date(countData.data).toLocaleDateString('pt-BR')}`],
-        [''],
-        analysisHeaders,
-        ...analysisArray
-      ];
-
-      const wsAnalysis = XLSX.utils.aoa_to_sheet(analysisSheetData);
-      
-      // Ajusta a largura das colunas
-      wsAnalysis['!cols'] = [
-        { wch: 15 },  // CÓDIGO
-        { wch: 40 },  // PRODUTO
-        { wch: 20 },  // SISTEMA (PACOTES)
-        { wch: 20 },  // CONTADO (PACOTES)
-        { wch: 25 },  // DIFERENÇA (PACOTES)
-        { wch: 15 }   // STATUS
-      ];
-
-      // Aplica formatação ao título
-      for (let C = 0; C <= 2; ++C) {
-        const titleCell = wsAnalysis[XLSX.utils.encode_cell({r: 0, c: C})];
-        if (titleCell) {
-          titleCell.s = {
-            font: { bold: true, size: 16, color: { rgb: '2F5496' } },
-            alignment: { horizontal: 'center' }
-          };
-        }
-      }
-
-      // Aplica formatação aos cabeçalhos da tabela
-      for (let C = 0; C <= 5; ++C) {
-        const headerCell = wsAnalysis[XLSX.utils.encode_cell({r: 3, c: C})];
-        if (headerCell) {
-          headerCell.s = {
-            font: { bold: true, color: { rgb: 'FFFFFFFF' } },
-            fill: { fgColor: { rgb: '4472C4' } },
-            alignment: { horizontal: 'center', vertical: 'center' }
-          };
-        }
-      }
-
-      // Ajusta o alinhamento e formatação das células de dados
-      for (let R = 4; R <= analysisArray.length + 3; ++R) {
-        for (let C = 0; C <= 5; ++C) {
-          const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
-          if (!wsAnalysis[cellAddress]) continue;
-
-          // Formatação para colunas numéricas
-          if (C >= 2 && C <= 4) {
-            wsAnalysis[cellAddress].s = wsAnalysis[cellAddress].s || {};
-            wsAnalysis[cellAddress].s.alignment = { horizontal: 'center' };
-            if (typeof wsAnalysis[cellAddress].v === 'number') {
-              wsAnalysis[cellAddress].t = 'n';
-              wsAnalysis[cellAddress].z = '#,##0';
-            }
-          }
-          // Formatação para a coluna de status
-          else if (C === 5) {
-            const status = wsAnalysis[cellAddress].v;
-            wsAnalysis[cellAddress].s = {
-              font: { 
-                bold: true,
-                color: { 
-                  rgb: status === 'OK' ? '107C41' : 
-                       status === 'SOBRA' ? '9C5700' : '9C0006' 
-                } 
-              },
-              fill: { 
-                fgColor: { 
-                  rgb: status === 'OK' ? 'C6EFCE' : 
-                       status === 'SOBRA' ? 'FFEB9C' : 'FFC7CE' 
-                } 
-              },
-              alignment: { horizontal: 'center' }
-            };
-          }
-          // Formatação para as colunas de texto
-          else {
-            wsAnalysis[cellAddress].s = wsAnalysis[cellAddress].s || {};
-            wsAnalysis[cellAddress].s.alignment = { 
-              horizontal: C === 1 ? 'left' : 'center' 
-            };
-          }
-        }
-      }
-
-      // Adiciona a planilha de análise ao livro de trabalho
-      XLSX.utils.book_append_sheet(wb, wsAnalysis, 'Análise de Divergências');
-
-      // ===== TERCEIRA ABA: RESUMO =====
-      const totalPallets = excelItems.reduce((sum, p) => sum + (p.pallets || 0), 0);
-      const totalLastros = items.reduce((sum, p) => sum + (p.lastros || 0), 0);
-      const totalPacotes = items.reduce((sum, p) => sum + calculateProductPackages(p), 0);
-      const totalUnidades = items.reduce((sum, p) => sum + calculateProductTotal(p), 0);
-
-      const summaryData = [
-        ['RESUMO DA CONTAGEM'],
-        [''],
-        ['TOTAIS:'],
-        ['PALLETS', 'LASTROS', 'PACOTES', 'UNIDADES'],
-        [totalPallets.toString(), totalLastros.toString(), totalPacotes.toString(), totalUnidades.toString()],
-        [''],
-        ['CONTAGEM POR PRODUTO:'],
-        ['PRODUTO', 'PALLETS', 'LASTROS', 'PACOTES', 'UNIDADES']
-      ];
-
-      // Adiciona contagem por produto
-      items.forEach(product => {
-        const { totalPacotes: _, ...productWithoutTotal } = product;
-        const totalPacotes = calculateProductPackages(productWithoutTotal);
-        
-        summaryData.push([
-          product.nome,
-          (product.pallets || 0).toString(),
-          (product.lastros || 0).toString(),
-          totalPacotes.toString(),
-          calculateProductTotal(product).toString()
-        ]);
-      });
-
-      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-      
-      // Ajusta a largura das colunas
-      wsSummary['!cols'] = [
-        { wch: 40 },  // PRODUTO
-        { wch: 12 },  // PALLETS
-        { wch: 12 },  // LASTROS
-        { wch: 12 },  // PACOTES
-        { wch: 15 }   // UNIDADES
-      ];
-
-      // Aplica formatação ao título
-      const summaryRange = XLSX.utils.decode_range(wsSummary['!ref'] || 'A1');
-      
-      // Formata o título
-      const titleCell = wsSummary['A1'];
-      if (titleCell) {
-        titleCell.s = {
-          font: { bold: true, size: 16, color: { rgb: '2F5496' } }
-        };
-      }
-
-      // Formata os cabeçalhos
-      [3, 6].forEach(row => {
-        for (let C = 0; C <= 4; C++) {
-          const cellAddress = XLSX.utils.encode_cell({r: row, c: C});
-          if (wsSummary[cellAddress]) {
-            wsSummary[cellAddress].s = {
-              font: { bold: true, color: { rgb: 'FFFFFFFF' } },
-              fill: { fgColor: { rgb: '4472C4' } },
-              alignment: { horizontal: 'center' }
-            };
-          }
-        }
-      });
-
-      // Formata os totais
-      for (let C = 1; C <= 4; C++) {
-        const cellAddress = XLSX.utils.encode_cell({r: 4, c: C});
-        if (wsSummary[cellAddress]) {
-          wsSummary[cellAddress].s = {
-            font: { bold: true },
-            numFmt: '#,##0'
-          };
-        }
-      }
-
-      // Formata os dados numéricos
-      for (let R = 7; R <= summaryRange.e.r; R++) {
-        for (let C = 1; C <= 4; C++) {
-          const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
-          if (wsSummary[cellAddress] && typeof wsSummary[cellAddress].v === 'number') {
-            wsSummary[cellAddress].t = 'n';
-            wsSummary[cellAddress].z = '#,##0';
-            wsSummary[cellAddress].s = wsSummary[cellAddress].s || {};
-            wsSummary[cellAddress].s.alignment = { horizontal: 'center' };
-          }
-        }
-      }
-
-      // Adiciona a planilha de resumo ao livro de trabalho
-      XLSX.utils.book_append_sheet(wb, wsSummary, 'Resumo');
-
-      // Gera o arquivo Excel
-      const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      const fileName = `contagem_${countId}_${new Date().getTime()}.xlsx`;
-      const filePath = `contagens/${countId}/${fileName}`;
-
-      // Fazer upload para o Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('contagens')
-        .upload(filePath, buffer, {
-          contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          upsert: true,
-          cacheControl: '3600'
-        });
-
-      if (uploadError) {
-        console.error('Erro ao fazer upload do Excel:', uploadError);
-        throw new Error('Erro ao salvar o arquivo Excel');
-      }
-
-      // Obter URL pública do arquivo
-      const { data: { publicUrl } } = supabase.storage
-        .from('contagens')
-        .getPublicUrl(filePath);
-
-      console.log('=== FIM DA GERAÇÃO DO EXCEL ===');
-      console.log('Arquivo salvo em:', filePath);
-      console.log('URL pública:', publicUrl);
-
-      return publicUrl;
-    } catch (error) {
-      console.error('Erro ao gerar Excel:', error);
-      throw error;
+    
+    // Extrai apenas os IDs únicos para busca
+    const productIds = productEntries
+      .map(entry => entry.product_id)
+      .filter((item): item is string => !!item) // Filtra valores nulos/undefined e faz type assertion
+      .filter((item, index, self) => self.indexOf(item) === index); // Remove duplicados
+    
+    // Log para depuração
+    console.log('Entradas de produtos processadas:', productEntries);
+    console.log('IDs de produtos únicos para busca:', productIds);
+    
+    console.log('IDs de produtos únicos para busca:', productIds);
+    
+    // Busca os códigos dos produtos no banco
+    const productCodesMap = await fetchProductCodes(productIds);
+    console.log('Mapa de códigos de produtos:', Object.fromEntries(productCodesMap));
+    
+    // Verifica se todos os produtos foram encontrados
+    const missingProducts = productIds.filter(id => !productCodesMap.has(id));
+    if (missingProducts.length > 0) {
+      console.warn('Os seguintes produtos não foram encontrados no banco de dados:', missingProducts);
     }
+    
+    const { Workbook } = await import('exceljs');
+    
+    // Criar workbook
+    const workbook: Workbook = new Workbook();
+    const worksheet: Worksheet = workbook.addWorksheet("Contagem");
+    
+    // Configurar propriedades da planilha
+    worksheet.properties.defaultColWidth = 15;
     
     // Adicionar título
     const titleRow = worksheet.addRow(['CONTAGEM DE ESTOQUE']);
@@ -1516,7 +1289,7 @@ export default function NewCount() {
     console.log('Nome do estoque a ser exibido:', estoqueNome);
     
     // Adiciona a linha com as informações do estoque e data
-    const estoqueInfo = ws.addRow([
+    const estoqueInfo = worksheet.addRow([
       `Estoque: ${estoqueNome}`,
       '', '', '', '', '', '',
       `Data: ${dataFormatada}`
@@ -1525,10 +1298,10 @@ export default function NewCount() {
     // Estilizar informações do estoque
     estoqueInfo.font = { bold: true };
     estoqueInfo.alignment = { horizontal: 'left' };
-    ws.mergeCells('A2:D2');
-    ws.mergeCells('G2:H2');
+    worksheet.mergeCells('A2:D2');
+    worksheet.mergeCells('G2:H2');
     // Adicionar linha em branco
-    ws.addRow([]);
+    worksheet.addRow([]);
     
     // Cabeçalhos
     const analysisHeaderTitles = [
@@ -1539,7 +1312,7 @@ export default function NewCount() {
       'DIFERENÇA (SISTEMA - CONTADO)'
     ] as const;
     
-    const analysisHeaderRow = ws.addRow([...analysisHeaderTitles]);
+    const analysisHeaderRow = worksheet.addRow([...analysisHeaderTitles]);
     analysisHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     analysisHeaderRow.fill = {
       type: 'pattern' as const,
@@ -1562,7 +1335,7 @@ export default function NewCount() {
     };
     
     // Adicionar dados dos itens
-    excelItems.forEach((item: ExcelItem) => {
+    excelItems.forEach((item) => {
       try {
         const isFreeProduct = item.id?.startsWith('free-');
         const codigoProduto = isFreeProduct ? 'N/A' : (getProductCode(item) || 'N/A');
@@ -1570,7 +1343,7 @@ export default function NewCount() {
         const totalPacotes = item.totalPacotes || 0;
         
         // Primeiro, adiciona a linha com os dados básicos
-        const row = ws.addRow([
+        const row = worksheet.addRow([
           // Código do produto ou 'N/A' para produtos livres
           isFreeProduct ? 'N/A' : codigoProduto,
           // Nome do produto
@@ -1657,7 +1430,7 @@ export default function NewCount() {
     });
     
     // Gerar o arquivo Excel
-    const buffer = await wb.xlsx.writeBuffer();
+    const buffer = await workbook.xlsx.writeBuffer();
     const fileName = `contagem_${countId}_${new Date().getTime()}.xlsx`;
     const filePath = `contagens/${countId}/${fileName}`;
     
@@ -2557,6 +2330,13 @@ export default function NewCount() {
           </div>
         )}
       </div>
+
+      {/* Modal de informações do usuário */}
+      <UserInfoModal
+        open={isUserInfoModalOpen}
+        onOpenChange={setIsUserInfoModalOpen}
+        onSave={saveUserInfo}
+      />
 
       <ProductModal 
         isOpen={isProductModalOpen} 
