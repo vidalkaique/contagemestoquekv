@@ -65,6 +65,59 @@ export default function NewCount() {
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
 
+  // Inicia a edição de um produto
+  const handleStartEdit = (productOrIndex: ProductItem | number) => {
+    if (typeof productOrIndex === 'number') {
+      // Se for um número, é o índice do produto no array
+      const index = productOrIndex;
+      setEditingProductIndex(index);
+      setEditingProduct({ ...products[index] });
+    } else {
+      // Se for um objeto, é o próprio produto
+      const product = productOrIndex;
+      setEditingProduct(product);
+    }
+  };
+
+  // Salva as alterações de um produto
+  const handleSaveEdit = (updatedProduct: ProductItem) => {
+    if (updatedProduct) {
+      // Atualiza o produto na lista de produtos
+      setProducts(prevProducts => 
+        prevProducts.map(product => 
+          product.id === updatedProduct.id ? updatedProduct : product
+        )
+      );
+      
+      // Atualiza o localStorage
+      const currentCount: CurrentCount = {
+        id: currentCountId || `draft-${Date.now()}`,
+        date: new Date(countDate).toISOString().split('T')[0],
+        products: products.map(p => ({
+          id: p.id,
+          nome: p.nome,
+          pallets: p.pallets,
+          lastros: p.lastros,
+          pacotes: p.pacotes,
+          unidades: p.unidades,
+          produtoId: p.codigo,
+          unidadesPorPacote: p.unidadesPorPacote,
+          pacotesPorLastro: p.pacotesPorLastro,
+          lastrosPorPallet: p.lastrosPorPallet,
+          quantidadePacsPorPallet: p.quantidadePacsPorPallet,
+          totalPacotes: p.totalPacotes
+        })),
+        lastUpdated: new Date().toISOString()
+      };
+      
+      saveCurrentCount(currentCount);
+    }
+    
+    // Limpa os estados de edição
+    setEditingProductIndex(null);
+    setEditingProduct(null);
+  };
+
 
   // Função para lidar com o clique no botão de voltar
   const handleBack = () => {
@@ -722,28 +775,25 @@ export default function NewCount() {
     }
   };
 
-  // Iniciar edição de um produto
-  const handleStartEdit = (index: number) => {
-    setEditingProductIndex(index);
-    setEditingProduct({ ...products[index] });
-  };
-
-  // Salvar edição do produto (chamado pelo modal)
-  const handleSaveEdit = (updatedProduct: ProductItem) => {
-    if (editingProductIndex === null || !updatedProduct) return;
-    
-    const updatedProducts = [...products];
-    updatedProducts[editingProductIndex] = updatedProduct;
-    
-    setProducts(updatedProducts);
-    setEditingProductIndex(null);
-    setEditingProduct(null);
-    
-    // Atualizar localStorage
+  // Atualiza o localStorage com os produtos atuais
+  const updateLocalStorage = () => {
     const currentCount: CurrentCount = {
       id: currentCountId || `draft-${Date.now()}`,
       date: new Date(countDate).toISOString().split('T')[0],
-      products: updatedProducts,
+      products: products.map(p => ({
+        id: p.id,
+        nome: p.nome,
+        pallets: p.pallets,
+        lastros: p.lastros,
+        pacotes: p.pacotes,
+        unidades: p.unidades,
+        produtoId: p.codigo,
+        unidadesPorPacote: p.unidadesPorPacote,
+        pacotesPorLastro: p.pacotesPorLastro,
+        lastrosPorPallet: p.lastrosPorPallet,
+        quantidadePacsPorPallet: p.quantidadePacsPorPallet,
+        totalPacotes: p.totalPacotes
+      })),
       lastUpdated: new Date().toISOString()
     };
     
@@ -2136,7 +2186,7 @@ export default function NewCount() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => handleStartEdit(index)} className="p-1 text-gray-500 hover:text-gray-700">
+                    <button onClick={() => handleStartEdit(product)} className="p-1 text-gray-500 hover:text-gray-700">
                       <Pencil className="h-5 w-5" />
                     </button>
                     <button onClick={() => handleDeleteProduct(product.id)} className="p-1 text-red-500 hover:text-red-700">
@@ -2250,7 +2300,7 @@ export default function NewCount() {
       
       {/* Modal de edição de produto */}
       <EditProductModal
-        isOpen={editingProductIndex !== null && editingProduct !== null}
+        isOpen={editingProduct !== null}
         onClose={() => {
           setEditingProductIndex(null);
           setEditingProduct(null);
