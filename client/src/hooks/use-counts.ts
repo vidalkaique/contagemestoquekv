@@ -16,6 +16,7 @@ type DatabaseContagem = {
   estoque_id: string | null;
   nome: string | null;
   matricula: string | null;
+  qntd_produtos?: number;
   estoques: Array<{
     id: string;
     nome: string;
