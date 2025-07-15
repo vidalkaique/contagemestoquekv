@@ -152,20 +152,37 @@ export default function NewCount() {
   // Função para salvar informações do usuário
   const saveUserInfo = async (info: UserInfo) => {
     try {
+      // Verifica se temos um ID de contagem válido
+      if (!currentCountId) {
+        throw new Error('ID da contagem não encontrado');
+      }
+
+      // Atualiza as informações no Supabase
       const { error } = await supabase
         .from('contagens')
         .update({ matricula: info.matricula, nome: info.nome })
         .eq('id', currentCountId);
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
+      // Atualiza o estado local
       setUserInfo(info);
       setIsUserInfoModalOpen(false);
+
+      // Mostra mensagem de sucesso
+      toast({
+        title: "Sucesso",
+        description: "Informações salvas com sucesso!",
+        variant: "default"
+      });
+
     } catch (error) {
       console.error('Erro ao salvar informações do usuário:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível salvar suas informações. Tente novamente.",
+        description: error instanceof Error ? error.message : "Não foi possível salvar suas informações. Tente novamente.",
         variant: "destructive"
       });
     }

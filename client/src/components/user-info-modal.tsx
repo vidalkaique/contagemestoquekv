@@ -27,12 +27,6 @@ export function UserInfoModal({ open, onOpenChange, onSave, onResetSaving }: Use
     }
     setIsSaving(true);
     onSave(formData);
-
-    // Resetar o estado de salvamento após 1 segundo
-    setTimeout(() => {
-      setIsSaving(false);
-      onResetSaving?.();
-    }, 1000);
   };
 
   return (
