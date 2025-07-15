@@ -38,7 +38,7 @@ export function useCountRealtime(
       const prod = Array.isArray(item.produtos) ? item.produtos[0] : item.produtos;
       return {
         id: prod?.id || item.id,
-        codigo: prod?.codigo ?? undefined,
+        codigo: item.codigo || prod?.codigo,
         nome: prod?.nome || item.nome_livre || '',
         pallets: item.pallets ?? 0,
         lastros: item.lastros ?? 0,
@@ -49,7 +49,7 @@ export function useCountRealtime(
         pacotesPorLastro: prod?.pacotes_por_lastro ?? undefined,
         lastrosPorPallet: prod?.lastros_por_pallet ?? undefined,
         quantidadePacsPorPallet: prod?.quantidade_pacs_por_pallet ?? undefined,
-        quantidadeSistema: prod?.quantidade_sistema ?? undefined,
+        quantidadeSistema: item.quantidade_sistema ?? prod?.quantidade_sistema ?? 0,
       };
     };
 
