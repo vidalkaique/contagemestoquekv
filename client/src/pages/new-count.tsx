@@ -177,7 +177,7 @@ export default function NewCount() {
         pacotes: product.pacotes || 0,
         unidades: product.unidades || 0,
         total_pacotes: calculateTotalPacotes(product),
-        total_unidades: calculateProductTotal(product),
+        total: calculateProductTotal(product), // Usando 'total' em vez de 'total_unidades'
         unidade_medida: 'un',
         codigo: product.codigo || null,
         quantidade_sistema: product.quantidadeSistema || 0,
