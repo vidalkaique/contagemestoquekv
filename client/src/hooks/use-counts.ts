@@ -528,6 +528,28 @@ export function useCounts() {
   });
 }
 
+export function useUpdateProductCount() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ countId, productCount }: { countId: string; productCount: number }) => {
+      const { data, error } = await supabase
+        .from('contagens')
+        .update({ qntd_produtos: productCount })
+        .eq('id', countId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contagens"] });
+      queryClient.invalidateQueries({ queryKey: ["contagens", "unfinished"] });
+    },
+  });
+}
+
 export function useCreateCount() {
   const queryClient = useQueryClient();
   
