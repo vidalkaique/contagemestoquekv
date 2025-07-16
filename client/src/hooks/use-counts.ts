@@ -457,7 +457,7 @@ export function useCounts() {
           matricula: contagem.matricula || null,
           estoqueId: contagem.estoque_id,
           excelUrl: contagem.excel_url || null,
-          qntdProdutos: itens.length,
+          qntdProdutos: contagem.qntd_produtos || itens.length,
           createdAt: new Date(contagem.created_at),
           itens: itens,
           produto: primeiroProduto,
