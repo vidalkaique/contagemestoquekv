@@ -137,7 +137,14 @@ export function CountHistory({ onSelect }: CountHistoryProps) {
   }
 
   if (history.length === 0) {
-    return null;
+    return (
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Nenhuma contagem encontrada</CardTitle>
+          <CardDescription>Não há contagens de estoque registradas.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
   }
 
   return (
@@ -159,44 +166,49 @@ export function CountHistory({ onSelect }: CountHistoryProps) {
                 className="cursor-pointer hover:bg-gray-50 transition-colors"
                 onClick={() => onSelect(count)}
               >
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-semibold">
-                        Contagem {count.estoque?.nome ? `- ${count.estoque.nome}` : ''}
-                      </h4>
-                      <div className="flex items-center text-sm text-gray-500 mt-1">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        {format(new Date(count.data), "PPP", { locale: ptBR })}
-                      </div>
-                      <div className="flex items-center text-sm text-gray-500 mt-1">
-                        <Package className="h-4 w-4 mr-1" />
-                        {count.qntdProdutos || 0} {count.qntdProdutos === 1 ? 'item' : 'itens'}
-                      </div>
-                      <div className="text-xs text-gray-400 mt-2">
-                        Última atualização: {format(new Date(count.createdAt), "PPp", { locale: ptBR })}
-                        {(count.nome || count.matricula) && (
-                          <div className="mt-1 text-xs">
-                            {count.nome && <span className="font-medium">{count.nome}</span>}
-                            {count.matricula && (
-                              <span className="text-gray-500 ml-1">({count.matricula})</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                <CardContent className="p-4 relative">
+                  <div className="space-y-1">
+                    {/* Data */}
+                    <div className="text-sm">
+                      {format(new Date(count.data), "dd/MM/yyyy")}
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-6 w-6 text-gray-400 hover:text-red-500"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Aqui você pode adicionar a lógica para remover a contagem do histórico se necessário
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    
+                    {/* Linha de horário e quantidade de itens */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">
+                        {format(new Date(count.createdAt), "HH:mm")}
+                      </span>
+                      <span className="text-sm">
+                        {count.qntdProdutos || 0} {count.qntdProdutos === 1 ? 'item' : 'itens'}
+                      </span>
+                    </div>
+                    
+                    {/* Linha de matrícula e status */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">
+                        matricula: {count.matricula || 'N/A'}
+                      </span>
+                      <span className={`text-sm font-medium ${count.finalizada ? 'text-green-600' : 'text-amber-600'}`}>
+                        {count.finalizada ? 'concluído' : 'em andamento'}
+                      </span>
+                    </div>
+                    
+                    {/* Linha do nome */}
+                    <div className="text-sm">
+                      nome: {count.nome || 'Não informado'}
+                    </div>
                   </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 text-gray-400 hover:text-red-500 absolute top-2 right-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Aqui você pode adicionar a lógica para remover a contagem do histórico se necessário
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </CardContent>
               </Card>
             ))}
