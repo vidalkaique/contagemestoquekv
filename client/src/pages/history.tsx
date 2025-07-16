@@ -331,25 +331,15 @@ export default function History() {
                 
                 <div className="bg-gray-50 px-4 py-3 flex justify-end space-x-3">
                   {contagem.finalizada ? (
-                    <>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleDownloadExcel(contagem.id, contagem.excelUrl)}
-                        className="text-sm"
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        {contagem.excelUrl ? 'Abrir Excel' : 'Gerar Excel'}
-                      </Button>
-                      <Button 
-                        variant="default" 
-                        size="sm"
-                        onClick={() => setLocation(`/history/${contagem.id}`)}
-                        className="bg-blue-600 hover:bg-blue-700 text-sm"
-                      >
-                        Ver Detalhes
-                      </Button>
-                    </>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleDownloadExcel(contagem.id, contagem.excelUrl)}
+                      className="text-sm"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      {contagem.excelUrl ? 'Abrir Excel' : 'Gerar Excel'}
+                    </Button>
                   ) : (
                     <Button 
                       variant="default" 
