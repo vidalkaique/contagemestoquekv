@@ -28,7 +28,7 @@ export function UserInfoModal({ open, onOpenChange, onSave, onResetSaving }: Use
     }
   }, [open]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.matricula.trim() || !formData.nome.trim()) {
       console.log('Dados inválidos:', formData);
@@ -38,18 +38,25 @@ export function UserInfoModal({ open, onOpenChange, onSave, onResetSaving }: Use
     console.log('Iniciando salvamento...', formData);
     console.log('Estado atual:', { isSaving, open });
 
-    // Resetar o estado de salvamento
-    setIsSaving(false);
-    onResetSaving?.();
-    onSave(formData);
-
-    // Adicionar um timeout para garantir que o salvamento seja concluído
-    setTimeout(() => {
-      console.log('Fechando modal após 1 segundo...');
+    try {
+      // Define que está salvando
+      setIsSaving(true);
+      
+      // Chama a função de salvamento e aguarda a conclusão
+      await onSave(formData);
+      
+      console.log('Salvamento concluído com sucesso');
+      
+      // Só fecha o modal após confirmar que o salvamento foi bem-sucedido
       onOpenChange(false);
-    }, 1000);
-
-    console.log('Salvamento iniciado...', formData);
+      
+    } catch (error) {
+      console.error('Erro ao salvar informações:', error);
+      // Não fecha o modal em caso de erro
+      throw error; // Propaga o erro para ser tratado pelo componente pai
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (

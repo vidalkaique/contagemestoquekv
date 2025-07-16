@@ -167,24 +167,27 @@ export default function NewCount() {
   const saveUserInfo = async (info: UserInfo) => {
     console.log('Salvando informações do usuário no localStorage:', info);
     
+    // Valida os dados de entrada
+    if (!info?.matricula?.trim() || !info?.nome?.trim()) {
+      const errorMsg = 'Matrícula e nome são obrigatórios';
+      console.error(errorMsg);
+      throw new Error(errorMsg);
+    }
+
+    // Cria um objeto com as informações formatadas
+    const userData = {
+      matricula: info.matricula.trim(),
+      nome: info.nome.trim()
+    };
+    
     try {
       // Salva as informações no localStorage
-      localStorage.setItem('userInfo', JSON.stringify({
-        matricula: info.matricula.trim(),
-        nome: info.nome.trim()
-      }));
-
-      // Atualiza o estado local
-      setUserInfo({
-        matricula: info.matricula.trim(),
-        nome: info.nome.trim()
-      });
-      
-      // Fecha o modal
-      setIsUserInfoModalOpen(false);
-
+      localStorage.setItem('userInfo', JSON.stringify(userData));
       console.log('Informações salvas com sucesso no localStorage');
 
+      // Atualiza o estado local
+      setUserInfo(userData);
+      
       // Mostra mensagem de sucesso
       toast({
         title: "Sucesso",
@@ -192,19 +195,33 @@ export default function NewCount() {
         variant: "default"
       });
 
-      // Se estava esperando para salvar, continua o processo de salvamento
-      if (isSavePending) {
-        setIsSavePending(false);
-        handleSaveDraft();
-      }
+      return userData;
 
     } catch (error) {
       console.error('Erro ao salvar informações do usuário:', error);
+      const errorMessage = error instanceof Error ? error.message : "Não foi possível salvar suas informações. Tente novamente.";
+      
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Não foi possível salvar suas informações. Tente novamente.",
+        description: errorMessage,
         variant: "destructive"
       });
+      
+      throw error; // Propaga o erro para ser tratado pelo componente do modal
+    } finally {
+      // Se estava esperando para salvar, continua o processo de salvamento
+      if (isSavePending) {
+        const wasSavePending = isSavePending;
+        setIsSavePending(false);
+        
+        if (wasSavePending) {
+          console.log('Continuando processo de salvamento pendente...');
+          // Aguarda um pequeno delay para garantir que o modal foi fechado
+          setTimeout(() => {
+            handleSaveDraft().catch(console.error);
+          }, 100);
+        }
+      }
     }
   };
 
@@ -2435,7 +2452,7 @@ export default function NewCount() {
         open={isUserInfoModalOpen}
         onOpenChange={setIsUserInfoModalOpen}
         onSave={saveUserInfo}
-        onResetSaving={() => setIsUserInfoModalOpen(false)}
+        onResetSaving={() => setIsSavePending(false)}
       />
 
       <ProductModal 
@@ -2466,13 +2483,6 @@ export default function NewCount() {
         }}
         product={editingProduct}
         onSave={handleSaveEdit}
-      />
-
-      {/* Modal de informações do usuário */}
-      <UserInfoModal
-        open={isUserInfoModalOpen}
-        onOpenChange={setIsUserInfoModalOpen}
-        onSave={handleUserInfoSubmit}
       />
 
       {/* Modal de confirmação de saída */}
