@@ -1,38 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useLocation, Link } from "wouter";
 import { useCounts } from "@/hooks/use-counts";
-import { format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { ClipboardList, Plus, History, LineChart, Package, ChevronRight, Warehouse, Clock, Trash2 } from "lucide-react";
-import type { ContagemWithItens } from "@shared/schema";
+import { ClipboardList, Plus, History, Package, ChevronRight, Warehouse } from "lucide-react";
 import { SelectStockModal } from '@/components/select-stock-modal';
-import { getCountHistory, clearCurrentCount, type CurrentCount } from "@/lib/localStorage";
+import type { CurrentCount } from "@/lib/localStorage";
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [countHistory, setCountHistory] = useState<CurrentCount[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
-
-  // Carrega o histórico de contagens do localStorage
-  useEffect(() => {
-    const history = getCountHistory();
-    setCountHistory(history);
-  }, []);
-
+  const [countHistory] = useState<CurrentCount[]>([]);
   const { data: contagens = [] } = useCounts();
-  const ultimaContagem = contagens.length > 0 ? contagens[0] : null;
-
-
-  const handleClearCurrentCount = () => {
-    if (window.confirm("Tem certeza que deseja limpar a contagem em andamento?")) {
-      clearCurrentCount();
-      // Atualiza o histórico removendo a contagem atual
-      const updatedHistory = getCountHistory();
-      setCountHistory(updatedHistory);
-    }
-  };
 
   return (
     <>
@@ -60,74 +38,7 @@ export default function Home() {
           <ChevronRight className="w-5 h-5" />
         </button>
 
-        {/* Histórico de contagens */}
-        {showHistory && countHistory.length > 0 && (
-          <div className="space-y-3 mt-2">
-            {countHistory.map((count, index) => {
-              // Pula a primeira se for a contagem atual (já exibida acima)
-              if (index === 0 && !count.id) return null;
-              
-              return (
-                <div 
-                  key={count.id || count.lastUpdated}
-                  className="bg-white border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
-                  onClick={() => window.location.href = '/new-count'}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-medium text-gray-900">
-                        {count.id ? `Contagem #${count.id}` : 'Rascunho'}
-                        {count.estoqueNome && ` • ${count.estoqueNome}`}
-                      </h4>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {count.products.length} {count.products.length === 1 ? 'item' : 'itens'}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {format(parseISO(count.lastUpdated), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                      </p>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
 
-{/* Contagem em andamento */}
-        {countHistory.length > 0 && countHistory[0] && !countHistory[0].id && (
-          <div className="relative bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-            <div className="flex items-start">
-              <div className="p-2 bg-yellow-100 rounded-full mr-3">
-                <Clock className="w-5 h-5 text-yellow-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-medium text-yellow-800">Contagem em andamento</h3>
-                <p className="text-sm text-yellow-700">
-                  {countHistory[0].products.length} {countHistory[0].products.length === 1 ? 'item' : 'itens'} adicionados
-                </p>
-                <p className="text-xs text-yellow-600 mt-1">
-                  Última atualização: {format(parseISO(countHistory[0].lastUpdated), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                </p>
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleClearCurrentCount();
-                  }}
-                  className="text-yellow-600 hover:text-yellow-800"
-                  title="Limpar contagem"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                <Link href="/new-count" className="text-yellow-600 hover:text-yellow-800">
-                  <ChevronRight className="w-5 h-5" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
 
 
 

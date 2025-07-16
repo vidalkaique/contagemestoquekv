@@ -82,6 +82,14 @@ export function CountHistory({ onSelect }: { onSelect: (count: CurrentCount) => 
                       </div>
                       <div className="text-xs text-gray-400 mt-2">
                         Última atualização: {format(new Date(count.lastUpdated), "PPp", { locale: ptBR })}
+                        {(count.nome || count.matricula) && (
+                          <div className="mt-1 text-xs">
+                            {count.nome && <span className="font-medium">{count.nome}</span>}
+                            {count.matricula && (
+                              <span className="text-gray-500 ml-1">({count.matricula})</span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <Button 

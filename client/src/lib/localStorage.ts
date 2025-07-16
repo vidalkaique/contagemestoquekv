@@ -22,6 +22,8 @@ export interface CurrentCount {
   estoqueNome?: string;
   products: CurrentCountProduct[];
   lastUpdated: string;
+  nome?: string; // Nome do usuário que criou a contagem
+  matricula?: string; // Matrícula do usuário que criou a contagem
 }
 
 const CURRENT_COUNT_KEY = "contaestoque_current_count";
