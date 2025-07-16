@@ -166,36 +166,32 @@ export function CountHistory({ onSelect }: CountHistoryProps) {
                 className="cursor-pointer hover:bg-gray-50 transition-colors"
                 onClick={() => onSelect(count)}
               >
-                <CardContent className="p-4 relative">
-                  <div className="space-y-1">
-                    {/* Data */}
-                    <div className="text-sm">
+                <CardContent className="p-4 relative bg-white">
+                  <div className="space-y-2">
+                    {/* Data - maior e em negrito */}
+                    <div className="font-semibold text-base">
                       {format(new Date(count.data), "dd/MM/yyyy")}
                     </div>
                     
                     {/* Linha de horário e quantidade de itens */}
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">
-                        {format(new Date(count.createdAt), "HH:mm")}
-                      </span>
-                      <span className="text-sm">
+                    <div className="flex justify-between items-center text-sm">
+                      <span>{format(new Date(count.createdAt), "HH:mm")}</span>
+                      <span className="ml-4">
                         {count.qntdProdutos || 0} {count.qntdProdutos === 1 ? 'item' : 'itens'}
                       </span>
                     </div>
                     
                     {/* Linha de matrícula e status */}
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">
-                        matricula: {count.matricula || 'N/A'}
-                      </span>
-                      <span className={`text-sm font-medium ${count.finalizada ? 'text-green-600' : 'text-amber-600'}`}>
+                    <div className="flex justify-between items-center text-sm">
+                      <span>matricula: <span className="font-medium">{count.matricula || 'N/A'}</span></span>
+                      <span className={`font-medium ${count.finalizada ? 'text-green-600' : 'text-amber-600'}`}>
                         {count.finalizada ? 'concluído' : 'em andamento'}
                       </span>
                     </div>
                     
                     {/* Linha do nome */}
                     <div className="text-sm">
-                      nome: {count.nome || 'Não informado'}
+                      nome: <span className="font-medium">{count.nome || 'Não informado'}</span>
                     </div>
                   </div>
                   <Button 

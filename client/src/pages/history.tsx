@@ -294,44 +294,37 @@ export default function History() {
           <div className="space-y-4">
             {filteredContagens?.map((contagem) => (
               <div key={contagem.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow transition-shadow">
-                <div className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-medium text-gray-900">
-                        {format(new Date(contagem.data), "dd/MM/yyyy", { locale: ptBR })}
-                        {!contagem.finalizada && (
-                          <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                            Rascunho
-                          </span>
-                        )}
-                      </h3>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {format(new Date(contagem.createdAt), "HH:mm", { locale: ptBR })}
-                      </p>
-                      
-                      {/* User Info */}
-                      {(contagem.matricula || contagem.nome) && (
-                        <div className="mt-2 flex items-center text-sm text-gray-600">
-                          <span className="inline-flex items-center">
-                            <svg className="mr-1.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                            {contagem.nome || 'Sem nome'}
-                            {contagem.matricula && ` (${contagem.matricula})`}
-                          </span>
-                        </div>
+                <div className="p-4 relative">
+                  <div className="space-y-2">
+                    {/* Data - maior e em negrito */}
+                    <div className="font-semibold text-base">
+                      {format(new Date(contagem.data), "dd/MM/yyyy")}
+                      {!contagem.finalizada && (
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          Rascunho
+                        </span>
                       )}
                     </div>
                     
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900">
-                        {contagem.qntdProdutos || contagem.itens?.length || 0} produtos
-                      </p>
-                      <p className={`text-xs mt-1 ${
-                        contagem.finalizada ? 'text-emerald-600' : 'text-yellow-600'
-                      }`}>
-                        {contagem.finalizada ? 'Concluída' : 'Em andamento'}
-                      </p>
+                    {/* Linha de horário e quantidade de itens */}
+                    <div className="flex justify-between items-center text-sm">
+                      <span>{format(new Date(contagem.createdAt), "HH:mm")}</span>
+                      <span className="ml-4">
+                        {contagem.qntdProdutos || contagem.itens?.length || 0} {contagem.qntdProdutos === 1 ? 'item' : 'itens'}
+                      </span>
+                    </div>
+                    
+                    {/* Linha de matrícula e status */}
+                    <div className="flex justify-between items-center text-sm">
+                      <span>matricula: <span className="font-medium">{contagem.matricula || 'N/A'}</span></span>
+                      <span className={`font-medium ${contagem.finalizada ? 'text-green-600' : 'text-amber-600'}`}>
+                        {contagem.finalizada ? 'concluído' : 'em andamento'}
+                      </span>
+                    </div>
+                    
+                    {/* Linha do nome */}
+                    <div className="text-sm">
+                      nome: <span className="font-medium">{contagem.nome || 'Não informado'}</span>
                     </div>
                   </div>
                 </div>
