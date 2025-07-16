@@ -234,6 +234,8 @@ export function useCounts() {
                 created_at,
                 qntd_produtos,
                 estoque_id,
+                nome,
+                matricula,
                 estoques(
                   id,
                   nome,
