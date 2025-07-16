@@ -183,7 +183,7 @@ export function useCounts() {
       // Primeiro, buscar apenas as contagens para verificar quantas existem
       const { data: contagensBasicas, error: erroContagens } = await supabase
         .from('contagens')
-        .select('id, data, finalizada, created_at')
+        .select('id, data, finalizada, created_at, nome, matricula')
         .order('created_at', { ascending: false });
       
       console.log('Contagens básicas encontradas:', contagensBasicas?.length || 0);
