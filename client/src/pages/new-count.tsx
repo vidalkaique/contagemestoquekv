@@ -248,9 +248,11 @@ export default function NewCount() {
         .update({ 
           status: 'rascunho', 
           atualizado_em: new Date().toISOString(),
-          // Garante que os campos de matrícula e nome estejam presentes
-          matricula: unfinishedCount?.matricula || null,
-          nome: unfinishedCount?.nome || null
+          // Inclui as informações do usuário se disponíveis
+          matricula: userInfo?.matricula || unfinishedCount?.matricula || null,
+          nome: userInfo?.nome || unfinishedCount?.nome || null,
+          // Garante que a data está atualizada
+          data: new Date(countDate).toISOString().split('T')[0]
         })
         .eq('id', currentCountId);
 
@@ -832,6 +834,9 @@ export default function NewCount() {
     if (!pendingCountId) return;
     
     try {
+      // Atualiza o estado local com as informações do usuário
+      setUserInfo(userInfo);
+      
       // Primeiro, adicione os itens à contagem
       await addItemsToCount(pendingCountId);
       
@@ -842,14 +847,28 @@ export default function NewCount() {
           finalizada: true,
           matricula: userInfo.matricula,
           nome: userInfo.nome,
-          data: new Date(countDate).toISOString().split('T')[0]
+          data: new Date(countDate).toISOString().split('T')[0],
+          // Atualiza a quantidade de produtos únicos
+          qntd_produtos: new Set(products.map(p => p.id)).size
         })
         .eq('id', pendingCountId);
         
       if (error) throw error;
       
+          // Define o tipo estendido para os dados da contagem
+      interface CountDataWithUserInfo extends CountData {
+        matricula: string;
+        nome: string;
+      }
+      
       // Gera e salva o Excel
-      await generateAndSaveExcel(pendingCountId, { data: new Date(countDate).toISOString().split('T')[0] }, products);
+      const countData: CountDataWithUserInfo = {
+        data: new Date(countDate).toISOString().split('T')[0],
+        matricula: userInfo.matricula,
+        nome: userInfo.nome
+      };
+      
+      await generateAndSaveExcel(pendingCountId, countData, products);
       
       // Limpa o estado local e redireciona para a página inicial
       clearCurrentCount();
@@ -863,7 +882,7 @@ export default function NewCount() {
       console.error("Erro ao finalizar contagem:", error);
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao finalizar a contagem.",
+        description: error instanceof Error ? error.message : "Ocorreu um erro ao finalizar a contagem.",
         variant: "destructive",
       });
     } finally {
@@ -1135,6 +1154,8 @@ export default function NewCount() {
     estoque?: { nome: string };
     estoques?: { nome: string };
     estoque_id?: string;
+    matricula?: string;
+    nome?: string;
   }
 
   // Define item type for Excel generation
@@ -1597,7 +1618,14 @@ export default function NewCount() {
         
         // Gera e salva o Excel
         try {
-          excelUrl = await generateAndSaveExcel(resolvedCountId, contagemData, products);
+          // Garante que os dados da contagem incluam as informações do usuário
+          const excelData: CountData = {
+            ...contagemData,
+            matricula: userInfo?.matricula || null,
+            nome: userInfo?.nome || null
+          };
+          
+          excelUrl = await generateAndSaveExcel(resolvedCountId, excelData, products);
           console.log('Excel gerado e salvo com sucesso:', excelUrl);
         } catch (error) {
           console.error('Erro ao gerar Excel:', error);
@@ -1614,7 +1642,10 @@ export default function NewCount() {
             data: formattedDate,
             finalizada: true,
             excel_url: excelUrl,
-            qntd_produtos: uniqueProductCount // Adiciona a contagem de produtos únicos
+            qntd_produtos: uniqueProductCount, // Adiciona a contagem de produtos únicos
+            // Inclui as informações do usuário se disponíveis
+            matricula: userInfo?.matricula || null,
+            nome: userInfo?.nome || null
           })
           .eq('id', resolvedCountId);
         
@@ -1708,13 +1739,25 @@ export default function NewCount() {
         
         // Gera e salva o Excel
         try {
-          excelUrl = await generateAndSaveExcel(contagem.id, contagemData, products);
+          // Garante que os dados da contagem incluam as informações do usuário
+          const excelData: CountData = {
+            ...contagemData,
+            matricula: userInfo?.matricula || null,
+            nome: userInfo?.nome || null
+          };
+          
+          excelUrl = await generateAndSaveExcel(contagem.id, excelData, products);
           console.log('Excel gerado e salvo com sucesso para nova contagem:', excelUrl);
           
           // Atualiza a contagem com a URL do Excel
           const { error: updateError } = await supabase
             .from('contagens')
-            .update({ excel_url: excelUrl })
+            .update({ 
+              excel_url: excelUrl,
+              // Garante que as informações do usuário sejam salvas
+              matricula: userInfo?.matricula || null,
+              nome: userInfo?.nome || null
+            })
             .eq('id', contagem.id);
             
           if (updateError) {
