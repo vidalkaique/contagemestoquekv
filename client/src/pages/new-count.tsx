@@ -192,6 +192,12 @@ export default function NewCount() {
         variant: "default"
       });
 
+      // Se estava esperando para salvar, continua o processo de salvamento
+      if (isSavePending) {
+        setIsSavePending(false);
+        handleSaveDraft();
+      }
+
     } catch (error) {
       console.error('Erro ao salvar informações do usuário:', error);
       toast({
@@ -214,6 +220,9 @@ export default function NewCount() {
     }
   };
 
+  // Estado para controlar se há um salvamento pendente
+  const [isSavePending, setIsSavePending] = useState(false);
+
   // Função para salvar a contagem como rascunho
   const handleSaveDraft = async () => {
     if (!currentCountId || products.length === 0) {
@@ -229,7 +238,13 @@ export default function NewCount() {
     const savedUserInfo = localStorage.getItem('userInfo');
     if (!savedUserInfo) {
       // Se não tiver as informações do usuário, abre o modal para coletá-las
+      setIsSavePending(true);
       setIsUserInfoModalOpen(true);
+      return;
+    }
+
+    // Se estiver em modo de espera de salvamento, não faz nada
+    if (isSavePending) {
       return;
     }
 
