@@ -50,14 +50,7 @@ export default function NewCount() {
   // Estados do componente
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
   const [isUserInfoModalOpen, setIsUserInfoModalOpen] = useState<boolean>(false);
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(() => {
-    // Tenta carregar as informações do usuário do localStorage ao inicializar
-    if (typeof window !== 'undefined') {
-      const savedUserInfo = localStorage.getItem('userInfo');
-      return savedUserInfo ? JSON.parse(savedUserInfo) : null;
-    }
-    return null;
-  });
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [pendingCountId, setPendingCountId] = useState<string | null>(null);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [currentCountId, setCurrentCountId] = useState<string | undefined>(undefined);
@@ -163,27 +156,48 @@ export default function NewCount() {
   };
 
 
-  // Função para salvar informações do usuário no localStorage
+  // Função para salvar informações do usuário
   const saveUserInfo = async (info: UserInfo) => {
-    console.log('Salvando informações do usuário no localStorage:', info);
+    console.log('Iniciando saveUserInfo', { info, currentCountId });
     
     try {
-      // Salva as informações no localStorage
-      localStorage.setItem('userInfo', JSON.stringify({
-        matricula: info.matricula.trim(),
-        nome: info.nome.trim()
-      }));
+      // Verifica se temos um ID de contagem válido
+      if (!currentCountId) {
+        console.error('ID da contagem não encontrado');
+        throw new Error('ID da contagem não encontrado');
+      }
+
+      // Atualiza as informações no Supabase
+      const { data, error } = await supabase
+        .from('contagens')
+        .update({ matricula: info.matricula.trim(), nome: info.nome.trim() })
+        .eq('id', currentCountId)
+        .select('id, matricula, nome')
+        .single();
+
+      console.log('Resposta do Supabase:', { data, error });
+
+      if (error) {
+        console.error('Erro do Supabase:', error);
+        throw error;
+      }
+
+      if (!data?.id) {
+        console.error('Falha ao atualizar as informações');
+        throw new Error('Falha ao atualizar as informações');
+      }
+
+      // Verifica se as informações foram atualizadas corretamente
+      if (data?.matricula !== info.matricula.trim() || data?.nome !== info.nome.trim()) {
+        console.error('Dados não foram atualizados corretamente no Supabase');
+        throw new Error('Dados não foram atualizados corretamente no Supabase');
+      }
 
       // Atualiza o estado local
-      setUserInfo({
-        matricula: info.matricula.trim(),
-        nome: info.nome.trim()
-      });
-      
-      // Fecha o modal
+      setUserInfo(info);
       setIsUserInfoModalOpen(false);
 
-      console.log('Informações salvas com sucesso no localStorage');
+      console.log('Informações salvas com sucesso:', info);
 
       // Mostra mensagem de sucesso
       toast({
@@ -225,16 +239,21 @@ export default function NewCount() {
       return;
     }
 
-    // Carrega as informações do usuário do localStorage
-    const savedUserInfo = localStorage.getItem('userInfo');
-    if (!savedUserInfo) {
+    // Verifica se as informações do usuário foram preenchidas
+    if (!userInfo?.matricula || !userInfo?.nome) {
       // Se não tiver as informações do usuário, abre o modal para coletá-las
       setIsUserInfoModalOpen(true);
+      // Define um callback para ser executado após salvar as informações do usuário
+      const originalOnSave = saveUserInfo;
+      saveUserInfo = async (info: { matricula: string; nome: string }) => {
+        // Salva as informações do usuário
+        await originalOnSave(info);
+        // Depois de salvar, chama o handleSaveDraft novamente
+        handleSaveDraft();
+      };
       return;
     }
 
-    const userInfo = JSON.parse(savedUserInfo);
-    
     setIsSaving(true);
     
     try {
@@ -244,13 +263,15 @@ export default function NewCount() {
         .update({ 
           status: 'rascunho', 
           atualizado_em: new Date().toISOString(),
-          // Inclui as informações do usuário do localStorage
-          matricula: userInfo.matricula || null,
-          nome: userInfo.nome || null,
+          // Inclui as informações do usuário
+          matricula: userInfo?.matricula || null,
+          nome: userInfo?.nome || null,
           // Garante que a data está atualizada
           data: new Date(countDate).toISOString().split('T')[0]
         })
-        .eq('id', currentCountId);
+        .eq('id', currentCountId)
+        .select('id, matricula, nome')
+        .single();
 
       if (updateError) throw updateError;
 
