@@ -88,7 +88,8 @@ export function ImportStockScreen({ isOpen, onClose, contagemId, onImportComplet
           // Tenta encontrar a quantidade em diferentes formatos de coluna
           const quantidade = Number(
             row['Quantidade'] || row['quantidade'] || row['QUANTIDADE'] || 
-            row['Qtd'] || row['qtd'] || row['QTD'] || 0
+            row['Qtd'] || row['qtd'] || row['QTD'] || 
+            row['Estoque'] || row['estoque'] || row['ESTOQUE'] || 0
           );
           
           return {
