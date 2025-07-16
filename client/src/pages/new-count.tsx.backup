@@ -3,7 +3,6 @@ import { useLocation, useParams } from "wouter";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Check, Trash2, Package, Search, Pencil, X, Upload, Download } from "lucide-react";
 import { UserInfoModal } from "@/components/user-info-modal";
-import type { UserInfo } from "@/components/user-info-modal";
 import * as XLSX from 'xlsx';
 import type { Worksheet, Row, Workbook, Cell } from 'exceljs';
 import { useToast } from "@/hooks/use-toast";
@@ -50,47 +49,11 @@ export default function NewCount() {
   // Estados do componente
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
   const [isUserInfoModalOpen, setIsUserInfoModalOpen] = useState<boolean>(false);
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [pendingCountId, setPendingCountId] = useState<string | null>(null);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [currentCountId, setCurrentCountId] = useState<string | undefined>(undefined);
   const [showExitModal, setShowExitModal] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
-
-  // Define o currentCountId quando a contagem é carregada
-  useEffect(() => {
-    if (unfinishedCount?.id) {
-      setCurrentCountId(unfinishedCount.id);
-    }
-  }, [unfinishedCount?.id]);
-
-  // Verifica se já existe matrícula/nome salvo
-  useEffect(() => {
-    if (currentCountId) {
-      const checkUserInfo = async () => {
-        try {
-          const { data, error } = await supabase
-            .from('contagens')
-            .select('matricula, nome')
-            .eq('id', currentCountId)
-            .single();
-
-          if (error) throw error;
-          
-          if (data?.matricula && data?.nome) {
-            setUserInfo({ matricula: data.matricula, nome: data.nome });
-          } else {
-            setIsUserInfoModalOpen(true);
-          }
-        } catch (error) {
-          console.error('Erro ao verificar informações do usuário:', error);
-          setIsUserInfoModalOpen(true);
-        }
-      };
-
-      checkUserInfo();
-    }
-  }, [currentCountId]);
 
   // Sincroniza os itens da contagem em tempo real
   useCountRealtime(
@@ -155,66 +118,6 @@ export default function NewCount() {
     setEditingProduct(null);
   };
 
-
-  // Função para salvar informações do usuário
-  const saveUserInfo = async (info: UserInfo) => {
-    console.log('Iniciando saveUserInfo', { info, currentCountId });
-    
-    try {
-      // Verifica se temos um ID de contagem válido
-      if (!currentCountId) {
-        console.error('ID da contagem não encontrado');
-        throw new Error('ID da contagem não encontrado');
-      }
-
-      // Atualiza as informações no Supabase
-      const { data, error } = await supabase
-        .from('contagens')
-        .update({ matricula: info.matricula.trim(), nome: info.nome.trim() })
-        .eq('id', currentCountId)
-        .select('id, matricula, nome')
-        .single();
-
-      console.log('Resposta do Supabase:', { data, error });
-
-      if (error) {
-        console.error('Erro do Supabase:', error);
-        throw error;
-      }
-
-      if (!data?.id) {
-        console.error('Falha ao atualizar as informações');
-        throw new Error('Falha ao atualizar as informações');
-      }
-
-      // Verifica se as informações foram atualizadas corretamente
-      if (data?.matricula !== info.matricula.trim() || data?.nome !== info.nome.trim()) {
-        console.error('Dados não foram atualizados corretamente no Supabase');
-        throw new Error('Dados não foram atualizados corretamente no Supabase');
-      }
-
-      // Atualiza o estado local
-      setUserInfo(info);
-      setIsUserInfoModalOpen(false);
-
-      console.log('Informações salvas com sucesso:', info);
-
-      // Mostra mensagem de sucesso
-      toast({
-        title: "Sucesso",
-        description: "Informações salvas com sucesso!",
-        variant: "default"
-      });
-
-    } catch (error) {
-      console.error('Erro ao salvar informações do usuário:', error);
-      toast({
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Não foi possível salvar suas informações. Tente novamente.",
-        variant: "destructive"
-      });
-    }
-  };
 
   // Função para lidar com o clique no botão de voltar
   const handleBack = () => {
@@ -2375,14 +2278,6 @@ export default function NewCount() {
           </div>
         )}
       </div>
-
-      {/* Modal de informações do usuário */}
-      <UserInfoModal
-        open={isUserInfoModalOpen}
-        onOpenChange={setIsUserInfoModalOpen}
-        onSave={saveUserInfo}
-        onResetSaving={() => setIsUserInfoModalOpen(false)}
-      />
 
       <ProductModal 
         isOpen={isProductModalOpen} 
