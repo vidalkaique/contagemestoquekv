@@ -65,6 +65,9 @@ export default function NewCount() {
   const [currentCountId, setCurrentCountId] = useState<string | undefined>(undefined);
   const [showExitModal, setShowExitModal] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  
+  // Usa o hook para prevenir saída acidental da página
+  usePreventAccidentalLeave(hasUnsavedChanges);
 
   // Define o currentCountId quando a contagem é carregada
   useEffect(() => {

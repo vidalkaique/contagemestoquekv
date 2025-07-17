@@ -2,24 +2,27 @@ import { useEffect } from 'react';
 import { useLocation } from 'wouter';
 
 export function usePreventAccidentalLeave(shouldPrevent: boolean) {
-  const [location, setLocation] = useLocation();
+  const [, navigate] = useLocation();
 
   // Efeito para lidar com fechamento/recarregamento da página
   useEffect(() => {
     if (!shouldPrevent) return;
 
-    // Função para lidar com fechamento/recarregamento da página
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (shouldPrevent) {
-        // Mensagem padrão que alguns navegadores podem mostrar
-        const message = 'Tem certeza que deseja sair? As alterações não salvas serão perdidas.';
+        // Mensagem personalizada que será exibida no diálogo de confirmação
+        const confirmationMessage = 'Tem certeza que deseja sair? As alterações não salvas serão perdidas.';
+        
+        // Padrão para a maioria dos navegadores
         e.preventDefault();
-        e.returnValue = message; // Para navegadores mais antigos
-        return message; // Para navegadores modernos
+        // Para compatibilidade com navegadores mais antigos
+        e.returnValue = confirmationMessage;
+        
+        return confirmationMessage;
       }
     };
 
-    // Adiciona o event listener
+    // Adiciona o event listener para beforeunload
     window.addEventListener('beforeunload', handleBeforeUnload);
     
     // Limpa o event listener quando o componente é desmontado
@@ -32,7 +35,9 @@ export function usePreventAccidentalLeave(shouldPrevent: boolean) {
   useEffect(() => {
     if (!shouldPrevent) return;
 
-    // Função para lidar com o popstate (navegação com botão voltar/avançar)
+    // Adiciona um estado ao histórico para podermos detectar a navegação
+    window.history.pushState(null, '', window.location.pathname);
+
     const handlePopState = (e: PopStateEvent) => {
       if (shouldPrevent) {
         // Mostra um diálogo de confirmação personalizado
@@ -43,12 +48,12 @@ export function usePreventAccidentalLeave(shouldPrevent: boolean) {
           e.preventDefault();
           // Força o navegador a ficar na mesma página
           window.history.pushState(null, '', window.location.pathname);
+        } else {
+          // Se confirmar, navega para a página anterior
+          window.history.go(-1);
         }
       }
     };
-
-    // Adiciona um estado ao histórico para podermos detectar a navegação
-    window.history.pushState(null, '');
 
     // Adiciona o event listener para popstate
     window.addEventListener('popstate', handlePopState);
@@ -57,5 +62,5 @@ export function usePreventAccidentalLeave(shouldPrevent: boolean) {
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [shouldPrevent]);
+  }, [shouldPrevent, navigate]);
 }
