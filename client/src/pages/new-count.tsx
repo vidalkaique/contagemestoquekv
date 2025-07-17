@@ -20,6 +20,7 @@ import { useCountDate } from "@/hooks/use-count-date";
 import { useUnfinishedCount } from "@/hooks/use-counts";
 import { ImportStockScreen, type ImportedProduct } from "@/components/import-stock-screen";
 import { SaveCountModal } from "@/components/modals/save-count-modal";
+import { usePreventAccidentalLeave } from "@/hooks/use-prevent-accidental-leave";
 
 export interface ProductItem {
   id: string;
@@ -50,6 +51,7 @@ export default function NewCount() {
   // Estados do componente
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
   const [isUserInfoModalOpen, setIsUserInfoModalOpen] = useState<boolean>(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(() => {
     // Tenta carregar as informações do usuário do localStorage ao inicializar
     if (typeof window !== 'undefined') {
@@ -162,6 +164,19 @@ export default function NewCount() {
     setEditingProduct(null);
   };
 
+  // Usa o hook para prevenir saída acidental
+  usePreventAccidentalLeave(hasUnsavedChanges);
+
+  // Função para lidar com o clique no botão de voltar
+  const handleBack = () => {
+    if (hasUnsavedChanges) {
+      if (window.confirm('Tem certeza que deseja sair? As alterações não salvas serão perdidas.')) {
+        navigate('/');
+      }
+    } else {
+      navigate('/');
+    }
+  };
 
   // Função para salvar informações do usuário no localStorage
   const saveUserInfo = async (info: UserInfo) => {
@@ -222,18 +237,6 @@ export default function NewCount() {
           }, 100);
         }
       }
-    }
-  };
-
-  // Função para lidar com o clique no botão de voltar
-  const handleBack = () => {
-    // Verifica se existem itens na contagem
-    if (products.length > 0) {
-      // Se houver itens, mostra o modal de confirmação
-      setShowExitModal(true);
-    } else {
-      // Se não houver itens, apenas volta
-      navigate('/');
     }
   };
 
@@ -528,7 +531,7 @@ export default function NewCount() {
           console.log(`Item ${product.nome} salvo com sucesso!`);
         } catch (error) {
           console.error(`Erro ao salvar item ${product.nome}:`, error);
-          throw error; // Propaga o erro para ser tratado no catch externo
+          throw error; // Propaga o erro para ser tratado pelo catch externo
         }
       }
 
