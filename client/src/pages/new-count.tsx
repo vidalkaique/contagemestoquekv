@@ -18,6 +18,7 @@ import { saveCurrentCount, getCurrentCount, clearCurrentCount, saveToCountHistor
 import type { InsertContagem, InsertItemContagem, ContagemWithItens } from "@shared/schema";
 import { useCountDate } from "@/hooks/use-count-date";
 import { useUnfinishedCount } from "@/hooks/use-counts";
+import { usePreventRefresh } from "@/hooks/use-prevent-refresh";
 import { ImportStockScreen, type ImportedProduct } from "@/components/import-stock-screen";
 import { SaveCountModal } from "@/components/modals/save-count-modal";
 
@@ -50,6 +51,7 @@ export default function NewCount() {
   // Estados do componente
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
   const [isUserInfoModalOpen, setIsUserInfoModalOpen] = useState<boolean>(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(() => {
     // Tenta carregar as informações do usuário do localStorage ao inicializar
     if (typeof window !== 'undefined') {
@@ -104,6 +106,19 @@ export default function NewCount() {
     currentCountId,
     setProducts as unknown as React.Dispatch<React.SetStateAction<RealtimeProductItem[]>>,
   );
+
+  // Previne a atualização da página quando houver alterações não salvas
+  usePreventRefresh(hasUnsavedChanges, 'Tem certeza que deseja sair? As alterações não salvas serão perdidas.');
+
+  // Função para lidar com o clique no botão de voltar
+  const handleBackClick = () => {
+    if (hasUnsavedChanges) {
+      setShowExitModal(true);
+    } else {
+      navigate(-1 as any); // Usando 'as any' temporariamente para contornar o erro de tipo
+    }
+  };
+
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [editingProductIndex, setEditingProductIndex] = useState<number | null>(null);
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
@@ -121,6 +136,7 @@ export default function NewCount() {
       const product = productOrIndex;
       setEditingProduct(product);
     }
+    setHasUnsavedChanges(true);
   };
 
   // Salva as alterações de um produto
@@ -681,104 +697,14 @@ export default function NewCount() {
    * @param product Produto a ser adicionado
    * @returns O produto adicionado com valores padrão
    */
-  const handleAddProduct = (product: Omit<ProductItem, 'totalPacotes'> & { totalPacotes?: number }): ProductItem => {
-    try {
-      // Validações iniciais
-      if (!product || !product.id || !product.nome) {
-        throw new Error("Dados do produto inválidos");
-      }
-
-      // Cria o produto com valores padrão
-      const productWithDefaults: ProductItem = {
-        ...product,
-        pallets: product.pallets ?? 0,
-        lastros: product.lastros ?? 0,
-        pacotes: product.pacotes ?? 0,
-        unidades: product.unidades ?? 0,
-        totalPacotes: product.totalPacotes ?? calculateTotalPacotes({
-          ...product,
-          pallets: product.pallets ?? 0,
-          lastros: product.lastros ?? 0,
-          pacotes: product.pacotes ?? 0,
-          unidades: product.unidades ?? 0,
-          totalPacotes: 0,
-        }),
-      };
-
-      // Verifica se o produto já existe na lista
-      const productIndex = products.findIndex(p => p.id === product.id);
-      let updatedProducts: ProductItem[];
-      
-      if (productIndex >= 0) {
-        // Atualiza o produto existente
-        updatedProducts = [...products];
-        updatedProducts[productIndex] = productWithDefaults;
-      } else {
-        // Adiciona o novo produto
-        updatedProducts = [...products, productWithDefaults];
-      }
-      
-      // Atualiza o estado
-      setProducts(updatedProducts);
-      
-      // Prepara os dados para salvar no localStorage
-      const currentCount: CurrentCount = {
-        id: currentCountId || `draft-${Date.now()}`,
-        date: new Date(countDate).toISOString().split('T')[0],
-        products: updatedProducts,
-        lastUpdated: new Date().toISOString()
-      };
-      
-      // Atualiza o ID da contagem se ainda não existir
-      if (!currentCountId) {
-        setCurrentCountId(currentCount.id);
-      }
-      
-      // Persiste os dados
-      saveCurrentCount(currentCount);
-      saveToCountHistory(currentCount);
-
-      // ---------- Persistência no Supabase ----------
-      (async () => {
-        try {
-          const contagemId = await ensureCountExists();
-
-          const dbPayload = {
-            contagem_id: contagemId,
-            produto_id: productWithDefaults.id.startsWith('free-') ? null : productWithDefaults.id,
-            nome_livre: productWithDefaults.id.startsWith('free-') ? productWithDefaults.nome : null,
-            pallets: productWithDefaults.pallets ?? 0,
-            lastros: productWithDefaults.lastros ?? 0,
-            pacotes: productWithDefaults.pacotes ?? 0,
-            unidades: productWithDefaults.unidades ?? 0,
-            total: calculateProductTotal(productWithDefaults),
-            total_pacotes: productWithDefaults.totalPacotes ?? 0,
-          };
-
-          if (dbPayload.produto_id) {
-            // upsert evita duplicata por contagem/produto
-            await supabase.from('itens_contagem').upsert(dbPayload, {
-              onConflict: 'contagem_id,produto_id',
-            });
-          } else {
-            await supabase.from('itens_contagem').insert(dbPayload);
-          }
-        } catch (err) {
-          console.error('Erro ao persistir item no Supabase:', err);
-        }
-      })();
-
-      return productWithDefaults;
-      
-    } catch (error) {
-      console.error("Erro ao adicionar produto:", error);
-      toast({
-        title: "Erro ao adicionar produto",
-        description: error instanceof Error ? error.message : "Não foi possível adicionar o produto à contagem.",
-        variant: "destructive",
-      });
-      throw error; // Propaga o erro para o chamador, se necessário
-    }
+  const handleAddProduct = (newProduct: Omit<ProductItem, 'id' | 'totalPacotes'>) => {
+    const productWithId = {
+      ...newProduct,
+      id: Date.now().toString(),
+      totalPacotes: 0, // Será calculado
+    };
+    setProducts(prev => [...prev, productWithId]);
+    setHasUnsavedChanges(true);
   };
 
   /**
@@ -786,15 +712,70 @@ export default function NewCount() {
    * @param index Índice do produto a ser removido
    * @returns O produto removido ou undefined se o índice for inválido
    */
+  const handleRemoveProduct = (productId: string) => {
+    setProducts(prev => prev.filter(p => p.id !== productId));
+    setHasUnsavedChanges(true);
+    
+    const currentCount: CurrentCount = {
+      id: currentCountId || `draft-${Date.now()}`,
+      date: new Date(countDate).toISOString().split('T')[0],
+      products: products.filter(p => p.id !== productId).map(p => ({
+        id: p.id,
+        nome: p.nome,
+        pallets: p.pallets,
+        lastros: p.lastros,
+        pacotes: p.pacotes,
+        unidades: p.unidades,
+        produtoId: p.codigo,
+        unidadesPorPacote: p.unidadesPorPacote,
+        pacotesPorLastro: p.pacotesPorLastro,
+        lastrosPorPallet: p.lastrosPorPallet,
+        quantidadePacsPorPallet: p.quantidadePacsPorPallet,
+        totalPacotes: p.totalPacotes
+      })),
+      lastUpdated: new Date().toISOString()
+    };
+
+    if (!currentCountId) {
+      setCurrentCountId(currentCount.id);
+    }
+
+    saveCurrentCount(currentCount);
+    saveToCountHistory(currentCount);
+
+    toast({
+      title: "Produto removido",
+      description: "O produto foi removido da contagem com sucesso.",
+    });
+  };
+
+  /**
+   * Remove um produto da lista de produtos da contagem atual
+   * @param productId ID do produto a ser removido
+   */
   const handleDeleteProduct = (productId: string) => {
     if (window.confirm("Tem certeza que deseja excluir este produto da contagem?")) {
       const updatedProducts = products.filter(p => p.id !== productId);
       setProducts(updatedProducts);
+      setHasUnsavedChanges(true);
 
       const currentCount: CurrentCount = {
         id: currentCountId || `draft-${Date.now()}`,
         date: new Date(countDate).toISOString().split('T')[0],
-        products: updatedProducts,
+        products: updatedProducts.map(p => ({
+          id: p.id,
+          nome: p.nome,
+          pallets: p.pallets,
+          lastros: p.lastros,
+          pacotes: p.pacotes,
+          unidades: p.unidades,
+          produtoId: p.codigo,
+          unidadesPorPacote: p.unidadesPorPacote,
+          pacotesPorLastro: p.pacotesPorLastro,
+          lastrosPorPallet: p.lastrosPorPallet,
+          quantidadePacsPorPallet: p.quantidadePacsPorPallet,
+          totalPacotes: p.totalPacotes
+        })),
         lastUpdated: new Date().toISOString()
       };
 
@@ -812,7 +793,8 @@ export default function NewCount() {
     }
   };
 
-  const handleRemoveProduct = (index: number): ProductItem | undefined => {
+  // Função para remover produto por índice (mantida para compatibilidade)
+  const removeProductByIndex = (index: number): ProductItem | undefined => {
     try {
       // Valida o índice
       if (index < 0 || index >= products.length) {
@@ -820,31 +802,11 @@ export default function NewCount() {
         return undefined;
       }
 
-      // Cria uma cópia do array de produtos e remove o item
-      const updatedProducts = [...products];
-      const [removedProduct] = updatedProducts.splice(index, 1);
+      // Remove o produto usando a função principal
+      const productToRemove = products[index];
+      handleRemoveProduct(productToRemove.id);
       
-      // Atualiza o estado
-      setProducts(updatedProducts);
-      
-      // Prepara os dados para salvar no localStorage
-      const currentCount: CurrentCount = {
-        id: currentCountId || `draft-${Date.now()}`,
-        date: new Date(countDate).toISOString().split('T')[0],
-        products: updatedProducts,
-        lastUpdated: new Date().toISOString()
-      };
-      
-      // Atualiza o ID da contagem se ainda não existir
-      if (!currentCountId) {
-        setCurrentCountId(currentCount.id);
-      }
-      
-      // Persiste os dados
-      saveCurrentCount(currentCount);
-      saveToCountHistory(currentCount);
-      
-      return removedProduct;
+      return productToRemove;
       
     } catch (error) {
       console.error("Erro ao remover produto:", error);
