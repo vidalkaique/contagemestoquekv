@@ -171,6 +171,8 @@ export default function NewCount() {
   const handleBack = () => {
     if (hasUnsavedChanges) {
       if (window.confirm('Tem certeza que deseja sair? As alterações não salvas serão perdidas.')) {
+        // Limpa o estado de alterações não salvas antes de navegar
+        setHasUnsavedChanges(false);
         navigate('/');
       }
     } else {
