@@ -300,7 +300,7 @@ export default function Products() {
                 </Label>
                 <Input
                   type="text"
-                  placeholder="Ex: COCA-001"
+                  placeholder="Digite o Código do Produto"
                   value={formData.codigo}
                   onChange={(e) => setFormData((prev) => ({ ...prev, codigo: e.target.value }))}
                   className="w-full"
@@ -314,7 +314,7 @@ export default function Products() {
                 </Label>
                 <Input
                   type="text"
-                  placeholder="Ex: Coca-Cola 350ml"
+                  placeholder="Digite o Nome do Produto"
                   value={formData.nome}
                   onChange={(e) => setFormData((prev) => ({ ...prev, nome: e.target.value }))}
                   className="w-full"
