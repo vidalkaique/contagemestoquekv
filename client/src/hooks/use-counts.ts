@@ -38,11 +38,14 @@ type DatabaseContagem = {
       id: string;
       codigo: string;
       nome: string;
+      tag: string | null;
       unidades_por_pacote: number;
       pacotes_por_lastro: number;
       lastros_por_pallet: number;
       quantidade_pacs_por_pallet: number | null;
+      ativo: boolean;
       created_at: string;
+      updated_at: string;
     } | null;
   }>;
 };
@@ -113,6 +116,7 @@ export function useUnfinishedCount() {
           id: primeiroProduto.id,
           codigo: primeiroProduto.codigo,
           nome: primeiroProduto.nome,
+          tag: primeiroProduto.tag || null,
           unidadesPorPacote: primeiroProduto.unidades_por_pacote,
           pacotesPorLastro: primeiroProduto.pacotes_por_lastro,
           lastrosPorPallet: primeiroProduto.lastros_por_pallet,
@@ -149,11 +153,14 @@ export function useUnfinishedCount() {
               id: produto.id,
               codigo: produto.codigo,
               nome: produto.nome,
+              tag: produto.tag || null,
               unidadesPorPacote: prodAny.unidades_por_pacote,
               pacotesPorLastro: prodAny.pacotes_por_lastro,
               lastrosPorPallet: prodAny.lastros_por_pallet,
               quantidadePacsPorPallet: prodAny.quantidade_pacs_por_pallet,
-              createdAt: prodAny.created_at ? new Date(prodAny.created_at) : new Date()
+              ativo: prodAny.ativo !== undefined ? prodAny.ativo : true,
+              createdAt: prodAny.created_at ? new Date(prodAny.created_at) : new Date(),
+              updatedAt: prodAny.updated_at ? new Date(prodAny.updated_at) : new Date()
             } : null
           };
         }),
@@ -272,11 +279,14 @@ export function useCounts() {
                         id,
                         codigo,
                         nome,
+                        tag,
                         unidades_por_pacote,
                         pacotes_por_lastro,
                         lastros_por_pallet,
                         quantidade_pacs_por_pallet,
-                        created_at
+                        ativo,
+                        created_at,
+                        updated_at
                       )
                     `)
                     .eq('contagem_id', contagem.id);
@@ -392,11 +402,14 @@ export function useCounts() {
                 id: produtos.id,
                 codigo: produtos.codigo,
                 nome: produtos.nome,
+                tag: produtos.tag || null,
                 unidadesPorPacote: produtos.unidades_por_pacote,
                 pacotesPorLastro: produtos.pacotes_por_lastro,
                 lastrosPorPallet: produtos.lastros_por_pallet,
                 quantidadePacsPorPallet: produtos.quantidade_pacs_por_pallet || undefined,
-                createdAt: new Date(produtos.created_at)
+                ativo: produtos.ativo !== undefined ? produtos.ativo : true,
+                createdAt: new Date(produtos.created_at),
+                updatedAt: new Date(produtos.updated_at || produtos.created_at)
               } : null;
               
               console.log('Produto mapeado:', produtoMapeado);
