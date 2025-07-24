@@ -2,12 +2,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Produto, InsertProduto, ProdutoComEstoque } from "@shared/schema";
 import { supabase } from "@/lib/supabase";
 
-const fullProductSelect = 'id, codigo, nome, created_at, unidades_por_pacote, pacotes_por_lastro, lastros_por_pallet, quantidade_pacs_por_pallet';
+const fullProductSelect = 'id, codigo, nome, tag, created_at, unidades_por_pacote, pacotes_por_lastro, lastros_por_pallet, quantidade_pacs_por_pallet';
 
 const mapProdutoFromDb = (produto: any): Produto => ({
   id: produto.id,
   codigo: produto.codigo,
   nome: produto.nome,
+  tag: produto.tag || "",
   createdAt: new Date(produto.created_at),
   updatedAt: new Date(produto.updated_at || produto.created_at),
   unidadesPorPacote: produto.unidades_por_pacote ?? 1,
@@ -157,6 +158,7 @@ export function useCreateProduct() {
       const produtoParaInserir = {
         codigo: data.codigo,
         nome: data.nome,
+        tag: data.tag || "",
         unidades_por_pacote: data.unidadesPorPacote,
         pacotes_por_lastro: data.pacotesPorLastro,
         lastros_por_pallet: data.lastrosPorPallet,

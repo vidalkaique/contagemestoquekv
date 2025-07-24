@@ -7,6 +7,7 @@ export const produtos = pgTable("produtos", {
   id: uuid("id").primaryKey().defaultRandom(),
   codigo: text("codigo").notNull().unique(),
   nome: text("nome").notNull(),
+  tag: text("tag"),
   unidadesPorPacote: integer("unidades_por_pacote").notNull().default(1),
   pacotesPorLastro: integer("pacotes_por_lastro").notNull().default(1),
   lastrosPorPallet: integer("lastros_por_pallet").notNull().default(1),

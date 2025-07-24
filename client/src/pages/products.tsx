@@ -21,6 +21,7 @@ export default function Products() {
   const [formData, setFormData] = useState({
     codigo: "",
     nome: "",
+    tag: "",
     unidadesPorPacote: 0,
     pacotesPorLastro: 0,
     lastrosPorPallet: 0,
@@ -35,6 +36,7 @@ export default function Products() {
       const dataToUpdate = {
         codigo: data.codigo,
         nome: data.nome,
+        tag: data.tag,
         unidades_por_pacote: data.unidadesPorPacote,
         pacotes_por_lastro: data.pacotesPorLastro,
         lastros_por_pallet: data.lastrosPorPallet,
@@ -109,6 +111,7 @@ export default function Products() {
     setFormData({
       codigo: "",
       nome: "",
+      tag: "",
       unidadesPorPacote: 0,
       pacotesPorLastro: 0,
       lastrosPorPallet: 0,
@@ -117,15 +120,16 @@ export default function Products() {
     setIsFormOpen(false);
   };
 
-  const handleEdit = (produto: Produto) => {
+  const handleEditProduct = (product: Produto) => {
+    setEditingProduct(product);
     setFormData({
-      codigo: produto.codigo,
-      nome: produto.nome,
-      unidadesPorPacote: Number(produto.unidadesPorPacote) || 0,
-      pacotesPorLastro: Number(produto.pacotesPorLastro) || 0,
-      lastrosPorPallet: Number(produto.lastrosPorPallet) || 0,
+      codigo: product.codigo,
+      nome: product.nome,
+      tag: product.tag || "",
+      unidadesPorPacote: product.unidadesPorPacote,
+      pacotesPorLastro: product.pacotesPorLastro,
+      lastrosPorPallet: product.lastrosPorPallet,
     });
-    setEditingProduct(produto);
     setIsFormOpen(true);
   };
 
@@ -215,15 +219,17 @@ export default function Products() {
             <div className="space-y-4">
               {[...Array(3)].map((_, i) => (
                 <div key={i} className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-24"></div>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Package className="h-4 w-4 flex-shrink-0 text-gray-500" />
+                      <span className="font-medium"></span>
                     </div>
-                    <div className="flex space-x-2">
-                      <div className="h-8 w-8 bg-gray-200 rounded"></div>
-                      <div className="h-8 w-8 bg-gray-200 rounded"></div>
-                    </div>
+                    <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-24"></div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                    <div className="h-8 w-8 bg-gray-200 rounded"></div>
                   </div>
                 </div>
               ))}
@@ -242,19 +248,18 @@ export default function Products() {
             <div className="space-y-4">
               {filteredProducts.map((produto) => (
                 <div key={produto.id} className="bg-white border border-gray-200 rounded-lg p-4 transition-shadow hover:shadow-md">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-800">{produto.nome}</h3>
-                      <p className="text-sm text-gray-500">Código: {produto.codigo}</p>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Package className="h-4 w-4 flex-shrink-0 text-gray-500" />
+                      <span className="font-medium">{produto.codigo} - {produto.nome}</span>
                     </div>
-                    <div className="flex items-center space-x-2 ml-4">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(produto)} className="text-gray-500 hover:text-gray-800 hover:bg-gray-100">
-                        <Edit size={18} />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(produto.id)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
-                        <Trash2 size={18} />
-                      </Button>
-                    </div>
+                    {produto.tag && (
+                      <div className="ml-6 mt-1">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {produto.tag}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div className="mt-4 border-t border-gray-200 pt-3">
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
@@ -281,6 +286,14 @@ export default function Products() {
                       </p>
                     </div>
                   </div>
+                  <div className="flex items-center space-x-2 ml-4">
+                    <Button variant="ghost" size="icon" onClick={() => handleEditProduct(produto)} className="text-gray-500 hover:text-gray-800 hover:bg-gray-100">
+                      <Edit size={18} />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(produto.id)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
+                      <Trash2 size={18} />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -302,7 +315,7 @@ export default function Products() {
                   type="text"
                   placeholder="Digite o Código do Produto"
                   value={formData.codigo}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, codigo: e.target.value }))}
+                  onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
                   className="w-full"
                   required
                 />
@@ -316,9 +329,22 @@ export default function Products() {
                   type="text"
                   placeholder="Digite o Nome do Produto"
                   value={formData.nome}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, nome: e.target.value }))}
+                  onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                   className="w-full"
                   required
+                />
+              </div>
+
+              <div>
+                <Label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tag (opcional)
+                </Label>
+                <Input
+                  type="text"
+                  placeholder="Ex: Promoção, Novidade, etc."
+                  value={formData.tag}
+                  onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
+                  className="w-full"
                 />
               </div>
 

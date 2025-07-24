@@ -41,6 +41,7 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
     lastros: 0,
     pacotes: 0,
     unidades: 0,
+    tag: "",
   });
 
   const debouncedSearch = useDebounce(searchTerm, 300);
@@ -62,13 +63,16 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
 
   const handleSelectSuggestion = (produto: Produto) => {
     setSelectedProduct(produto);
-    setSearchTerm(produto.nome);
+    setSearchTerm(`${produto.codigo} - ${produto.nome}`);
     setShowSuggestions(false);
+    
+    // Preenche os campos com os valores padrão do produto
     setFormData({
       pallets: 0,
       lastros: 0,
       pacotes: 0,
       unidades: 0,
+      tag: produto.tag || "",
     });
   };
 
@@ -82,58 +86,90 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!selectedProduct) {
       toast({
         title: "Erro",
-        description: "Selecione um produto da lista",
+        description: "Por favor, selecione um produto.",
         variant: "destructive",
       });
       return;
+    }
+
+    // Atualiza a tag do produto se foi alterada
+    if (formData.tag !== selectedProduct.tag) {
+      supabase
+        .from('produtos')
+        .update({ tag: formData.tag })
+        .eq('id', selectedProduct.id)
+        .then(() => {
+          // Invalida a query de produtos para atualizar o cache
+          queryClient.invalidateQueries({ queryKey: ["produtos"] });
+        });
     }
 
     onAddProduct({
       id: selectedProduct.id,
       codigo: selectedProduct.codigo,
       nome: selectedProduct.nome,
-      ...formData,
+      pallets: formData.pallets,
+      lastros: formData.lastros,
+      pacotes: formData.pacotes,
+      unidades: formData.unidades,
       unidadesPorPacote: selectedProduct.unidadesPorPacote,
       pacotesPorLastro: selectedProduct.pacotesPorLastro,
       lastrosPorPallet: selectedProduct.lastrosPorPallet,
     });
-
-    // Limpa o formulário
-    setSearchTerm("");
+    
+    // Fecha o modal e limpa o formulário
+    onClose();
     setSelectedProduct(null);
     setFormData({
       pallets: 0,
       lastros: 0,
       pacotes: 0,
       unidades: 0,
+      tag: "",
     });
-    onClose();
   };
 
   // Adiciona um produto ao estoque atual
   const handleAddToEstoque = async (produto: Produto) => {
-    if (!estoqueId) return;
+    if (!estoqueId || !selectedProduct) return;
     
     try {
+      // Atualiza a tag no banco de dados
       const { error } = await supabase
+        .from('produtos')
+        .update({ tag: formData.tag })
+        .eq('id', selectedProduct.id);
+
+      if (error) {
+        console.error('Erro ao atualizar a tag do produto:', error);
+        toast({
+          title: "Erro",
+          description: "Ocorreu um erro ao atualizar a tag do produto.",
+          variant: "destructive",
+        });
+      } else {
+        // Invalida a query de produtos para atualizar o cache
+        queryClient.invalidateQueries({ queryKey: ["produtos"] });
+        queryClient.invalidateQueries({ queryKey: ["produtos/estoque", estoqueId] });
+      }
+
+      const { error: errorAddToEstoque } = await supabase
         .from('produto_estoque')
         .insert({
           produto_id: produto.id,
           estoque_id: estoqueId,
         });
       
-      if (error) throw error;
+      if (errorAddToEstoque) throw errorAddToEstoque;
       
       toast({
         title: "Sucesso",
         description: "Produto adicionado ao estoque com sucesso!",
       });
-      
-      // Atualiza a lista de produtos do estoque
-      queryClient.invalidateQueries({ queryKey: ["produtos/estoque", estoqueId] });
     } catch (error) {
       console.error("Erro ao adicionar produto ao estoque:", error);
       toast({
@@ -148,9 +184,9 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
   const calculateTotal = () => {
     if (!selectedProduct) return 0;
 
-    const unidadesPorPacote = selectedProduct.unidadesPorPacote || 1;
-    const pacotesPorLastro = selectedProduct.pacotesPorLastro || 1;
-    const lastrosPorPallet = selectedProduct.lastrosPorPallet || 1;
+    const unidadesPorPacote = selectedProduct?.unidadesPorPacote || 1;
+    const pacotesPorLastro = selectedProduct?.pacotesPorLastro || 1;
+    const lastrosPorPallet = selectedProduct?.lastrosPorPallet || 1;
 
     return (
       formData.unidades +
@@ -254,14 +290,25 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
                 <div>
                   <Label>Total por Pallet</Label>
                   <div className="font-medium text-lg text-emerald-600">
-                    {(selectedProduct.unidadesPorPacote || 1) *
-                      (selectedProduct.pacotesPorLastro || 1) *
-                      (selectedProduct.lastrosPorPallet || 1)}
+                    {(selectedProduct?.unidadesPorPacote || 1) *
+                      (selectedProduct?.pacotesPorLastro || 1) *
+                      (selectedProduct?.lastrosPorPallet || 1)}
                   </div>
                 </div>
               </div>
 
               <div className="space-y-4">
+                {/* Campo de Tag */}
+                <div className="space-y-2">
+                  <Label htmlFor="tag">Tag (opcional)</Label>
+                  <Input
+                    id="tag"
+                    placeholder="Ex: Promoção, Novidade, etc."
+                    value={formData.tag}
+                    onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="pallets">Pallets</Label>
@@ -298,13 +345,13 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
                       onChange={(value) => setFormData({ ...formData, unidades: value })}
                       min={0}
                     />
-                    {selectedProduct?.unidadesPorPacote && selectedProduct.unidadesPorPacote > 0 && (
+                    {selectedProduct?.unidadesPorPacote && selectedProduct.unidadesPorPacote > 0 ? (
                       <RoundingSuggestion
                         currentValue={formData.unidades}
                         maxValue={selectedProduct.unidadesPorPacote}
                         onApply={handleApplyRounding}
                       />
-                    )}
+                    ) : null}
                   </div>
                 </div>
 
