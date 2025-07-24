@@ -100,7 +100,10 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
     if (formData.tag !== selectedProduct.tag) {
       supabase
         .from('produtos')
-        .update({ tag: formData.tag })
+        .update({ 
+          tag: formData.tag,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', selectedProduct.id)
         .then(() => {
           // Invalida a query de produtos para atualizar o cache
@@ -141,7 +144,10 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
       // Atualiza a tag no banco de dados
       const { error } = await supabase
         .from('produtos')
-        .update({ tag: formData.tag })
+        .update({ 
+          tag: formData.tag,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', selectedProduct.id);
 
       if (error) {
