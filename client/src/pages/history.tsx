@@ -2,6 +2,7 @@ import { useLocation } from "wouter";
 
 import { supabase } from "@/lib/supabase";
 import { useCounts } from "@/hooks/use-counts";
+import { useContagensRealtime } from "@/hooks/use-realtime";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ArrowLeft, Download, Search } from "lucide-react";
@@ -50,6 +51,9 @@ export default function History() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: contagens = [], isLoading } = useCounts();
+  
+  // Ativa realtime para contagens globais - atualiza histórico automaticamente
+  useContagensRealtime();
 
   const filteredContagens = contagens?.filter(contagem => {
     if (!searchQuery.trim()) return true;

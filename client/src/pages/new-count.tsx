@@ -6,18 +6,20 @@ import { UserInfoModal } from "@/components/user-info-modal";
 import type { UserInfo } from "@/components/user-info-modal";
 import * as XLSX from 'xlsx';
 import type { Worksheet, Row, Workbook, Cell } from 'exceljs';
-import { useToast } from "@/hooks/use-toast";
-import { useCountRealtime, type RealtimeProductItem } from "@/hooks/use-count-realtime";
-import { supabase } from "@/lib/supabase";
+import { useUnfinishedCount } from "@/hooks/use-unfinished-count";
+import { useCountDate } from "@/hooks/use-count-date";
+import { useFullRealtime } from "@/hooks/use-realtime";
+import { toast } from "@/hooks/use-toast";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
+import { useCountRealtime, type RealtimeProductItem } from "@/hooks/use-count-realtime";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ProductModal from "@/components/product-modal";
 import EditProductModal from "@/components/edit-product-modal";
 import { saveCurrentCount, getCurrentCount, clearCurrentCount, saveToCountHistory, getCountHistory, type CurrentCount } from "@/lib/localStorage";
 import type { InsertContagem, InsertItemContagem, ContagemWithItens } from "@shared/schema";
-import { useCountDate } from "@/hooks/use-count-date";
-import { useUnfinishedCount } from "@/hooks/use-counts";
 import { usePreventRefresh } from "@/hooks/use-prevent-refresh";
 import { ImportStockScreen, type ImportedProduct } from "@/components/import-stock-screen";
 import { SaveCountModal } from "@/components/modals/save-count-modal";
@@ -72,6 +74,23 @@ export default function NewCount() {
       setCurrentCountId(unfinishedCount.id);
     }
   }, [unfinishedCount?.id]);
+
+  // Ativa realtime completo para esta contagem específica
+  useFullRealtime(
+    currentCountId, 
+    (updatedUserInfo) => {
+      console.log('🔄 Informações do usuário atualizadas via realtime:', updatedUserInfo);
+      setUserInfo({
+        matricula: updatedUserInfo.matricula || '',
+        nome: updatedUserInfo.nome || ''
+      });
+      // Também salva no localStorage para manter sincronizado
+      localStorage.setItem('userInfo', JSON.stringify({
+        matricula: updatedUserInfo.matricula || '',
+        nome: updatedUserInfo.nome || ''
+      }));
+    }
+  );
 
   // Verifica se já existe matrícula/nome salvo
   useEffect(() => {

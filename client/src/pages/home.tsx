@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocation, Link } from "wouter";
 import { useCounts } from "@/hooks/use-counts";
+import { useContagensRealtime } from "@/hooks/use-realtime";
 import { ClipboardList, Plus, History, Package, ChevronRight, Warehouse } from "lucide-react";
 import { SelectStockModal } from '@/components/select-stock-modal';
 import type { CurrentCount } from "@/lib/localStorage";
@@ -11,6 +12,9 @@ export default function Home() {
 
   const [countHistory] = useState<CurrentCount[]>([]);
   const { data: contagens = [] } = useCounts();
+  
+  // Ativa realtime para contagens globais
+  useContagensRealtime();
 
   return (
     <>
