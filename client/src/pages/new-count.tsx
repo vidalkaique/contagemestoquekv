@@ -110,6 +110,32 @@ export default function NewCount() {
   // Previne a atualização da página quando houver alterações não salvas
   usePreventRefresh(hasUnsavedChanges, 'Tem certeza que deseja sair? As alterações não salvas serão perdidas.');
 
+  // Captura o botão físico de voltar do celular/navegador
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      // Se há alterações não salvas, mostra o modal de confirmação
+      if (hasUnsavedChanges || products.length > 0) {
+        // Previne a navegação padrão
+        event.preventDefault();
+        // Adiciona um novo estado no histórico para "cancelar" o voltar
+        window.history.pushState(null, '', window.location.href);
+        // Mostra o modal de confirmação
+        setShowExitModal(true);
+      }
+    };
+
+    // Adiciona um estado no histórico para capturar o botão voltar
+    window.history.pushState(null, '', window.location.href);
+    
+    // Adiciona o listener
+    window.addEventListener('popstate', handlePopState);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [hasUnsavedChanges, products.length]);
+
   // Função para lidar com o clique no botão de voltar
   const handleBackClick = () => {
     if (hasUnsavedChanges) {
@@ -118,6 +144,8 @@ export default function NewCount() {
       navigate(-1 as any); // Usando 'as any' temporariamente para contornar o erro de tipo
     }
   };
+
+
 
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [editingProductIndex, setEditingProductIndex] = useState<number | null>(null);
