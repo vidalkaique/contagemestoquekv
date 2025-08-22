@@ -239,7 +239,7 @@ export default function NewCount() {
           .update({
             matricula: userData.matricula,
             nome: userData.nome,
-            updated_at: new Date().toISOString()
+            atualizado_em: new Date().toISOString()
           })
           .eq('id', currentCountId);
           
