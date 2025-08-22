@@ -205,9 +205,9 @@ export default function NewCount() {
   };
 
 
-  // Função para salvar informações do usuário no localStorage
+  // Função para salvar informações do usuário no localStorage e Supabase (realtime)
   const saveUserInfo = async (info: UserInfo) => {
-    console.log('Salvando informações do usuário no localStorage:', info);
+    console.log('Salvando informações do usuário:', info);
     
     // Valida os dados de entrada
     if (!info?.matricula?.trim() || !info?.nome?.trim()) {
@@ -229,6 +229,35 @@ export default function NewCount() {
 
       // Atualiza o estado local
       setUserInfo(userData);
+      
+      // Salva imediatamente no Supabase se houver uma contagem atual
+      if (currentCountId && !currentCountId.startsWith('draft-')) {
+        console.log('Salvando informações do usuário no Supabase para contagem:', currentCountId);
+        
+        const { error: supabaseError } = await supabase
+          .from('contagens')
+          .update({
+            matricula: userData.matricula,
+            nome: userData.nome,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', currentCountId);
+          
+        if (supabaseError) {
+          console.error('Erro ao salvar no Supabase:', supabaseError);
+          throw new Error(`Erro ao salvar no banco de dados: ${supabaseError.message}`);
+        }
+        
+        console.log('Informações salvas com sucesso no Supabase');
+        
+        // Invalida as queries para atualizar em tempo real
+        await queryClient.invalidateQueries({ queryKey: ['contagens'] });
+        await queryClient.invalidateQueries({ queryKey: ['contagens-unfinished'] });
+      } else if (currentCountId?.startsWith('draft-')) {
+        console.log('Contagem ainda é um rascunho local. Informações serão salvas quando a contagem for criada no banco.');
+      } else {
+        console.log('Nenhuma contagem atual encontrada. Informações serão salvas quando uma contagem for iniciada.');
+      }
       
       // Mostra mensagem de sucesso
       toast({
