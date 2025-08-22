@@ -1,7 +1,7 @@
-# ContactCounter - Sistema de Controle de Estoque
+# contadordeestoque - Sistema de Controle de Estoque
 
 ## 📋 Visão Geral
-O ContactCounter é um sistema de gerenciamento de inventário desenvolvido para controle de estoque, permitindo a contagem de itens, gerenciamento de produtos e geração de relatórios. O sistema é construído com uma arquitetura moderna, utilizando tecnologias web atuais para garantir desempenho e usabilidade.
+O Contadordeestoque é um sistema de gerenciamento de inventário desenvolvido para controle de estoque, permitindo a contagem de itens, gerenciamento de produtos e geração de relatórios.
 
 ## 🚀 Tecnologias Utilizadas
 
@@ -102,7 +102,6 @@ contagemestoquekv/
 - Relatórios de divergências
 
 ### Autenticação
-- Login com e-mail/senha
 - Proteção de rotas
 - Gerenciamento de sessão
 
@@ -125,7 +124,7 @@ contagemestoquekv/
 - `itens_contagem` - Itens contados em cada contagem
 - `produtos` - Cadastro de produtos
 - `estoques` - Controle de estoques
-- `perfis` - Informações adicionais dos usuários
+
 
 ## 🧪 Testes
 
@@ -145,7 +144,6 @@ O deploy pode ser feito em qualquer serviço de hospedagem estática (Vercel, Ne
 Certifique-se de configurar as seguintes variáveis de ambiente no ambiente de produção:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
-- `NODE_ENV=production`
 
 ## 🤝 Contribuição
 
@@ -155,20 +153,14 @@ Certifique-se de configurar as seguintes variáveis de ambiente no ambiente de p
 4. Faça push para a branch (`git push origin feature/AmazingFeature`)
 5. Abra um Pull Request
 
-## 📄 Licença
-
-Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
 
 ## 👨‍💻 Desenvolvedor
 
 - **Kaique Vidal** - [GitHub](https://github.com/vidalkaique)
 
-## 📞 Suporte
-
-Para suporte, entre em contato por e-mail: seu-email@exemplo.com
 
 ---
 
 <div align="center">
-  Desenvolvido com ❤️ por Kaique Vidal
+  Desenvolvido por Kaique Azevedo
 </div>

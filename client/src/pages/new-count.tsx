@@ -1522,6 +1522,17 @@ export default function NewCount() {
   const { countDate: localCountDate } = useCountDate();
   
   const handleFinalizeCount = async (): Promise<void> => {
+    // Alerta de confirmação antes de finalizar
+    const confirmFinalize = window.confirm(
+      "Tem certeza de que deseja finalizar esta contagem?\n\n" +
+      "Após finalizar, você não poderá mais editar os itens da contagem.\n" +
+      `Total de produtos: ${products.length}`
+    );
+    
+    if (!confirmFinalize) {
+      return; // Usuario cancelou a operação
+    }
+    
     // Resolve o ID da contagem usando, na ordem: estado, parâmetro da rota ou contagem não finalizada
     const resolvedCountId = currentCountId || routeContagemId || (localUnfinishedCount?.id ? String(localUnfinishedCount.id) : undefined);
     
