@@ -2478,7 +2478,9 @@ export default function NewCount() {
                           <div className="text-right font-bold">{quantidadeSistema.toLocaleString()}</div>
 
                           <div className={`text-left font-bold ${differenceColor}`}>Diferença (Pacotes):</div>
-                          <div className={`text-right font-bold ${differenceColor}`}>{difference.toLocaleString()}</div>
+                          <div className={`text-right font-bold ${differenceColor}`}>
+                            {difference > 0 ? `+${difference.toLocaleString()}` : difference.toLocaleString()}
+                          </div>
                         </div>
                       </div>
                     );
