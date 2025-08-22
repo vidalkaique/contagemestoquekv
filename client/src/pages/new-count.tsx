@@ -24,6 +24,21 @@ import { usePreventRefresh } from "@/hooks/use-prevent-refresh";
 import { ImportStockScreen, type ImportedProduct } from "@/components/import-stock-screen";
 import { SaveCountModal } from "@/components/modals/save-count-modal";
 
+// Função auxiliar para converter data para formato YYYY-MM-DD sem problemas de fuso horário
+const toLocalDateString = (dateString: string): string => {
+  // Se a string já está no formato YYYY-MM-DD, retorna como está
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    return dateString;
+  }
+  
+  // Caso contrário, cria uma data local e formata
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export interface ProductItem {
   id: string;
   codigo?: string;
@@ -370,7 +385,7 @@ export default function NewCount() {
           matricula: userInfo.matricula || null,
           nome: userInfo.nome || null,
           // Garante que a data está atualizada
-          data: new Date(countDate).toISOString().split('T')[0]
+          data: toLocalDateString(countDate)
         })
         .eq('id', currentCountId);
 
@@ -456,7 +471,7 @@ export default function NewCount() {
   const ensureCountExists = async (): Promise<string> => {
     if (currentCountId) return currentCountId;
 
-    const formattedDate = new Date(countDate).toISOString().split('T')[0];
+    const formattedDate = toLocalDateString(countDate);
     const { data: sessionData } = await supabase.auth.getSession();
     const usuarioId = sessionData.session?.user.id || null;
 
@@ -655,7 +670,7 @@ export default function NewCount() {
       }
 
       // Garante que a data está no formato correto (YYYY-MM-DD)
-      const formattedDate = new Date(data).toISOString().split('T')[0];
+      const formattedDate = toLocalDateString(data);
       
       // Insere a nova contagem no banco de dados
       const { data: contagem, error } = await supabase
@@ -2446,8 +2461,9 @@ export default function NewCount() {
                     const totalPacotes = product.totalPacotes ?? 0;
                     const quantidadeSistema = product.quantidadeSistema ?? 0;
                     const difference = totalPacotes - quantidadeSistema;
-                    const differenceColor = difference > 0 ? 'text-green-700' : difference < 0 ? 'text-red-700' : 'text-gray-700';
-                    const differenceBg = difference > 0 ? 'bg-green-100' : difference < 0 ? 'bg-red-100' : 'bg-gray-100';
+                    // Sistema de cores: Vermelho=Faltando, Verde=OK, Azul=Sobrando
+                    const differenceColor = difference < 0 ? 'text-red-700' : difference === 0 ? 'text-green-700' : 'text-blue-700';
+                    const differenceBg = difference < 0 ? 'bg-red-100' : difference === 0 ? 'bg-green-100' : 'bg-blue-100';
 
                     return (
                       <div className={`p-3 rounded-lg mt-3 text-sm font-medium ${differenceBg}`}>
