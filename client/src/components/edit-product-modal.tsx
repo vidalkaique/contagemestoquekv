@@ -31,17 +31,35 @@ export default function EditProductModal({ isOpen, onClose, product, onSave }: E
     quantidadeSistema: 0
   });
 
+  // Estado para controlar override dos parâmetros do produto (Solução 1: ajuste por CD)
+  const [useCustomParams, setUseCustomParams] = useState(false);
+  const [customParams, setCustomParams] = useState({
+    unidadesPorPacote: 0,
+    pacotesPorLastro: 0,
+    lastrosPorPallet: 0,
+  });
+  // Valores padrão originais do produto (para fallback)
+  const [originalParams, setOriginalParams] = useState({
+    unidadesPorPacote: 0,
+    pacotesPorLastro: 0,
+    lastrosPorPallet: 0,
+  });
+
   // Função para calcular o total de unidades
   const calculateTotalUnidades = useCallback((): number => {
-    const { pallets = 0, lastros = 0, pacotes = 0, unidades = 0, 
-            unidadesPorPacote = 1, pacotesPorLastro = 0, lastrosPorPallet = 0 } = formData;
+    const { pallets = 0, lastros = 0, pacotes = 0, unidades = 0 } = formData;
     
-    const totalFromPallets = pallets * (lastrosPorPallet || 0) * (pacotesPorLastro || 0) * (unidadesPorPacote || 0);
-    const totalFromLastros = lastros * (pacotesPorLastro || 0) * (unidadesPorPacote || 0);
-    const totalFromPacotes = pacotes * (unidadesPorPacote || 0);
+    // Usa parâmetros customizados se ativados, senão usa valores do formData
+    const unidadesPorPacoteAtual = useCustomParams ? customParams.unidadesPorPacote : (formData.unidadesPorPacote || 1);
+    const pacotesPorLastroAtual = useCustomParams ? customParams.pacotesPorLastro : (formData.pacotesPorLastro || 0);
+    const lastrosPorPalletAtual = useCustomParams ? customParams.lastrosPorPallet : (formData.lastrosPorPallet || 0);
+    
+    const totalFromPallets = pallets * (lastrosPorPalletAtual || 0) * (pacotesPorLastroAtual || 0) * (unidadesPorPacoteAtual || 0);
+    const totalFromLastros = lastros * (pacotesPorLastroAtual || 0) * (unidadesPorPacoteAtual || 0);
+    const totalFromPacotes = pacotes * (unidadesPorPacoteAtual || 0);
     
     return totalFromPallets + totalFromLastros + totalFromPacotes + (unidades || 0);
-  }, [formData]);
+  }, [formData, useCustomParams, customParams]);
 
   // Atualiza o formulário quando o produto muda
   useEffect(() => {
@@ -58,6 +76,17 @@ export default function EditProductModal({ isOpen, onClose, product, onSave }: E
         quantidadePacsPorPallet: product.quantidadePacsPorPallet || 0,
         quantidadeSistema: product.quantidadeSistema || 0
       });
+      
+      // Inicializa os parâmetros originais e customizados
+      const originalValues = {
+        unidadesPorPacote: product.unidadesPorPacote || 1,
+        pacotesPorLastro: product.pacotesPorLastro || 1,
+        lastrosPorPallet: product.lastrosPorPallet || 1,
+      };
+      
+      setOriginalParams(originalValues);
+      setCustomParams(originalValues);
+      setUseCustomParams(false); // Sempre inicia com valores padrão
     }
   }, [product]);
 
@@ -74,10 +103,14 @@ export default function EditProductModal({ isOpen, onClose, product, onSave }: E
     // Cria uma cópia atualizada dos dados do formulário
     const updatedFormData = { ...formData, [field]: value };
 
+    // Usa parâmetros customizados se ativados, senão usa valores do formData
+    const pacotesPorLastroAtual = useCustomParams ? customParams.pacotesPorLastro : (updatedFormData.pacotesPorLastro || 0);
+    const lastrosPorPalletAtual = useCustomParams ? customParams.lastrosPorPallet : (updatedFormData.lastrosPorPallet || 0);
+    
     // Calcula o total de pacotes com base nos dados atualizados
-    const { pallets = 0, lastros = 0, pacotes = 0, pacotesPorLastro = 0, lastrosPorPallet = 0 } = updatedFormData;
-    const totalFromPallets = pallets * (lastrosPorPallet || 0) * (pacotesPorLastro || 0);
-    const totalFromLastros = lastros * (pacotesPorLastro || 0);
+    const { pallets = 0, lastros = 0, pacotes = 0 } = updatedFormData;
+    const totalFromPallets = pallets * (lastrosPorPalletAtual || 0) * (pacotesPorLastroAtual || 0);
+    const totalFromLastros = lastros * (pacotesPorLastroAtual || 0);
     const newTotalPacotes = totalFromPallets + totalFromLastros + (pacotes || 0);
 
     // Atualiza o estado com os novos valores
@@ -90,10 +123,14 @@ export default function EditProductModal({ isOpen, onClose, product, onSave }: E
     
     if (!product) return;
     
-    // Atualiza o produto com os novos valores
+    // Atualiza o produto com os novos valores, incluindo parâmetros customizados se ativados
     const updatedProduct: ProductItem = {
       ...product,
       ...formData,
+      // Usa parâmetros customizados se ativados, senão mantém os valores originais
+      unidadesPorPacote: useCustomParams ? customParams.unidadesPorPacote : formData.unidadesPorPacote,
+      pacotesPorLastro: useCustomParams ? customParams.pacotesPorLastro : formData.pacotesPorLastro,
+      lastrosPorPallet: useCustomParams ? customParams.lastrosPorPallet : formData.lastrosPorPallet,
       totalPacotes: calculateTotalPacotes()
     };
     
@@ -126,6 +163,97 @@ export default function EditProductModal({ isOpen, onClose, product, onSave }: E
           {product.codigo && (
             <p className="text-sm text-gray-500">Código: {product.codigo}</p>
           )}
+        </div>
+        
+        {/* Seção de Parâmetros do Produto com Override para CD */}
+        <div className="mb-6 space-y-4">
+          {!useCustomParams && (
+            <div className="flex items-center justify-between bg-blue-50 p-3 rounded-lg">
+              <div className="text-sm text-blue-800">
+                <strong>Valores da Fábrica</strong> - Ajuste para seu CD se necessário
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setUseCustomParams(true)}
+                className="text-blue-700 border-blue-300 hover:bg-blue-100"
+              >
+                Ajustar para este CD
+              </Button>
+            </div>
+          )}
+          
+          {useCustomParams && (
+            <div className="flex items-center justify-between bg-orange-50 p-3 rounded-lg">
+              <div className="text-sm text-orange-800">
+                <strong>Valores Ajustados para CD</strong> - Usando parâmetros personalizados
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setUseCustomParams(false)}
+                className="text-orange-700 border-orange-300 hover:bg-orange-100"
+              >
+                Voltar aos valores da fábrica
+              </Button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4 text-base">
+            <div>
+              <Label>Unidades por Pacote</Label>
+              {!useCustomParams ? (
+                <div className="font-medium text-lg">{originalParams.unidadesPorPacote}</div>
+              ) : (
+                <Input
+                  type="number"
+                  value={customParams.unidadesPorPacote}
+                  onChange={(e) => setCustomParams(prev => ({ ...prev, unidadesPorPacote: parseInt(e.target.value) || 1 }))}
+                  min={1}
+                  className="font-medium text-lg"
+                />
+              )}
+            </div>
+            <div>
+              <Label>Pacotes por Lastro</Label>
+              {!useCustomParams ? (
+                <div className="font-medium text-lg">{originalParams.pacotesPorLastro}</div>
+              ) : (
+                <Input
+                  type="number"
+                  value={customParams.pacotesPorLastro}
+                  onChange={(e) => setCustomParams(prev => ({ ...prev, pacotesPorLastro: parseInt(e.target.value) || 1 }))}
+                  min={1}
+                  className="font-medium text-lg"
+                />
+              )}
+            </div>
+            <div>
+              <Label>Lastros por Pallet</Label>
+              {!useCustomParams ? (
+                <div className="font-medium text-lg">{originalParams.lastrosPorPallet}</div>
+              ) : (
+                <Input
+                  type="number"
+                  value={customParams.lastrosPorPallet}
+                  onChange={(e) => setCustomParams(prev => ({ ...prev, lastrosPorPallet: parseInt(e.target.value) || 1 }))}
+                  min={1}
+                  className="font-medium text-lg"
+                />
+              )}
+            </div>
+            <div>
+              <Label>Total por Pallet</Label>
+              <div className="font-medium text-lg text-emerald-600">
+                {useCustomParams
+                  ? (customParams.unidadesPorPacote * customParams.pacotesPorLastro * customParams.lastrosPorPallet)
+                  : (originalParams.unidadesPorPacote * originalParams.pacotesPorLastro * originalParams.lastrosPorPallet)
+                }
+              </div>
+            </div>
+          </div>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">
