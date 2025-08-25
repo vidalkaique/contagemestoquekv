@@ -44,6 +44,14 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
     tag: "",
   });
 
+  // Estado para controlar override dos parâmetros do produto (Solução 1: ajuste por CD)
+  const [useCustomParams, setUseCustomParams] = useState(false);
+  const [customParams, setCustomParams] = useState({
+    unidadesPorPacote: 0,
+    pacotesPorLastro: 0,
+    lastrosPorPallet: 0,
+  });
+
   const debouncedSearch = useDebounce(searchTerm, 300);
   
   // Busca produtos do estoque atual se houver um estoque selecionado
@@ -73,6 +81,14 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
       pacotes: 0,
       unidades: 0,
       tag: produto.tag || "",
+    });
+
+    // Reset dos parâmetros customizados e inicializa com valores padrão
+    setUseCustomParams(false);
+    setCustomParams({
+      unidadesPorPacote: produto.unidadesPorPacote || 1,
+      pacotesPorLastro: produto.pacotesPorLastro || 1,
+      lastrosPorPallet: produto.lastrosPorPallet || 1,
     });
   };
 
@@ -119,9 +135,10 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
       lastros: formData.lastros,
       pacotes: formData.pacotes,
       unidades: formData.unidades,
-      unidadesPorPacote: selectedProduct.unidadesPorPacote,
-      pacotesPorLastro: selectedProduct.pacotesPorLastro,
-      lastrosPorPallet: selectedProduct.lastrosPorPallet,
+      // Usa parâmetros customizados se ativados, senão usa valores padrão do produto
+      unidadesPorPacote: useCustomParams ? customParams.unidadesPorPacote : selectedProduct.unidadesPorPacote,
+      pacotesPorLastro: useCustomParams ? customParams.pacotesPorLastro : selectedProduct.pacotesPorLastro,
+      lastrosPorPallet: useCustomParams ? customParams.lastrosPorPallet : selectedProduct.lastrosPorPallet,
     });
     
     // Fecha o modal e limpa o formulário
@@ -190,9 +207,10 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
   const calculateTotal = () => {
     if (!selectedProduct) return 0;
 
-    const unidadesPorPacote = selectedProduct?.unidadesPorPacote || 1;
-    const pacotesPorLastro = selectedProduct?.pacotesPorLastro || 1;
-    const lastrosPorPallet = selectedProduct?.lastrosPorPallet || 1;
+    // Usa parâmetros customizados se ativados, senão usa valores padrão do produto
+    const unidadesPorPacote = useCustomParams ? customParams.unidadesPorPacote : (selectedProduct?.unidadesPorPacote || 1);
+    const pacotesPorLastro = useCustomParams ? customParams.pacotesPorLastro : (selectedProduct?.pacotesPorLastro || 1);
+    const lastrosPorPallet = useCustomParams ? customParams.lastrosPorPallet : (selectedProduct?.lastrosPorPallet || 1);
 
     return (
       formData.unidades +
@@ -280,25 +298,93 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
                 <p className="text-sm text-gray-500">Código: {selectedProduct.codigo}</p>
               </div>
               
-              <div className="grid grid-cols-2 gap-4 text-base">
-                <div>
-                  <Label>Unidades por Pacote</Label>
-                  <div className="font-medium text-lg">{selectedProduct.unidadesPorPacote || 1}</div>
-                </div>
-                <div>
-                  <Label>Pacotes por Lastro</Label>
-                  <div className="font-medium text-lg">{selectedProduct.pacotesPorLastro || 1}</div>
-                </div>
-                <div>
-                  <Label>Lastros por Pallet</Label>
-                  <div className="font-medium text-lg">{selectedProduct.lastrosPorPallet || 1}</div>
-                </div>
-                <div>
-                  <Label>Total por Pallet</Label>
-                  <div className="font-medium text-lg text-emerald-600">
-                    {(selectedProduct?.unidadesPorPacote || 1) *
-                      (selectedProduct?.pacotesPorLastro || 1) *
-                      (selectedProduct?.lastrosPorPallet || 1)}
+              {/* Seção de Parâmetros do Produto com Override para CD */}
+              <div className="space-y-4">
+                {!useCustomParams && (
+                  <div className="flex items-center justify-between bg-blue-50 p-3 rounded-lg">
+                    <div className="text-sm text-blue-800">
+                      <strong>Valores da Fábrica</strong> - Ajuste para seu CD se necessário
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setUseCustomParams(true)}
+                      className="text-blue-700 border-blue-300 hover:bg-blue-100"
+                    >
+                      Ajustar para este CD
+                    </Button>
+                  </div>
+                )}
+                
+                {useCustomParams && (
+                  <div className="flex items-center justify-between bg-orange-50 p-3 rounded-lg">
+                    <div className="text-sm text-orange-800">
+                      <strong>Valores Ajustados para CD</strong> - Usando parâmetros personalizados
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setUseCustomParams(false)}
+                      className="text-orange-700 border-orange-300 hover:bg-orange-100"
+                    >
+                      Voltar aos valores da fábrica
+                    </Button>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4 text-base">
+                  <div>
+                    <Label>Unidades por Pacote</Label>
+                    {!useCustomParams ? (
+                      <div className="font-medium text-lg">{selectedProduct.unidadesPorPacote || 1}</div>
+                    ) : (
+                      <Input
+                        type="number"
+                        value={customParams.unidadesPorPacote}
+                        onChange={(e) => setCustomParams(prev => ({ ...prev, unidadesPorPacote: parseInt(e.target.value) || 1 }))}
+                        min={1}
+                        className="font-medium text-lg"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <Label>Pacotes por Lastro</Label>
+                    {!useCustomParams ? (
+                      <div className="font-medium text-lg">{selectedProduct.pacotesPorLastro || 1}</div>
+                    ) : (
+                      <Input
+                        type="number"
+                        value={customParams.pacotesPorLastro}
+                        onChange={(e) => setCustomParams(prev => ({ ...prev, pacotesPorLastro: parseInt(e.target.value) || 1 }))}
+                        min={1}
+                        className="font-medium text-lg"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <Label>Lastros por Pallet</Label>
+                    {!useCustomParams ? (
+                      <div className="font-medium text-lg">{selectedProduct.lastrosPorPallet || 1}</div>
+                    ) : (
+                      <Input
+                        type="number"
+                        value={customParams.lastrosPorPallet}
+                        onChange={(e) => setCustomParams(prev => ({ ...prev, lastrosPorPallet: parseInt(e.target.value) || 1 }))}
+                        min={1}
+                        className="font-medium text-lg"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <Label>Total por Pallet</Label>
+                    <div className="font-medium text-lg text-emerald-600">
+                      {useCustomParams
+                        ? (customParams.unidadesPorPacote * customParams.pacotesPorLastro * customParams.lastrosPorPallet)
+                        : ((selectedProduct?.unidadesPorPacote || 1) * (selectedProduct?.pacotesPorLastro || 1) * (selectedProduct?.lastrosPorPallet || 1))
+                      }
+                    </div>
                   </div>
                 </div>
               </div>
@@ -351,13 +437,16 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
                       onChange={(value) => setFormData({ ...formData, unidades: value })}
                       min={0}
                     />
-                    {selectedProduct?.unidadesPorPacote && selectedProduct.unidadesPorPacote > 0 ? (
-                      <RoundingSuggestion
-                        currentValue={formData.unidades}
-                        maxValue={selectedProduct.unidadesPorPacote}
-                        onApply={handleApplyRounding}
-                      />
-                    ) : null}
+                    {(() => {
+                      const unidadesPorPacoteAtual = useCustomParams ? customParams.unidadesPorPacote : selectedProduct?.unidadesPorPacote;
+                      return unidadesPorPacoteAtual && unidadesPorPacoteAtual > 0 ? (
+                        <RoundingSuggestion
+                          currentValue={formData.unidades}
+                          maxValue={unidadesPorPacoteAtual}
+                          onApply={handleApplyRounding}
+                        />
+                      ) : null;
+                    })()}
                   </div>
                 </div>
 
