@@ -92,12 +92,50 @@ export function useUnfinishedCount() {
         .from('estoques')
         .select('id, nome, created_at')
         .eq('id', data.estoque_id)
-        .single();
+        .single() as { data: any; error: any };
 
       console.log('🔍 DEBUG - Estoque query result:', { estoqueData, estoqueError });
 
       // Buscar itens_contagem separadamente
       const { data: itensData, error: itensError } = await supabase
+        .from('itens_contagem')
+        .select(`
+          id,
+          contagem_id,
+          produto_id,
+          nome_livre,
+          pallets,
+          lastros,
+          pacotes,
+          unidades,
+          chao_cheio,
+          chao_vazio,
+          refugo,
+          sucata,
+          avaria,
+          manutencao,
+          novo,
+          bloqueado,
+          un,
+          total,
+          total_pacotes,
+          created_at,
+          produtos (
+            id,
+            codigo,
+            nome,
+            tag,
+            unidades_por_pacote,
+            pacotes_por_lastro,
+            lastros_por_pallet,
+            quantidade_pacs_por_pallet,
+            quantidade,
+            ativo,
+            created_at,
+            updated_at
+          )
+        `)
+        .eq('contagem_id', data.id) as { data: any; error: any };
         .from('itens_contagem')
         .select(`
           id,
