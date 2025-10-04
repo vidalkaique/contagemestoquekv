@@ -68,10 +68,23 @@ export const itensContagem = pgTable("itens_contagem", {
   contagemId: uuid("contagem_id").notNull().references(() => contagens.id, { onDelete: "cascade" }),
   produtoId: uuid("produto_id").references(() => produtos.id),
   nomeLivre: text("nome_livre"),
+  // Campos Estoque 11
   pallets: integer("pallets").notNull().default(0),
   lastros: integer("lastros").notNull().default(0),
   pacotes: integer("pacotes").notNull().default(0),
   unidades: integer("unidades").notNull().default(0),
+  // Campos Estoque 10
+  chaoCheio: integer("chao_cheio").notNull().default(0),
+  chaoVazio: integer("chao_vazio").notNull().default(0),
+  refugo: integer("refugo").notNull().default(0),
+  sucata: integer("sucata").notNull().default(0),
+  avaria: integer("avaria").notNull().default(0),
+  manutencao: integer("manutencao").notNull().default(0),
+  novo: integer("novo").notNull().default(0),
+  bloqueado: integer("bloqueado").notNull().default(0),
+  // Campo Estoque 23
+  un: integer("un").notNull().default(0),
+  // Totais
   total: integer("total").notNull().default(0),
   totalPacotes: integer("total_pacotes").notNull().default(0),
 });
@@ -163,11 +176,23 @@ export const insertItemContagemSchema = createInsertSchema(itensContagem).omit({
   contagemId: z.string().uuid(),
   produtoId: z.string().uuid().optional(),
   nomeLivre: z.string().optional(),
-  pallets: z.number().min(0, "Pallets não pode ser negativo"),
-  lastros: z.number().min(0, "Lastros não pode ser negativo"),
-  pacotes: z.number().min(0, "Pacotes não pode ser negativo"),
-  unidades: z.number().min(0, "Unidades não pode ser negativo"),
-  codigo: z.string().optional(), // Adicionado para suportar o código do produto
+  // Campos Estoque 11
+  pallets: z.number().min(0, "Pallets não pode ser negativo").optional(),
+  lastros: z.number().min(0, "Lastros não pode ser negativo").optional(),
+  pacotes: z.number().min(0, "Pacotes não pode ser negativo").optional(),
+  unidades: z.number().min(0, "Unidades não pode ser negativo").optional(),
+  // Campos Estoque 10
+  chaoCheio: z.number().min(0, "Chão Cheio não pode ser negativo").optional(),
+  chaoVazio: z.number().min(0, "Chão Vazio não pode ser negativo").optional(),
+  refugo: z.number().min(0, "Refugo não pode ser negativo").optional(),
+  sucata: z.number().min(0, "Sucata não pode ser negativo").optional(),
+  avaria: z.number().min(0, "Avaria não pode ser negativo").optional(),
+  manutencao: z.number().min(0, "Manutenção não pode ser negativo").optional(),
+  novo: z.number().min(0, "Novo não pode ser negativo").optional(),
+  bloqueado: z.number().min(0, "Bloqueado não pode ser negativo").optional(),
+  // Campo Estoque 23
+  un: z.number().min(0, "UN não pode ser negativo").optional(),
+  codigo: z.string().optional(),
 });
 
 // Types
