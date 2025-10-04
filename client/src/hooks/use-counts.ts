@@ -315,6 +315,7 @@ export function useCounts() {
                         pacotes_por_lastro,
                         lastros_por_pallet,
                         quantidade_pacs_por_pallet,
+                        quantidade,
                         ativo,
                         created_at,
                         updated_at
@@ -438,6 +439,7 @@ export function useCounts() {
                 pacotesPorLastro: produtos.pacotes_por_lastro,
                 lastrosPorPallet: produtos.lastros_por_pallet,
                 quantidadePacsPorPallet: produtos.quantidade_pacs_por_pallet || undefined,
+                quantidadeSistema: produtos.quantidade || undefined,
                 ativo: produtos.ativo !== undefined ? produtos.ativo : true,
                 createdAt: new Date(produtos.created_at),
                 updatedAt: new Date(produtos.updated_at || produtos.created_at)
