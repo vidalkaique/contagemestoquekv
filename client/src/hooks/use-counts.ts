@@ -31,6 +31,15 @@ type DatabaseContagem = {
     lastros: number;
     pacotes: number;
     unidades: number;
+    chao_cheio: number;
+    chao_vazio: number;
+    refugo: number;
+    sucata: number;
+    avaria: number;
+    manutencao: number;
+    novo: number;
+    bloqueado: number;
+    un: number;
     total: number;
     total_pacotes: number;
     created_at: string;
@@ -79,6 +88,15 @@ export function useUnfinishedCount() {
             lastros,
             pacotes,
             unidades,
+            chao_cheio,
+            chao_vazio,
+            refugo,
+            sucata,
+            avaria,
+            manutencao,
+            novo,
+            bloqueado,
+            un,
             total,
             total_pacotes,
             created_at
@@ -139,10 +157,23 @@ export function useUnfinishedCount() {
             contagemId: item.contagem_id,
             produtoId: item.produto_id,
             nomeLivre: item.nome_livre,
+            // Estoque 11
             pallets: item.pallets,
             lastros: item.lastros,
             pacotes: item.pacotes,
             unidades: item.unidades,
+            // Estoque 10
+            chaoCheio: item.chao_cheio,
+            chaoVazio: item.chao_vazio,
+            refugo: item.refugo,
+            sucata: item.sucata,
+            avaria: item.avaria,
+            manutencao: item.manutencao,
+            novo: item.novo,
+            bloqueado: item.bloqueado,
+            // Estoque 23
+            un: item.un,
+            // Totais
             total: item.total,
             totalPacotes: item.total_pacotes,
             unidadesPorPacote: prodAny?.unidades_por_pacote,
