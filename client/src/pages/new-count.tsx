@@ -69,6 +69,18 @@ export default function NewCount() {
   const estoqueNome = unfinishedCount?.estoque?.nome || '';
   const tipoEstoque: '10' | '11' | '23' = estoqueNome.includes('10') ? '10' : 
                                            estoqueNome.includes('23') ? '23' : '11';
+  
+  // Debug: Log para verificar detecção do estoque
+  useEffect(() => {
+    if (unfinishedCount) {
+      console.log('🔍 DEBUG - Dados da contagem:', {
+        estoqueId: unfinishedCount.estoqueId,
+        estoqueNome: estoqueNome,
+        estoqueCompleto: unfinishedCount.estoque,
+        tipoEstoqueDetectado: tipoEstoque
+      });
+    }
+  }, [unfinishedCount, estoqueNome, tipoEstoque]);
 
   // Estados do componente
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
