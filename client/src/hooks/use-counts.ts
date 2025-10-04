@@ -122,7 +122,7 @@ export function useUnfinishedCount() {
         .single();
 
       if (error && error.code !== 'PGRST116') throw error;
-      if (!data || data.length === 0) return null;
+      if (!data) return null;
       const first = data;
 
       // Verifica se estoques é um array e pega o primeiro item
