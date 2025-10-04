@@ -8,21 +8,43 @@ import { RoundingSuggestion } from "@/components/rounding-suggestion";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { ProductItem } from "@/pages/new-count";
+import { DynamicStockForm } from "@/components/dynamic-stock-form";
+import { useStockConfig, useStockFieldNames } from "@/hooks/use-stock-config";
+import type { StockFormData, StockType } from "@/types/stock-config";
 
 interface EditProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   product: ProductItem | null;
   onSave: (product: ProductItem) => void;
+  tipoEstoque: StockType;
 }
 
-export default function EditProductModal({ isOpen, onClose, product, onSave }: EditProductModalProps) {
+export default function EditProductModal({ isOpen, onClose, product, onSave, tipoEstoque }: EditProductModalProps) {
   const { toast } = useToast();
-  const [formData, setFormData] = useState<Omit<ProductItem, 'id' | 'nome' | 'codigo'>>({
+
+  // Obter configuração do estoque atual
+  const stockConfig = useStockConfig(tipoEstoque);
+  const stockFieldNames = useStockFieldNames(tipoEstoque);
+
+  const [formData, setFormData] = useState<StockFormData>({
+    // Estoque 11
     pallets: 0,
     lastros: 0,
     pacotes: 0,
     unidades: 0,
+    // Estoque 10
+    chaoCheio: 0,
+    chaoVazio: 0,
+    refugo: 0,
+    sucata: 0,
+    avaria: 0,
+    manutencao: 0,
+    novo: 0,
+    bloqueado: 0,
+    // Estoque 23
+    un: 0,
+    // Comuns
     totalPacotes: 0,
     unidadesPorPacote: 0,
     pacotesPorLastro: 0,
@@ -181,216 +203,139 @@ export default function EditProductModal({ isOpen, onClose, product, onSave }: E
               >
                 Ajustar para este CD
               </Button>
-            </div>
-          )}
-          
-          {useCustomParams && (
-            <div className="flex items-center justify-between bg-orange-50 p-3 rounded-lg">
-              <div className="text-sm text-orange-800">
-                <strong>Valores Ajustados para CD</strong> - Usando parâmetros personalizados
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setUseCustomParams(false)}
-                className="text-orange-700 border-orange-300 hover:bg-orange-100"
-              >
-                Voltar aos valores da fábrica
-              </Button>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4 text-base">
-            <div>
-              <Label>Unidades por Pacote</Label>
-              {!useCustomParams ? (
-                <div className="font-medium text-lg">{originalParams.unidadesPorPacote}</div>
-              ) : (
-                <Input
-                  type="number"
-                  value={customParams.unidadesPorPacote}
-                  onChange={(e) => setCustomParams(prev => ({ ...prev, unidadesPorPacote: parseInt(e.target.value) || 1 }))}
-                  min={1}
-                  className="font-medium text-lg"
-                />
-              )}
-            </div>
-            <div>
-              <Label>Pacotes por Lastro</Label>
-              {!useCustomParams ? (
-                <div className="font-medium text-lg">{originalParams.pacotesPorLastro}</div>
-              ) : (
-                <Input
-                  type="number"
-                  value={customParams.pacotesPorLastro}
-                  onChange={(e) => setCustomParams(prev => ({ ...prev, pacotesPorLastro: parseInt(e.target.value) || 1 }))}
-                  min={1}
-                  className="font-medium text-lg"
-                />
-              )}
-            </div>
-            <div>
-              <Label>Lastros por Pallet</Label>
-              {!useCustomParams ? (
-                <div className="font-medium text-lg">{originalParams.lastrosPorPallet}</div>
-              ) : (
-                <Input
-                  type="number"
-                  value={customParams.lastrosPorPallet}
-                  onChange={(e) => setCustomParams(prev => ({ ...prev, lastrosPorPallet: parseInt(e.target.value) || 1 }))}
-                  min={1}
-                  className="font-medium text-lg"
-                />
-              )}
-            </div>
-            <div>
-              <Label>Total por Pallet</Label>
-              <div className="font-medium text-lg text-emerald-600">
-                {useCustomParams
-                  ? (customParams.unidadesPorPacote * customParams.pacotesPorLastro * customParams.lastrosPorPallet)
-                  : (originalParams.unidadesPorPacote * originalParams.pacotesPorLastro * originalParams.lastrosPorPallet)
-                }
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Pallets */}
-            <div className="space-y-2">
-              <Label htmlFor="pallets">Pallets</Label>
-              <div className="w-full">
-                <NumberInputWithButtons
-                  id="pallets"
-                  value={formData.pallets}
-                  onChange={(value) => handleFieldChange('pallets', value)}
-                  min={0}
-                  className="w-full"
-                />
-              </div>
-            </div>
-            
-            {/* Lastros */}
-            <div className="space-y-2">
-              <Label htmlFor="lastros">Lastros</Label>
-              <div className="w-full">
-                <NumberInputWithButtons
-                  id="lastros"
-                  value={formData.lastros}
-                  onChange={(value) => handleFieldChange('lastros', value)}
-                  min={0}
-                  className="w-full"
-                />
-              </div>
-            </div>
-            
-            {/* Pacotes */}
-            <div className="space-y-2">
-              <Label htmlFor="pacotes">Pacotes</Label>
-              <div>
-                <NumberInputWithButtons
-                  id="pacotes"
-                  value={formData.pacotes}
-                  onChange={(value) => handleFieldChange('pacotes', value)}
-                  min={0}
-                  className="w-full"
-                />
-                {formData.unidadesPorPacote && formData.unidades > 0 && (
-                  <div className="mt-2">
-                    <RoundingSuggestion
-                      currentValue={formData.unidades}
-                      maxValue={formData.unidadesPorPacote}
-                      onApply={(newPacotes, newUnidades) => {
-                        handleFieldChange('pacotes', formData.pacotes + newPacotes);
-                        handleFieldChange('unidades', newUnidades);
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Unidades */}
-            <div className="space-y-2">
-              <Label htmlFor="unidades">Unidades</Label>
-              <div className="w-full">
-                <NumberInputWithButtons
-                  id="unidades"
-                  value={formData.unidades}
-                  onChange={(value) => handleFieldChange('unidades', value)}
-                  min={0}
-                  className="w-full"
-                />
-              </div>
-            </div>
-            
-            {/* Total de Pacotes (somente leitura) */}
-            <div className="space-y-2">
-              <Label>Total de Pacotes</Label>
-              <Input
-                value={formData.totalPacotes}
-                readOnly
-                className="bg-gray-100"
-              />
-            </div>
-            
-            {/* Quantidade no Sistema (se disponível) */}
-            {formData.quantidadeSistema !== undefined && (
-              <>
-                <div className="space-y-2">
-                  <Label>Quantidade no Sistema</Label>
-                  <Input
-                    value={formData.quantidadeSistema.toLocaleString()}
-                    readOnly
-                    className="bg-gray-100 font-medium"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Total Contado (Unidades)</Label>
-                  <Input
-                    value={calculateTotalUnidades().toLocaleString()}
-                    readOnly
-                    className="bg-gray-100 font-medium"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Diferença (Pacotes)</Label>
-                  <div className={cn(
-                    "p-2 rounded font-bold text-center flex items-center justify-center gap-2",
-                    formData.totalPacotes > formData.quantidadeSistema
-                      ? "text-green-700 bg-green-50"
-                      : formData.totalPacotes < formData.quantidadeSistema
-                        ? "text-red-700 bg-red-50"
-                        : "text-gray-700 bg-gray-100"
-                  )}>
-                    {formData.totalPacotes > formData.quantidadeSistema && (
-                      <AlertCircle className="h-4 w-4" />
-                    )}
-                    {formData.totalPacotes < formData.quantidadeSistema && (
-                      <AlertCircle className="h-4 w-4" />
-                    )}
-                    {formData.totalPacotes === formData.quantidadeSistema && (
-                      <CheckCircle className="h-4 w-4" />
-                    )}
-                    {(formData.totalPacotes - formData.quantidadeSistema) > 0
-                      ? `+${(formData.totalPacotes - formData.quantidadeSistema).toLocaleString()}`
-                      : (formData.totalPacotes - formData.quantidadeSistema).toLocaleString()}
-                  </div>
-                </div>
-              </>
             )}
           </div>
-          
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-            >
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Campos dinâmicos baseados no tipo de estoque */}
+          {stockConfig && (
+            <DynamicStockForm
+              fields={stockConfig.fields}
+              values={formData}
+              onChange={handleFieldChange}
+            />
+          )}
+
+          {/* Campos de parâmetros (apenas para estoque 11) */}
+          {tipoEstoque === '11' && (
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="text-lg font-semibold">Parâmetros do Produto</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="unidadesPorPacote">Unidades por Pacote</Label>
+                  <div className="w-full">
+                    <NumberInputWithButtons
+                      id="unidadesPorPacote"
+                      value={formData.unidadesPorPacote || 0}
+                      onChange={(value) => handleFieldChange('unidadesPorPacote', value)}
+                      min={1}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="pacotesPorLastro">Pacotes por Lastro</Label>
+                  <div className="w-full">
+                    <NumberInputWithButtons
+                      id="pacotesPorLastro"
+                      value={formData.pacotesPorLastro || 0}
+                      onChange={(value) => handleFieldChange('pacotesPorLastro', value)}
+                      min={0}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="lastrosPorPallet">Lastros por Pallet</Label>
+                  <div className="w-full">
+                    <NumberInputWithButtons
+                      id="lastrosPorPallet"
+                      value={formData.lastrosPorPallet || 0}
+                      onChange={(value) => handleFieldChange('lastrosPorPallet', value)}
+                      min={0}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {formData.unidadesPorPacote && formData.unidades > 0 && (
+                <div className="mt-2">
+                  <RoundingSuggestion
+                    currentValue={formData.unidades}
+                    maxValue={formData.unidadesPorPacote}
+                    onApply={(newPacotes, newUnidades) => {
+                      handleFieldChange('pacotes', formData.pacotes + newPacotes);
+                      handleFieldChange('unidades', newUnidades);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Resumo dos totais */}
+          <div className="border-t pt-4">
+            <h3 className="text-lg font-semibold mb-4">Resumo</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Total de Pacotes (somente leitura) */}
+              <div className="space-y-2">
+                <Label>Total de Pacotes</Label>
+                <Input
+                  value={calculateTotalPacotes()}
+                  readOnly
+                  className="bg-gray-100"
+                />
+              </div>
+
+              {/* Quantidade no Sistema (se disponível) */}
+              {formData.quantidadeSistema !== undefined && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Quantidade no Sistema</Label>
+                    <Input
+                      value={formData.quantidadeSistema.toLocaleString()}
+                      readOnly
+                      className="bg-gray-100 font-medium"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Total Contado (Unidades)</Label>
+                    <Input
+                      value={calculateTotalUnidades().toLocaleString()}
+                      readOnly
+                      className="bg-gray-100 font-medium"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Diferença (Unidades)</Label>
+                    <div className={cn(
+                      "p-2 rounded font-bold text-center flex items-center justify-center gap-2",
+                      calculateTotalUnidades() > formData.quantidadeSistema
+                        ? "text-green-700 bg-green-50"
+                        : calculateTotalUnidades() < formData.quantidadeSistema
+                          ? "text-red-700 bg-red-50"
+                          : "text-gray-700 bg-gray-100"
+                    )}>
+                      {calculateTotalUnidades() > formData.quantidadeSistema && (
+                        <AlertCircle className="h-4 w-4" />
+                      )}
+                      {calculateTotalUnidades() < formData.quantidadeSistema && (
+                        <AlertCircle className="h-4 w-4" />
+                      )}
+                      {calculateTotalUnidades() === formData.quantidadeSistema && (
+                        <CheckCircle className="h-4 w-4" />
+                      )}
+                      {(calculateTotalUnidades() - formData.quantidadeSistema) > 0
+                        ? `+${(calculateTotalUnidades() - formData.quantidadeSistema).toLocaleString()}`
               Cancelar
             </Button>
             <Button type="submit">
