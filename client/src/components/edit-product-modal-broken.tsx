@@ -28,12 +28,10 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
   const stockFieldNames = useStockFieldNames(tipoEstoque);
 
   const [formData, setFormData] = useState<StockFormData>({
-    // Estoque 11
     pallets: 0,
     lastros: 0,
     pacotes: 0,
     unidades: 0,
-    // Estoque 10
     chaoCheio: 0,
     chaoVazio: 0,
     refugo: 0,
@@ -42,9 +40,7 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
     manutencao: 0,
     novo: 0,
     bloqueado: 0,
-    // Estoque 23
     un: 0,
-    // Comuns
     totalPacotes: 0,
     unidadesPorPacote: 0,
     pacotesPorLastro: 0,
@@ -332,26 +328,41 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
                         ? `+${(calculateTotalUnidades() - formData.quantidadeSistema).toLocaleString()}`
                         : (calculateTotalUnidades() - formData.quantidadeSistema).toLocaleString()}
                     </div>
+                        ? "text-red-700 bg-red-50"
+                        : "text-gray-700 bg-gray-100"
+                  )}>
+                    {calculateTotalUnidades() > formData.quantidadeSistema && (
+                      <AlertCircle className="h-4 w-4" />
+                    )}
+                    {calculateTotalUnidades() < formData.quantidadeSistema && (
+                      <AlertCircle className="h-4 w-4" />
+                    )}
+                    {calculateTotalUnidades() === formData.quantidadeSistema && (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                    {(calculateTotalUnidades() - formData.quantidadeSistema) > 0
+                      ? `+${(calculateTotalUnidades() - formData.quantidadeSistema).toLocaleString()}`
+                      : (calculateTotalUnidades() - formData.quantidadeSistema).toLocaleString()}
                   </div>
-                </>
-              )}
-            </div>
+                </div>
+              </>
+            )}
           </div>
+        </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit">
-              Salvar Alterações
-            </Button>
-          </div>
-        </form>
-      </div>
+        <div className="flex justify-end space-x-2 pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+          >
+            Cancelar
+          </Button>
+          <Button type="submit">
+            Salvar Alterações
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }
