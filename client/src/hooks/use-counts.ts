@@ -69,71 +69,84 @@ export function useUnfinishedCount() {
           id,
           data,
           finalizada,
-          excel_url,
           created_at,
           estoque_id,
           nome,
-          matricula,
-          estoques:estoque_id (
-            id,
-            nome,
-            created_at
-          ),
-          itens_contagem (
-            id,
-            contagem_id,
-            produto_id,
-            nome_livre,
-            pallets,
-            lastros,
-            pacotes,
-            unidades,
-            chao_cheio,
-            chao_vazio,
-            refugo,
-            sucata,
-            avaria,
-            manutencao,
-            novo,
-            bloqueado,
-            un,
-            total,
-            total_pacotes,
-            created_at,
-            produtos (
-              id,
-              codigo,
-              nome,
-              tag,
-              unidades_por_pacote,
-              pacotes_por_lastro,
-              lastros_por_pallet,
-              quantidade_pacs_por_pallet,
-              quantidade,
-              ativo,
-              created_at,
-              updated_at
-            )
-          )
+          matricula
         `)
         .eq('finalizada', false)
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
 
+      console.log('🔍 DEBUG - Basic query result:', { data, error });
+      console.log('🔍 DEBUG - Estoque ID:', data?.estoque_id);
+
+      if (!data || !data.estoque_id) {
+        console.log('❌ No estoque_id found in contagem');
+        return null;
+      }
+
+      // Buscar informações do estoque separadamente
+      const { data: estoqueData, error: estoqueError } = await supabase
+        .from('estoques')
+        .select('id, nome, created_at')
+        .eq('id', data.estoque_id)
+        .single();
+
+      console.log('🔍 DEBUG - Estoque query result:', { estoqueData, estoqueError });
+
+      // Buscar itens_contagem separadamente
+      const { data: itensData, error: itensError } = await supabase
+        .from('itens_contagem')
+        .select(`
+          id,
+          contagem_id,
+          produto_id,
+          nome_livre,
+          pallets,
+          lastros,
+          pacotes,
+          unidades,
+          chao_cheio,
+          chao_vazio,
+          refugo,
+          sucata,
+          avaria,
+          manutencao,
+          novo,
+          bloqueado,
+          un,
+          total,
+          total_pacotes,
+          created_at,
+          produtos (
+            id,
+            codigo,
+            nome,
+            tag,
+            unidades_por_pacote,
+            pacotes_por_lastro,
+            lastros_por_pallet,
+            quantidade_pacs_por_pallet,
+            quantidade,
+            ativo,
+            created_at,
+            updated_at
+          )
+        `)
+        .eq('contagem_id', data.id);
+
+      console.log('🔍 DEBUG - Itens query result:', { itensData, itensError });
+
       if (error && error.code !== 'PGRST116') throw error;
       if (!data) return null;
       const first = data;
 
-      // Verifica se estoques é um array e pega o primeiro item
-      const estoque = Array.isArray(first.estoques) && first.estoques.length > 0 
-        ? first.estoques[0] 
-        : null;
-
       // Convert to ContagemWithItens type
       // Garante que temos um produto para a contagem
-      const primeiroProduto = ((first as any).itens_contagem || []).length > 0 
-        ? ((first as any).itens_contagem[0].produtos || [])[0] || null 
+      const primeiroProduto = itensData && itensData.length > 0 && itensData[0].produtos && itensData[0].produtos.length > 0
+        ? itensData[0].produtos[0]
         : null;
 
       const contagem: ContagemWithItens = {
@@ -159,7 +172,7 @@ export function useUnfinishedCount() {
           createdAt: new Date(primeiroProduto.created_at),
           updatedAt: new Date(primeiroProduto.updated_at || primeiroProduto.created_at)
         } : null,
-        itens: ((first as any).itens_contagem || []).map((item: any) => {
+        itens: itensData ? itensData.map((item: any) => {
           // Garante que produtos seja um único objeto ou null
           const produtoEntry = Array.isArray(item.produtos) && item.produtos.length > 0 
             ? item.produtos[0] 
@@ -196,6 +209,7 @@ export function useUnfinishedCount() {
             pacotesPorLastro: prodAny?.pacotes_por_lastro,
             lastrosPorPallet: prodAny?.lastros_por_pallet,
             quantidadePacsPorPallet: prodAny?.quantidade_pacs_por_pallet ?? undefined,
+            quantidadeSistema: prodAny?.quantidade || undefined,
             produto: produto ? {
               id: produto.id,
               codigo: produto.codigo,
@@ -205,20 +219,24 @@ export function useUnfinishedCount() {
               pacotesPorLastro: prodAny.pacotes_por_lastro,
               lastrosPorPallet: prodAny.lastros_por_pallet,
               quantidadePacsPorPallet: prodAny.quantidade_pacs_por_pallet,
+              quantidadeSistema: prodAny.quantidade || undefined,
               ativo: prodAny.ativo !== undefined ? prodAny.ativo : true,
               createdAt: prodAny.created_at ? new Date(prodAny.created_at) : new Date(),
               updatedAt: prodAny.updated_at ? new Date(prodAny.updated_at) : new Date()
             } : null
           };
-        }),
-        estoque: estoque ? {
-          id: estoque.id,
-          nome: estoque.nome,
+        }) : [],
+        estoque: estoqueData ? {
+          id: estoqueData.id,
+          nome: estoqueData.nome,
           ativo: true,
-          createdAt: new Date(estoque.created_at),
+          createdAt: new Date(estoqueData.created_at),
           updatedAt: new Date()
         } : null
       };
+
+      console.log('🔍 DEBUG - Final contagem object:', contagem);
+      console.log('🔍 DEBUG - Estoque nome:', estoqueData?.nome);
 
       return contagem;
     },
