@@ -64,6 +64,11 @@ export default function NewCount() {
   
   // Carrega a contagem não finalizada, se existir
   const { data: unfinishedCount } = useUnfinishedCount();
+  
+  // Detecta o nome do estoque (10, 11 ou 23)
+  const estoqueNome = unfinishedCount?.estoque?.nome || '';
+  const tipoEstoque: '10' | '11' | '23' = estoqueNome.includes('10') ? '10' : 
+                                           estoqueNome.includes('23') ? '23' : '11';
 
   // Estados do componente
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
@@ -2548,6 +2553,7 @@ export default function NewCount() {
         }}
         product={editingProduct}
         onSave={handleSaveEdit}
+        tipoEstoque={tipoEstoque}
       />
 
       {/* Modal de confirmação de saída */}

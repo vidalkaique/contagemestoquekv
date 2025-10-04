@@ -8,21 +8,38 @@ import { RoundingSuggestion } from "@/components/rounding-suggestion";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { ProductItem } from "@/pages/new-count";
+import { ItemFieldsEstoque11 } from "@/components/item-fields-estoque-11";
+import { ItemFieldsEstoque10 } from "@/components/item-fields-estoque-10";
+import { ItemFieldsEstoque23 } from "@/components/item-fields-estoque-23";
 
 interface EditProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   product: ProductItem | null;
   onSave: (product: ProductItem) => void;
+  tipoEstoque?: '10' | '11' | '23';
 }
 
-export default function EditProductModal({ isOpen, onClose, product, onSave }: EditProductModalProps) {
+export default function EditProductModal({ isOpen, onClose, product, onSave, tipoEstoque = '11' }: EditProductModalProps) {
   const { toast } = useToast();
-  const [formData, setFormData] = useState<Omit<ProductItem, 'id' | 'nome' | 'codigo'>>({
+  const [formData, setFormData] = useState<any>({
+    // Estoque 11
     pallets: 0,
     lastros: 0,
     pacotes: 0,
     unidades: 0,
+    // Estoque 10
+    chaoCheio: 0,
+    chaoVazio: 0,
+    refugo: 0,
+    sucata: 0,
+    avaria: 0,
+    manutencao: 0,
+    novo: 0,
+    bloqueado: 0,
+    // Estoque 23
+    un: 0,
+    // Comuns
     totalPacotes: 0,
     unidadesPorPacote: 0,
     pacotesPorLastro: 0,
@@ -257,7 +274,46 @@ export default function EditProductModal({ isOpen, onClose, product, onSave }: E
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Campos dinâmicos baseados no tipo de estoque */}
+          {tipoEstoque === '11' && (
+            <ItemFieldsEstoque11
+              values={{
+                pallets: formData.pallets || 0,
+                lastros: formData.lastros || 0,
+                pacotes: formData.pacotes || 0,
+                unidades: formData.unidades || 0,
+              }}
+              onChange={(field, value) => handleFieldChange(field as any, value)}
+            />
+          )}
+          
+          {tipoEstoque === '10' && (
+            <ItemFieldsEstoque10
+              values={{
+                chaoCheio: formData.chaoCheio || 0,
+                chaoVazio: formData.chaoVazio || 0,
+                refugo: formData.refugo || 0,
+                sucata: formData.sucata || 0,
+                avaria: formData.avaria || 0,
+                manutencao: formData.manutencao || 0,
+                novo: formData.novo || 0,
+                bloqueado: formData.bloqueado || 0,
+              }}
+              onChange={(field, value) => handleFieldChange(field as any, value)}
+            />
+          )}
+          
+          {tipoEstoque === '23' && (
+            <ItemFieldsEstoque23
+              values={{
+                un: formData.un || 0,
+              }}
+              onChange={(field, value) => handleFieldChange(field as any, value)}
+            />
+          )}
+          
+          {/* Removi os campos hardcoded - agora são renderizados dinamicamente acima */}
+          <div className="hidden grid-cols-1 md:grid-cols-2 gap-4">
             {/* Pallets */}
             <div className="space-y-2">
               <Label htmlFor="pallets">Pallets</Label>
