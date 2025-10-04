@@ -140,6 +140,8 @@ export function useUnfinishedCount() {
       console.log('🔍 DEBUG - Itens query result:', { itensData, itensError });
 
       if (error && error.code !== 'PGRST116') throw error;
+      if (itensError) throw itensError;
+      if (estoqueError) throw estoqueError;
       if (!data) return null;
       const first = data;
 
@@ -156,7 +158,7 @@ export function useUnfinishedCount() {
         nome: first.nome || null,
         matricula: first.matricula || null,
         estoqueId: first.estoque_id,
-        excelUrl: first.excel_url,
+        excelUrl: null, // Will be added later if needed
         qntdProdutos: (first as any).qntd_produtos || 0,
         createdAt: new Date(first.created_at),
         produto: primeiroProduto ? {
