@@ -72,12 +72,20 @@ export default function NewCount() {
   
   // Debug: Log para verificar detecção do estoque
   useEffect(() => {
+    console.log('🔍 DEBUG - unfinishedCount:', unfinishedCount);
+    console.log('🔍 DEBUG - estoqueNome:', estoqueNome);
+    console.log('🔍 DEBUG - tipoEstoque:', tipoEstoque);
+    console.log('🔍 DEBUG - estoqueNome.includes("10"):', estoqueNome.includes('10'));
+    console.log('🔍 DEBUG - estoqueNome.includes("23"):', estoqueNome.includes('23'));
+    
     if (unfinishedCount) {
       console.log('🔍 DEBUG - Dados da contagem:', {
         estoqueId: unfinishedCount.estoqueId,
         estoqueNome: estoqueNome,
         estoqueCompleto: unfinishedCount.estoque,
-        tipoEstoqueDetectado: tipoEstoque
+        tipoEstoqueDetectado: tipoEstoque,
+        estoqueNomeType: typeof estoqueNome,
+        estoqueNomeLength: estoqueNome.length
       });
     }
   }, [unfinishedCount, estoqueNome, tipoEstoque]);

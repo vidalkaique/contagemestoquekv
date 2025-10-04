@@ -74,7 +74,7 @@ export function useUnfinishedCount() {
           estoque_id,
           nome,
           matricula,
-          estoques (
+          estoques:estoque_id (
             id,
             nome,
             created_at
@@ -99,15 +99,31 @@ export function useUnfinishedCount() {
             un,
             total,
             total_pacotes,
-            created_at
+            created_at,
+            produtos (
+              id,
+              codigo,
+              nome,
+              tag,
+              unidades_por_pacote,
+              pacotes_por_lastro,
+              lastros_por_pallet,
+              quantidade_pacs_por_pallet,
+              quantidade,
+              ativo,
+              created_at,
+              updated_at
+            )
           )
         `)
         .eq('finalizada', false)
-        .limit(1);
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
 
       if (error && error.code !== 'PGRST116') throw error;
       if (!data || data.length === 0) return null;
-      const first = data[0];
+      const first = data;
 
       // Verifica se estoques é um array e pega o primeiro item
       const estoque = Array.isArray(first.estoques) && first.estoques.length > 0 
@@ -274,7 +290,7 @@ export function useCounts() {
                 estoque_id,
                 nome,
                 matricula,
-                estoques(
+                estoques:estoque_id(
                   id,
                   nome,
                   created_at
