@@ -87,7 +87,7 @@ export default function NewCount() {
   // Estoque 23: se o nome contém "23"
   // Estoque 11: padrão para todos os outros casos
   const tipoEstoque: '10' | '11' | '23' = (() => {
-    const estoqueNome = unfinishedCount?.estoques?.nome?.toLowerCase() || '';
+    const estoqueNome = unfinishedCount?.estoque?.nome?.toLowerCase() || '';
     if (estoqueNome.includes('10')) return '10';
     if (estoqueNome.includes('23')) return '23';
     return '11'; // Padrão

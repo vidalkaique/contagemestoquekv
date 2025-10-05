@@ -130,9 +130,9 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
   };
 
   // Atualiza um campo do formulário
-  const handleFieldChange = (field: keyof typeof formData, value: number) => {
+  const handleFieldChange = (field: string, value: number | string) => {
     // Cria uma cópia atualizada dos dados do formulário
-    const updatedFormData = { ...formData, [field]: value };
+    const updatedFormData = { ...formData, [field]: typeof value === 'string' ? parseFloat(value) || 0 : value };
 
     // Usa parâmetros customizados se ativados, senão usa valores do formData
     const pacotesPorLastroAtual = useCustomParams ? customParams.pacotesPorLastro : (updatedFormData.pacotesPorLastro || 0);
