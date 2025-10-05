@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { ProductItem } from "@/pages/new-count";
 import { StockFieldsGrid } from "@/components/stock-field-renderer";
+import { Stock10ExpandableSections } from "@/components/stock10-expandable-sections";
 import { useStockConfig } from "@/hooks/use-stock-config";
 import { calculateStockTotal } from "@/lib/stock-configs";
 import type { StockType, ProductFormData } from "@/types/stock-types";
@@ -289,14 +290,27 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
         
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Campos dinâmicos baseados no tipo de estoque */}
-          {stockConfig && (
-            <StockFieldsGrid
-              fields={stockConfig.fields}
-              values={formData}
+          {tipoEstoque === '10' ? (
+            /* Seções expansíveis para Estoque 10 (Ativos) */
+            <Stock10ExpandableSections
+              data={formData}
               onChange={handleFieldChange}
-              columns={2}
-              className="mb-4"
+              conversionRates={{
+                caixasPorLastro: useCustomParams ? customParams.pacotesPorLastro : (formData.pacotesPorLastro || 12),
+                lastrosPorPallet: useCustomParams ? customParams.lastrosPorPallet : (formData.lastrosPorPallet || 10)
+              }}
             />
+          ) : (
+            /* Grid padrão para outros estoques (11 e 23) */
+            stockConfig && (
+              <StockFieldsGrid
+                fields={stockConfig.fields}
+                values={formData}
+                onChange={handleFieldChange}
+                columns={2}
+                className="mb-4"
+              />
+            )
           )}
           
           {/* RoundingSuggestion apenas para Estoque 11 */}
