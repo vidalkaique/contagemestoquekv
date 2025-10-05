@@ -87,9 +87,38 @@ export default function NewCount() {
   // Estoque 23: se o nome contém "23"
   // Estoque 11: padrão para todos os outros casos
   const tipoEstoque: '10' | '11' | '23' = (() => {
+    // Debug: verifica o que está vindo do hook
+    console.log('\ud83d\udd0d DEBUG - Detecção de Estoque:');
+    console.log('unfinishedCount:', unfinishedCount);
+    console.log('estoque:', unfinishedCount?.estoque);
+    console.log('estoque.nome:', unfinishedCount?.estoque?.nome);
+    console.log('estoqueId:', unfinishedCount?.estoqueId);
+    
     const estoqueNome = unfinishedCount?.estoque?.nome?.toLowerCase() || '';
-    if (estoqueNome.includes('10')) return '10';
-    if (estoqueNome.includes('23')) return '23';
+    console.log('estoqueNome processado:', estoqueNome);
+    
+    // Tenta detectar pelo nome do estoque
+    if (estoqueNome.includes('10')) {
+      console.log('✅ Estoque 10 detectado pelo nome');
+      return '10';
+    }
+    if (estoqueNome.includes('23')) {
+      console.log('✅ Estoque 23 detectado pelo nome');
+      return '23';
+    }
+    
+    // Fallback: tenta detectar pelo ID do estoque
+    const estoqueId = unfinishedCount?.estoqueId?.toString() || '';
+    if (estoqueId.includes('10') || estoqueId.endsWith('10')) {
+      console.log('✅ Estoque 10 detectado pelo ID:', estoqueId);
+      return '10';
+    }
+    if (estoqueId.includes('23') || estoqueId.endsWith('23')) {
+      console.log('✅ Estoque 23 detectado pelo ID:', estoqueId);
+      return '23';
+    }
+    
+    console.log('⚠️ Usando Estoque 11 como padrão');
     return '11'; // Padrão
   })();
 
