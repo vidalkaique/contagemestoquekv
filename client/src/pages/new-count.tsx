@@ -79,39 +79,9 @@ export default function NewCount() {
   const queryClient = useQueryClient();
   const { countDate, setCountDate } = useCountDate();
   
-  // Carrega a contagem não finalizada, se existir
-  const { data: unfinishedCount } = useUnfinishedCount();
-
-  // Detecta o tipo de estoque baseado APENAS no nome do estoque
-  // IMPORTANTE: NÃO usar ID pois pode conter números que causam detecção errada
-  const tipoEstoque: '10' | '11' | '23' = (() => {
-    // Debug: verifica o que está vindo do hook
-    console.log('🔍 DEBUG - Detecção de Estoque:');
-    console.log('unfinishedCount:', unfinishedCount);
-    console.log('estoque:', unfinishedCount?.estoque);
-    console.log('estoque.nome:', unfinishedCount?.estoque?.nome);
-    
-    const estoqueNome = unfinishedCount?.estoque?.nome?.toLowerCase() || '';
-    console.log('estoqueNome processado:', estoqueNome);
-    
-    // Detecta APENAS pelo nome do estoque (confiável)
-    if (estoqueNome.includes('10')) {
-      console.log('✅ Estoque 10 detectado');
-      return '10';
-    }
-    if (estoqueNome.includes('23')) {
-      console.log('✅ Estoque 23 detectado');
-      return '23';
-    }
-    if (estoqueNome.includes('11')) {
-      console.log('✅ Estoque 11 detectado');
-      return '11';
-    }
-    
-    // Padrão se não detectar nenhum
-    console.log('⚠️ Nome não identificado, usando Estoque 11 como padrão');
-    return '11';
-  })();
+  // SOLUÇÃO A: Sempre cria nova contagem
+  // Detecção de estoque será feita quando a contagem for carregada
+  const [tipoEstoque, setTipoEstoque] = useState<'10' | '11' | '23'>('11');
 
   // Estados do componente
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
@@ -131,12 +101,50 @@ export default function NewCount() {
   const [showExitModal, setShowExitModal] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
-  // Define o currentCountId quando a contagem é carregada
+  // Busca informações do estoque da contagem atual quando ela for definida
   useEffect(() => {
-    if (unfinishedCount?.id) {
-      setCurrentCountId(unfinishedCount.id);
+    if (currentCountId && !currentCountId.startsWith('draft-')) {
+      // Busca a contagem e o estoque associado
+      const fetchStockInfo = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('contagens')
+            .select('estoque_id')
+            .eq('id', currentCountId)
+            .single();
+
+          if (error) throw error;
+          
+          if (data?.estoque_id) {
+            // Busca o nome do estoque
+            const { data: estoqueData, error: estoqueError } = await supabase
+              .from('estoques')
+              .select('nome')
+              .eq('id', data.estoque_id)
+              .single();
+            
+            if (!estoqueError && estoqueData) {
+              const estoqueNome = estoqueData.nome?.toLowerCase() || '';
+              console.log('✅ Estoque carregado:', estoqueData.nome);
+              
+              // Detecta tipo de estoque pelo nome
+              if (estoqueNome.includes('10')) {
+                setTipoEstoque('10');
+              } else if (estoqueNome.includes('23')) {
+                setTipoEstoque('23');
+              } else {
+                setTipoEstoque('11');
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao buscar informações do estoque:', error);
+        }
+      };
+
+      fetchStockInfo();
     }
-  }, [unfinishedCount?.id]);
+  }, [currentCountId]);
 
   // Ativa realtime completo para esta contagem específica
   useFullRealtime(
@@ -538,14 +546,12 @@ export default function NewCount() {
     return data.id;
   };
 
-  // Define o ID da contagem atual com base no parâmetro da rota ou na contagem não finalizada carregada
+  // Define o ID da contagem atual com base no parâmetro da rota
   useEffect(() => {
     if (contagemId) {
       setCurrentCountId(contagemId);
-    } else if (unfinishedCount?.id) {
-      setCurrentCountId(unfinishedCount.id);
     }
-  }, [contagemId, unfinishedCount]);
+  }, [contagemId]);
 
   /**
    * Tipo auxiliar para os parâmetros da função calculateProductPackages
@@ -1823,7 +1829,7 @@ export default function NewCount() {
           .insert([{
             data: formattedDate,
             finalizada: true,
-            estoque_id: unfinishedCount?.estoque?.id || null,
+            estoque_id: null, // Será preenchido pelo modal de seleção de estoque
             qntd_produtos: uniqueProductCount // Adiciona a contagem de produtos únicos
           }])
           .select()
@@ -2575,7 +2581,7 @@ export default function NewCount() {
           setEditingProduct(null);
         }}
         onAddProduct={handleAddProduct}
-        estoqueId={unfinishedCount?.estoqueId || undefined}
+        estoqueId={undefined}
       />
       
       {isImportModalOpen && (
