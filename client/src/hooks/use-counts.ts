@@ -54,6 +54,7 @@ export function useUnfinishedCount() {
   return useQuery<ContagemWithItens | null>({
     queryKey: ["contagens", "unfinished"],
     queryFn: async () => {
+      // Busca a contagem não finalizada
       const { data, error } = await supabase
         .from('contagens')
         .select(`
@@ -65,11 +66,6 @@ export function useUnfinishedCount() {
           estoque_id,
           nome,
           matricula,
-          estoques (
-            id,
-            nome,
-            created_at
-          ),
           itens_contagem (
             id,
             contagem_id,
@@ -91,10 +87,21 @@ export function useUnfinishedCount() {
       if (!data || data.length === 0) return null;
       const first = data[0];
 
-      // Verifica se estoques é um array e pega o primeiro item
-      const estoque = Array.isArray(first.estoques) && first.estoques.length > 0 
-        ? first.estoques[0] 
-        : null;
+      // Busca o estoque separadamente usando estoque_id
+      let estoque = null;
+      if (first.estoque_id) {
+        const { data: estoqueData, error: estoqueError } = await supabase
+          .from('estoques')
+          .select('id, nome, created_at')
+          .eq('id', first.estoque_id)
+          .single();
+        
+        if (!estoqueError && estoqueData) {
+          estoque = estoqueData;
+        }
+      }
+
+
 
       // Convert to ContagemWithItens type
       // Garante que temos um produto para a contagem
