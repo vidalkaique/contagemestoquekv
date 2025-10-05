@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 
 interface Estoque {
   id: string;
@@ -9,6 +9,7 @@ interface Estoque {
 }
 
 function StocksPage() {
+  const { toast } = useToast();
   const [estoques, setEstoques] = useState<Estoque[]>([]);
   const [newEstoqueName, setNewEstoqueName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -22,7 +23,11 @@ function StocksPage() {
     const { data, error } = await supabase.from("estoques").select("*").order("created_at", { ascending: false });
     if (error) {
       console.error("Erro ao buscar estoques:", error);
-      toast.error("Erro ao buscar estoques.");
+      toast({
+        title: "Erro",
+        description: "Erro ao buscar estoques.",
+        variant: "destructive",
+      });
     } else {
       setEstoques(data || []);
     }
@@ -31,7 +36,11 @@ function StocksPage() {
 
   const handleAddEstoque = async () => {
     if (!newEstoqueName.trim()) {
-      toast.warning("O nome do estoque não pode ser vazio.");
+      toast({
+        title: "Aviso",
+        description: "O nome do estoque não pode ser vazio.",
+        variant: "default",
+      });
       return;
     }
 
@@ -42,9 +51,17 @@ function StocksPage() {
 
     if (error) {
       console.error("Erro ao adicionar estoque:", error);
-      toast.error("Erro ao adicionar estoque.");
+      toast({
+        title: "Erro",
+        description: "Erro ao adicionar estoque.",
+        variant: "destructive",
+      });
     } else if (data) {
-      toast.success(`Estoque "${data[0].nome}" adicionado com sucesso!`);
+      toast({
+        title: "Sucesso",
+        description: `Estoque "${data[0].nome}" adicionado com sucesso!`,
+        variant: "default",
+      });
       setEstoques([data[0], ...estoques]);
       setNewEstoqueName("");
     }

@@ -152,6 +152,11 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
     }));
   }, []);
 
+  // Wrapper para compatibilidade com DynamicStockForm
+  const handleDynamicFieldChange = useCallback((fieldName: string | number | symbol, value: number | string) => {
+    handleFieldChange(fieldName as keyof StockFormData, value);
+  }, [handleFieldChange]);
+
   // Manipulador de submit
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -210,7 +215,7 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
             <DynamicStockForm
               fields={stockConfig.fields}
               values={formData}
-              onChange={handleFieldChange}
+              onChange={handleDynamicFieldChange}
             />
           )}
 
@@ -259,13 +264,13 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
                 </div>
               </div>
 
-              {formData.unidadesPorPacote && formData.unidades > 0 && (
+              {formData.unidadesPorPacote && (formData.unidades || 0) > 0 && (
                 <div className="mt-2">
                   <RoundingSuggestion
-                    currentValue={formData.unidades}
+                    currentValue={formData.unidades || 0}
                     maxValue={formData.unidadesPorPacote}
                     onApply={(newPacotes, newUnidades) => {
-                      handleFieldChange('pacotes', formData.pacotes + newPacotes);
+                      handleFieldChange('pacotes', (formData.pacotes || 0) + newPacotes);
                       handleFieldChange('unidades', newUnidades);
                     }}
                   />

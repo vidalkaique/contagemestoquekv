@@ -43,11 +43,24 @@ export interface ProductItem {
   id: string;
   codigo?: string;
   nome: string;
+  // Estoque 11 - Campos tradicionais
   pallets: number;
   lastros: number;
   pacotes: number;
   unidades: number;
-  totalPacotes: number; 
+  // Estoque 10 - Campos específicos
+  chaoCheio?: number;
+  chaoVazio?: number;
+  refugo?: number;
+  sucata?: number;
+  avaria?: number;
+  manutencao?: number;
+  novo?: number;
+  bloqueado?: number;
+  // Estoque 23 - Campo único
+  un?: number;
+  // Campos comuns
+  totalPacotes: number;
   unidadesPorPacote?: number;
   pacotesPorLastro?: number;
   lastrosPorPallet?: number;
@@ -64,6 +77,11 @@ export default function NewCount() {
   
   // Carrega a contagem não finalizada, se existir
   const { data: unfinishedCount } = useUnfinishedCount();
+
+  // Detecta o nome do estoque (10, 11 ou 23)
+  const estoqueNome = unfinishedCount?.estoque?.nome || '';
+  const tipoEstoque: '10' | '11' | '23' = estoqueNome.includes('10') ? '10' :
+                                         estoqueNome.includes('23') ? '23' : '11';
 
   // Estados do componente
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
@@ -2548,6 +2566,7 @@ export default function NewCount() {
         }}
         product={editingProduct}
         onSave={handleSaveEdit}
+        tipoEstoque={tipoEstoque}
       />
 
       {/* Modal de confirmação de saída */}
