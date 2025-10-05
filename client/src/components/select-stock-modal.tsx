@@ -28,7 +28,7 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
         const { data, error } = await supabase
           .from('estoques')
           .select('*')
-          .order('created_at', { ascending: false });
+          .order('nome', { ascending: true });  // Ordena por nome: 10, 11, 23
         
         if (error) {
           console.error('Erro ao buscar estoques:', error);
@@ -47,6 +47,8 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
   // Selecionar automaticamente o primeiro estoque quando a lista for carregada
   useEffect(() => {
     if (stocks && stocks.length > 0 && !selectedStock) {
+      console.log('📦 Estoques disponíveis (em ordem):', stocks.map(s => ({ id: s.id, nome: s.nome })));
+      console.log('🎯 Selecionando automaticamente:', stocks[0].nome);
       setSelectedStock(stocks[0].id);
       setFocusedIndex(0);
     }
@@ -159,6 +161,10 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
     }
 
     const selectedStockData = stocks?.find(s => s.id === selectedStock);
+    
+    console.log('✅ CONFIRMAÇÃO - Estoque selecionado:');
+    console.log('ID:', selectedStock);
+    console.log('Dados:', selectedStockData);
     
     if (onStockSelected && selectedStockData) {
       onStockSelected(selectedStockData);
