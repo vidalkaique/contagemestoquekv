@@ -99,8 +99,6 @@ export function useUnfinishedCount() {
       const itensProcessados = itensData || [];
       
       // Convert to ContagemWithItens type
-      const primeiroProduto = null; // Não temos produto direto aqui
-
       const contagem: ContagemWithItens = {
         id: first.id,
         data: first.data,
@@ -111,58 +109,24 @@ export function useUnfinishedCount() {
         excelUrl: first.excel_url,
         qntdProdutos: (first as any).qntd_produtos || 0,
         createdAt: new Date(first.created_at),
-        produto: primeiroProduto ? {
-          id: primeiroProduto.id,
-          codigo: primeiroProduto.codigo,
-          nome: primeiroProduto.nome,
-          tag: primeiroProduto.tag || null,
-          unidadesPorPacote: primeiroProduto.unidades_por_pacote,
-          pacotesPorLastro: primeiroProduto.pacotes_por_lastro,
-          lastrosPorPallet: primeiroProduto.lastros_por_pallet,
-          quantidadePacsPorPallet: primeiroProduto.quantidade_pacs_por_pallet,
-          ativo: primeiroProduto.ativo,
-          createdAt: new Date(primeiroProduto.created_at),
-          updatedAt: new Date(primeiroProduto.updated_at || primeiroProduto.created_at)
-        } : null,
-        itens: itensProcessados.map((item: any) => {
-          // Garante que produtos seja um único objeto ou null
-          const produtoEntry = Array.isArray(item.produtos) && item.produtos.length > 0 
-            ? item.produtos[0] 
-            : (item.produtos as any) || null;
-          const prodAny = produtoEntry as any;
-          // Mantém compatibilidade com código legado
-          const produto = prodAny;
-
-          return {
-            id: item.id,
-            contagemId: item.contagem_id,
-            produtoId: item.produto_id,
-            nomeLivre: item.nome_livre,
-            pallets: item.pallets,
-            lastros: item.lastros,
-            pacotes: item.pacotes,
-            unidades: item.unidades,
-            total: item.total,
-            totalPacotes: item.total_pacotes,
-            unidadesPorPacote: prodAny?.unidades_por_pacote,
-            pacotesPorLastro: prodAny?.pacotes_por_lastro,
-            lastrosPorPallet: prodAny?.lastros_por_pallet,
-            quantidadePacsPorPallet: prodAny?.quantidade_pacs_por_pallet ?? undefined,
-            produto: produto ? {
-              id: produto.id,
-              codigo: produto.codigo,
-              nome: produto.nome,
-              tag: produto.tag || null,
-              unidadesPorPacote: prodAny.unidades_por_pacote,
-              pacotesPorLastro: prodAny.pacotes_por_lastro,
-              lastrosPorPallet: prodAny.lastros_por_pallet,
-              quantidadePacsPorPallet: prodAny.quantidade_pacs_por_pallet,
-              ativo: prodAny.ativo !== undefined ? prodAny.ativo : true,
-              createdAt: prodAny.created_at ? new Date(prodAny.created_at) : new Date(),
-              updatedAt: prodAny.updated_at ? new Date(prodAny.updated_at) : new Date()
-            } : null
-          };
-        }),
+        produto: null, // Produtos são carregados via itens
+        itens: itensProcessados.map((item: any) => ({
+          id: item.id,
+          contagemId: item.contagem_id,
+          produtoId: item.produto_id,
+          nomeLivre: item.nome_livre,
+          pallets: item.pallets,
+          lastros: item.lastros,
+          pacotes: item.pacotes,
+          unidades: item.unidades,
+          total: item.total,
+          totalPacotes: item.total_pacotes,
+          unidadesPorPacote: undefined,
+          pacotesPorLastro: undefined,
+          lastrosPorPallet: undefined,
+          quantidadePacsPorPallet: undefined,
+          produto: null
+        })),
         estoque: estoque ? {
           id: estoque.id,
           nome: estoque.nome,
