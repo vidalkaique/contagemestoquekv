@@ -8,21 +8,42 @@ import { RoundingSuggestion } from "@/components/rounding-suggestion";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { ProductItem } from "@/pages/new-count";
+import { StockFieldsGrid } from "@/components/stock-field-renderer";
+import { useStockConfig } from "@/hooks/use-stock-config";
+import { calculateStockTotal } from "@/lib/stock-configs";
+import type { StockType, ProductFormData } from "@/types/stock-types";
 
 interface EditProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   product: ProductItem | null;
   onSave: (product: ProductItem) => void;
+  tipoEstoque: StockType;
 }
 
-export default function EditProductModal({ isOpen, onClose, product, onSave }: EditProductModalProps) {
+export default function EditProductModal({ isOpen, onClose, product, onSave, tipoEstoque }: EditProductModalProps) {
   const { toast } = useToast();
+  
+  // Obtém a configuração do estoque selecionado
+  const stockConfig = useStockConfig(tipoEstoque);
   const [formData, setFormData] = useState<Omit<ProductItem, 'id' | 'nome' | 'codigo'>>({
+    // Estoque 11
     pallets: 0,
     lastros: 0,
     pacotes: 0,
     unidades: 0,
+    // Estoque 10
+    chaoCheio: 0,
+    chaoVazio: 0,
+    refugo: 0,
+    sucata: 0,
+    avaria: 0,
+    manutencao: 0,
+    novo: 0,
+    bloqueado: 0,
+    // Estoque 23
+    un: 0,
+    // Campos comuns
     totalPacotes: 0,
     unidadesPorPacote: 0,
     pacotesPorLastro: 0,
@@ -45,30 +66,40 @@ export default function EditProductModal({ isOpen, onClose, product, onSave }: E
     lastrosPorPallet: 0,
   });
 
-  // Função para calcular o total de unidades
+  // Função para calcular o total de unidades (dinâmica baseada no tipo de estoque)
   const calculateTotalUnidades = useCallback((): number => {
-    const { pallets = 0, lastros = 0, pacotes = 0, unidades = 0 } = formData;
+    // Prepara os parâmetros para o cálculo (usado apenas no estoque 11)
+    const params = {
+      unidadesPorPacote: useCustomParams ? customParams.unidadesPorPacote : (formData.unidadesPorPacote || 1),
+      pacotesPorLastro: useCustomParams ? customParams.pacotesPorLastro : (formData.pacotesPorLastro || 0),
+      lastrosPorPallet: useCustomParams ? customParams.lastrosPorPallet : (formData.lastrosPorPallet || 0)
+    };
     
-    // Usa parâmetros customizados se ativados, senão usa valores do formData
-    const unidadesPorPacoteAtual = useCustomParams ? customParams.unidadesPorPacote : (formData.unidadesPorPacote || 1);
-    const pacotesPorLastroAtual = useCustomParams ? customParams.pacotesPorLastro : (formData.pacotesPorLastro || 0);
-    const lastrosPorPalletAtual = useCustomParams ? customParams.lastrosPorPallet : (formData.lastrosPorPallet || 0);
-    
-    const totalFromPallets = pallets * (lastrosPorPalletAtual || 0) * (pacotesPorLastroAtual || 0) * (unidadesPorPacoteAtual || 0);
-    const totalFromLastros = lastros * (pacotesPorLastroAtual || 0) * (unidadesPorPacoteAtual || 0);
-    const totalFromPacotes = pacotes * (unidadesPorPacoteAtual || 0);
-    
-    return totalFromPallets + totalFromLastros + totalFromPacotes + (unidades || 0);
-  }, [formData, useCustomParams, customParams]);
+    // Usa a função de cálculo dinâmica baseada no tipo de estoque
+    return calculateStockTotal(tipoEstoque, formData as Record<string, number>, params);
+  }, [formData, useCustomParams, customParams, tipoEstoque]);
 
   // Atualiza o formulário quando o produto muda
   useEffect(() => {
     if (product) {
       setFormData({
+        // Estoque 11
         pallets: product.pallets || 0,
         lastros: product.lastros || 0,
         pacotes: product.pacotes || 0,
         unidades: product.unidades || 0,
+        // Estoque 10
+        chaoCheio: product.chaoCheio || 0,
+        chaoVazio: product.chaoVazio || 0,
+        refugo: product.refugo || 0,
+        sucata: product.sucata || 0,
+        avaria: product.avaria || 0,
+        manutencao: product.manutencao || 0,
+        novo: product.novo || 0,
+        bloqueado: product.bloqueado || 0,
+        // Estoque 23
+        un: product.un || 0,
+        // Campos comuns
         totalPacotes: product.totalPacotes || 0,
         unidadesPorPacote: product.unidadesPorPacote || 0,
         pacotesPorLastro: product.pacotesPorLastro || 0,
@@ -257,74 +288,32 @@ export default function EditProductModal({ isOpen, onClose, product, onSave }: E
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Campos dinâmicos baseados no tipo de estoque */}
+          {stockConfig && (
+            <StockFieldsGrid
+              fields={stockConfig.fields}
+              values={formData}
+              onChange={handleFieldChange}
+              columns={2}
+              className="mb-4"
+            />
+          )}
+          
+          {/* RoundingSuggestion apenas para Estoque 11 */}
+          {tipoEstoque === '11' && formData.unidadesPorPacote && formData.unidades > 0 && (
+            <div className="mb-4">
+              <RoundingSuggestion
+                currentValue={formData.unidades}
+                maxValue={formData.unidadesPorPacote}
+                onApply={(newPacotes, newUnidades) => {
+                  handleFieldChange('pacotes', formData.pacotes + newPacotes);
+                  handleFieldChange('unidades', newUnidades);
+                }}
+              />
+            </div>
+          )}
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Pallets */}
-            <div className="space-y-2">
-              <Label htmlFor="pallets">Pallets</Label>
-              <div className="w-full">
-                <NumberInputWithButtons
-                  id="pallets"
-                  value={formData.pallets}
-                  onChange={(value) => handleFieldChange('pallets', value)}
-                  min={0}
-                  className="w-full"
-                />
-              </div>
-            </div>
-            
-            {/* Lastros */}
-            <div className="space-y-2">
-              <Label htmlFor="lastros">Lastros</Label>
-              <div className="w-full">
-                <NumberInputWithButtons
-                  id="lastros"
-                  value={formData.lastros}
-                  onChange={(value) => handleFieldChange('lastros', value)}
-                  min={0}
-                  className="w-full"
-                />
-              </div>
-            </div>
-            
-            {/* Pacotes */}
-            <div className="space-y-2">
-              <Label htmlFor="pacotes">Pacotes</Label>
-              <div>
-                <NumberInputWithButtons
-                  id="pacotes"
-                  value={formData.pacotes}
-                  onChange={(value) => handleFieldChange('pacotes', value)}
-                  min={0}
-                  className="w-full"
-                />
-                {formData.unidadesPorPacote && formData.unidades > 0 && (
-                  <div className="mt-2">
-                    <RoundingSuggestion
-                      currentValue={formData.unidades}
-                      maxValue={formData.unidadesPorPacote}
-                      onApply={(newPacotes, newUnidades) => {
-                        handleFieldChange('pacotes', formData.pacotes + newPacotes);
-                        handleFieldChange('unidades', newUnidades);
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Unidades */}
-            <div className="space-y-2">
-              <Label htmlFor="unidades">Unidades</Label>
-              <div className="w-full">
-                <NumberInputWithButtons
-                  id="unidades"
-                  value={formData.unidades}
-                  onChange={(value) => handleFieldChange('unidades', value)}
-                  min={0}
-                  className="w-full"
-                />
-              </div>
-            </div>
             
             {/* Total de Pacotes (somente leitura) */}
             <div className="space-y-2">
