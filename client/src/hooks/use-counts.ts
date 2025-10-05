@@ -54,32 +54,11 @@ export function useUnfinishedCount() {
   return useQuery<ContagemWithItens | null>({
     queryKey: ["contagens", "unfinished"],
     queryFn: async () => {
-      // Busca a contagem não finalizada
+      // SOLUÇÃO 1: Buscar contagem, estoque e itens SEPARADAMENTE
+      // Passo 1: Busca apenas a contagem básica (sem joins)
       const { data, error } = await supabase
         .from('contagens')
-        .select(`
-          id,
-          data,
-          finalizada,
-          excel_url,
-          created_at,
-          estoque_id,
-          nome,
-          matricula,
-          itens_contagem (
-            id,
-            contagem_id,
-            produto_id,
-            nome_livre,
-            pallets,
-            lastros,
-            pacotes,
-            unidades,
-            total,
-            total_pacotes,
-            created_at
-          )
-        `)
+        .select('id, data, finalizada, excel_url, created_at, estoque_id, nome, matricula, qntd_produtos')
         .eq('finalizada', false)
         .limit(1);
 
@@ -87,7 +66,7 @@ export function useUnfinishedCount() {
       if (!data || data.length === 0) return null;
       const first = data[0];
 
-      // Busca o estoque separadamente usando estoque_id
+      // Passo 2: Busca o estoque separadamente
       let estoque = null;
       if (first.estoque_id) {
         const { data: estoqueData, error: estoqueError } = await supabase
@@ -98,16 +77,29 @@ export function useUnfinishedCount() {
         
         if (!estoqueError && estoqueData) {
           estoque = estoqueData;
+          console.log('✅ Estoque carregado com sucesso:', estoqueData);
+        } else {
+          console.warn('⚠️ Erro ao carregar estoque:', estoqueError);
         }
+      }
+
+      // Passo 3: Busca os itens da contagem separadamente
+      const { data: itensData, error: itensError } = await supabase
+        .from('itens_contagem')
+        .select('id, contagem_id, produto_id, nome_livre, pallets, lastros, pacotes, unidades, total, total_pacotes, created_at')
+        .eq('contagem_id', first.id);
+
+      if (itensError) {
+        console.warn('⚠️ Erro ao carregar itens:', itensError);
       }
 
 
 
+      // Processa os itens carregados
+      const itensProcessados = itensData || [];
+      
       // Convert to ContagemWithItens type
-      // Garante que temos um produto para a contagem
-      const primeiroProduto = ((first as any).itens_contagem || []).length > 0 
-        ? ((first as any).itens_contagem[0].produtos || [])[0] || null 
-        : null;
+      const primeiroProduto = null; // Não temos produto direto aqui
 
       const contagem: ContagemWithItens = {
         id: first.id,
@@ -132,7 +124,7 @@ export function useUnfinishedCount() {
           createdAt: new Date(primeiroProduto.created_at),
           updatedAt: new Date(primeiroProduto.updated_at || primeiroProduto.created_at)
         } : null,
-        itens: ((first as any).itens_contagem || []).map((item: any) => {
+        itens: itensProcessados.map((item: any) => {
           // Garante que produtos seja um único objeto ou null
           const produtoEntry = Array.isArray(item.produtos) && item.produtos.length > 0 
             ? item.produtos[0] 
