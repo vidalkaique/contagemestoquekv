@@ -82,44 +82,35 @@ export default function NewCount() {
   // Carrega a contagem não finalizada, se existir
   const { data: unfinishedCount } = useUnfinishedCount();
 
-  // Detecta o tipo de estoque baseado no nome
-  // Estoque 10: se o nome contém "10"
-  // Estoque 23: se o nome contém "23"
-  // Estoque 11: padrão para todos os outros casos
+  // Detecta o tipo de estoque baseado APENAS no nome do estoque
+  // IMPORTANTE: NÃO usar ID pois pode conter números que causam detecção errada
   const tipoEstoque: '10' | '11' | '23' = (() => {
     // Debug: verifica o que está vindo do hook
-    console.log('\ud83d\udd0d DEBUG - Detecção de Estoque:');
+    console.log('🔍 DEBUG - Detecção de Estoque:');
     console.log('unfinishedCount:', unfinishedCount);
     console.log('estoque:', unfinishedCount?.estoque);
     console.log('estoque.nome:', unfinishedCount?.estoque?.nome);
-    console.log('estoqueId:', unfinishedCount?.estoqueId);
     
     const estoqueNome = unfinishedCount?.estoque?.nome?.toLowerCase() || '';
     console.log('estoqueNome processado:', estoqueNome);
     
-    // Tenta detectar pelo nome do estoque
+    // Detecta APENAS pelo nome do estoque (confiável)
     if (estoqueNome.includes('10')) {
-      console.log('✅ Estoque 10 detectado pelo nome');
+      console.log('✅ Estoque 10 detectado');
       return '10';
     }
     if (estoqueNome.includes('23')) {
-      console.log('✅ Estoque 23 detectado pelo nome');
+      console.log('✅ Estoque 23 detectado');
       return '23';
     }
-    
-    // Fallback: tenta detectar pelo ID do estoque
-    const estoqueId = unfinishedCount?.estoqueId?.toString() || '';
-    if (estoqueId.includes('10') || estoqueId.endsWith('10')) {
-      console.log('✅ Estoque 10 detectado pelo ID:', estoqueId);
-      return '10';
-    }
-    if (estoqueId.includes('23') || estoqueId.endsWith('23')) {
-      console.log('✅ Estoque 23 detectado pelo ID:', estoqueId);
-      return '23';
+    if (estoqueNome.includes('11')) {
+      console.log('✅ Estoque 11 detectado');
+      return '11';
     }
     
-    console.log('⚠️ Usando Estoque 11 como padrão');
-    return '11'; // Padrão
+    // Padrão se não detectar nenhum
+    console.log('⚠️ Nome não identificado, usando Estoque 11 como padrão');
+    return '11';
   })();
 
   // Estados do componente
