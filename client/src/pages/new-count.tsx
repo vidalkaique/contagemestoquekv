@@ -256,7 +256,7 @@ export default function NewCount() {
   };
 
   // Salva as alterações de um produto
-  const handleSaveEdit = (updatedProduct: ProductItem) => {
+  const handleSaveEdit = async (updatedProduct: ProductItem) => {
     if (updatedProduct) {
       // Atualiza o produto na lista de produtos
       setProducts(prevProducts => 
@@ -287,6 +287,11 @@ export default function NewCount() {
       };
       
       saveCurrentCount(currentCount);
+      
+      // Salva no Supabase para ativar realtime (usa função auxiliar - DRY)
+      if (currentCountId) {
+        await saveProductToSupabase(updatedProduct, currentCountId);
+      }
     }
     
     // Limpa os estados de edição
@@ -599,6 +604,69 @@ export default function NewCount() {
       (product.pacotes || 0) * (product.unidadesPorPacote || 0) +
       (product.unidades || 0)
     );
+  };
+
+  /**
+   * Função auxiliar reutilizável para salvar um produto no Supabase
+   * Evita duplicação de código (DRY) e ativa o realtime automaticamente
+   * 
+   * @param product - Produto a ser salvo
+   * @param contagemId - ID da contagem
+   * @returns Promise<boolean> - true se salvou com sucesso, false caso contrário
+   */
+  const saveProductToSupabase = async (
+    product: ProductItem,
+    contagemId: string
+  ): Promise<boolean> => {
+    // Não salva se for draft local
+    if (!contagemId || contagemId.startsWith('draft-')) {
+      console.log('⏭️ Contagem é rascunho local, não salva no Supabase');
+      return false;
+    }
+
+    try {
+      const isProdutoCadastrado = !product.id.startsWith('free-');
+      
+      // Prepara os dados para o Supabase
+      const itemData = {
+        contagem_id: contagemId,
+        produto_id: isProdutoCadastrado ? product.id : null,
+        nome_livre: !isProdutoCadastrado ? product.nome : null,
+        codigo: product.codigo || null,
+        pallets: product.pallets ?? 0,
+        lastros: product.lastros ?? 0,
+        pacotes: product.pacotes ?? 0,
+        unidades: product.unidades ?? 0,
+        total_pacotes: product.totalPacotes ?? 0,
+        total: calculateProductTotal(product),
+        quantidade_sistema: product.quantidadeSistema ?? 0,
+      };
+
+      console.log('💾 Salvando produto no Supabase:', product.nome);
+
+      // Faz upsert no Supabase
+      const { error } = await supabase
+        .from('itens_contagem')
+        .upsert(itemData, {
+          onConflict: 'contagem_id,produto_id'
+        });
+
+      if (error) {
+        console.error('❌ Erro ao salvar produto no Supabase:', error);
+        toast({
+          title: "Erro ao sincronizar",
+          description: `Não foi possível sincronizar ${product.nome}. As alterações foram salvas localmente.`,
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      console.log('✅ Produto salvo no Supabase (realtime ativado)');
+      return true;
+    } catch (error) {
+      console.error('❌ Exceção ao salvar produto:', error);
+      return false;
+    }
   };
 
   /**
