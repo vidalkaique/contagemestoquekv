@@ -299,6 +299,92 @@ export default function NewCount() {
     setEditingProduct(null);
   };
 
+  /**
+   * Processa produtos importados do Excel e salva no Supabase
+   * Ativa realtime automaticamente para sincronização entre usuários
+   * 
+   * @param importedProducts - Lista de produtos importados do Excel
+   */
+  const handleImportComplete = async (importedProducts: ImportedProduct[]) => {
+    if (!importedProducts || importedProducts.length === 0) {
+      toast({
+        title: "Nenhum produto para importar",
+        description: "A planilha não contém produtos válidos.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    console.log(`📥 Importando ${importedProducts.length} produtos...`);
+
+    try {
+      const novosProdutos: ProductItem[] = [];
+      let sucessos = 0;
+      let erros = 0;
+
+      // Processa cada produto importado
+      for (const item of importedProducts) {
+        try {
+          // Cria ID único para o produto
+          const productId = item.id || `imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+          // Cria objeto ProductItem
+          const newProduct: ProductItem = {
+            id: productId,
+            codigo: item.codigo || '',
+            nome: item.nome || `Produto ${item.codigo || productId}`,
+            pallets: 0,
+            lastros: 0,
+            pacotes: 0,
+            unidades: 0,
+            totalPacotes: 0,
+            unidadesPorPacote: item.unidadesPorPacote,
+            pacotesPorLastro: item.pacotesPorLastro,
+            lastrosPorPallet: item.lastrosPorPallet,
+            quantidadePacsPorPallet: item.quantidadePacsPorPallet,
+            quantidadeSistema: item.quantidade || 0
+          };
+
+          // Adiciona à lista de novos produtos
+          novosProdutos.push(newProduct);
+
+          // Salva no Supabase imediatamente (usa função auxiliar - DRY)
+          if (currentCountId) {
+            const salvou = await saveProductToSupabase(newProduct, currentCountId);
+            if (salvou) {
+              sucessos++;
+            } else {
+              erros++;
+            }
+          }
+        } catch (error) {
+          console.error(`Erro ao processar produto ${item.codigo}:`, error);
+          erros++;
+        }
+      }
+
+      // Atualiza o estado local com todos os novos produtos
+      setProducts(prevProducts => [...prevProducts, ...novosProdutos]);
+
+      // Fecha o modal de importação
+      setIsImportModalOpen(false);
+
+      // Exibe mensagem de sucesso
+      toast({
+        title: "Importação concluída",
+        description: `${sucessos} produtos importados com sucesso${erros > 0 ? `. ${erros} erros.` : '.'}`
+      });
+
+      console.log(`✅ Importação concluída: ${sucessos} sucessos, ${erros} erros`);
+    } catch (error) {
+      console.error('❌ Erro ao importar produtos:', error);
+      toast({
+        title: "Erro na importação",
+        description: error instanceof Error ? error.message : "Ocorreu um erro ao importar os produtos.",
+        variant: "destructive"
+      });
+    }
+  };
 
   // Função para salvar informações do usuário no localStorage e Supabase (realtime)
   const saveUserInfo = async (info: UserInfo) => {
@@ -1122,161 +1208,7 @@ export default function NewCount() {
     saveToCountHistory(currentCount);
   };
 
-  /**
-   * Processa os produtos importados e os adiciona à contagem
-   * @param importedProducts Lista de produtos importados
-   */
-  const handleImportComplete = async (importedProducts: ImportedProduct[]) => {
-    if (!importedProducts.length) {
-      toast({
-        title: "Nenhum produto para importar",
-        description: "A planilha não contém produtos válidos para importação.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      // Criar uma lista para armazenar os produtos a serem adicionados
-      const produtosParaAdicionar: Omit<ProductItem, 'totalPacotes'>[] = [];
-      const produtosAdicionadosIds = new Set(products.map(p => p.id));
-      let produtosAdicionados = 0;
-      let produtosNaoEncontrados: string[] = [];
-      
-      // Processar cada produto importado
-      for (const item of importedProducts) {
-        try {
-          // Criar um ID único para o produto
-          const productId = item.id || `free-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          
-          // Verificar se o produto já foi adicionado
-          if (produtosAdicionadosIds.has(productId)) {
-            console.log(`Produto ${item.codigo || productId} já adicionado, pulando...`);
-            continue;
-          }
-          
-          // Extrair as propriedades com valores padrão seguros
-          const nome = item.nome || `Produto ${item.codigo || productId}`;
-          const codigo = item.codigo || '';
-          
-          // Criar o objeto do produto com as informações fornecidas
-          // O totalPacotes será calculado posteriormente
-          const newProduct: Omit<ProductItem, 'totalPacotes'> = {
-            id: productId,
-            codigo,
-            nome,
-            pallets: 0,
-            lastros: 0,
-            pacotes: 0,
-            unidades: 0,
-            unidadesPorPacote: item.unidadesPorPacote,
-            pacotesPorLastro: item.pacotesPorLastro,
-            lastrosPorPallet: item.lastrosPorPallet,
-            quantidadePacsPorPallet: item.quantidadePacsPorPallet,
-            quantidadeSistema: item.quantidade
-          };
-          
-          // Adicionar à lista de produtos a serem adicionados
-          produtosParaAdicionar.push(newProduct);
-          produtosAdicionados++;
-          
-          // Adicionar o ID à lista de produtos já processados
-          produtosAdicionadosIds.add(productId);
-          
-        } catch (error) {
-          console.error(`Erro ao processar produto ${item.codigo || item.id}:`, error);
-          if (item.codigo) {
-            produtosNaoEncontrados.push(item.codigo);
-          }
-        }
-      }
-      
-      // Adicionar todos os produtos de uma vez para evitar múltiplas renderizações
-      if (produtosParaAdicionar.length > 0) {
-        // Usar uma função de atualização de estado para garantir que estamos trabalhando com o estado mais recente
-        setProducts(prevProducts => {
-          // Criar um mapa para evitar duplicatas
-          const produtosMap = new Map(prevProducts.map(p => [p.id, p]));
-          
-          // Adicionar novos produtos ao mapa
-          produtosParaAdicionar.forEach(produto => {
-            produtosMap.set(produto.id, {
-              ...produto,
-              totalPacotes: calculateTotalPacotes({
-                ...produto,
-                totalPacotes: 0
-              })
-            } as ProductItem);
-          });
-          
-          // Converter o mapa de volta para array
-          return Array.from(produtosMap.values());
-        });
-        
-        // Atualizar o histórico de contagem
-        const currentCount: CurrentCount = {
-          id: currentCountId || `draft-${Date.now()}`,
-          date: new Date(countDate).toISOString().split('T')[0],
-          products: [...products, ...produtosParaAdicionar.map(p => {
-            const totalPacotes = calculateTotalPacotes({
-              ...p,
-              totalPacotes: 0
-            });
-            
-            // Garantir que o objeto esteja no formato CurrentCountProduct
-            return {
-              id: p.id,
-              nome: p.nome,
-              pallets: p.pallets,
-              lastros: p.lastros,
-              pacotes: p.pacotes,
-              unidades: p.unidades,
-              produtoId: p.codigo,
-              unidadesPorPacote: p.unidadesPorPacote,
-              pacotesPorLastro: p.pacotesPorLastro,
-              lastrosPorPallet: p.lastrosPorPallet,
-              quantidadePacsPorPallet: p.quantidadePacsPorPallet,
-              totalPacotes: totalPacotes
-            };
-          })],
-          lastUpdated: new Date().toISOString()
-        };
-        
-        // Atualiza o ID da contagem se ainda não existir
-        if (!currentCountId) {
-          setCurrentCountId(currentCount.id);
-        }
-        
-        // Salva no localStorage
-        saveCurrentCount(currentCount);
-        saveToCountHistory(currentCount);
-      }
-      
-      // Exibe mensagem de sucesso com resumo da importação
-      let message = `${produtosAdicionados} produtos importados com sucesso.`;
-      
-      if (produtosNaoEncontrados.length > 0) {
-        message += ` ${produtosNaoEncontrados.length} produtos tiveram problemas ao serem importados.`;
-      }
-      
-      toast({
-        title: "Importação concluída",
-        description: message,
-      });
-      
-      // Fecha o modal de importação
-      setIsImportModalOpen(false);
-      
-    } catch (error) {
-      console.error("Erro ao processar importação:", error);
-      
-      toast({
-        title: "Erro na importação",
-        description: error instanceof Error ? error.message : "Ocorreu um erro ao processar a importação.",
-        variant: "destructive",
-      });
-    }
-  };
+
 
   // Filtrar produtos com base no termo de busca
   const filteredProducts = products.filter(product => {
