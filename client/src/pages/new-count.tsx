@@ -325,8 +325,8 @@ export default function NewCount() {
       // Processa cada produto importado
       for (const item of importedProducts) {
         try {
-          // Cria ID único para o produto
-          const productId = item.id || `imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          // Se produto tem ID, é cadastrado; senão, cria ID para produto livre
+          const productId = item.id || `free-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
           // Cria objeto ProductItem
           const newProduct: ProductItem = {
