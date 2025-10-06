@@ -319,6 +319,7 @@ export default function NewCount() {
 
     try {
       const novosProdutos: ProductItem[] = [];
+      const idsExistentes = new Set(products.map(p => p.id));
       let sucessos = 0;
       let erros = 0;
 
@@ -327,6 +328,12 @@ export default function NewCount() {
         try {
           // Se produto tem ID, é cadastrado; senão, cria ID para produto livre
           const productId = item.id || `free-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+          // Verifica se o produto já existe no estado local
+          if (idsExistentes.has(productId)) {
+            console.log(`⏭️ Produto ${item.nome || item.codigo} já existe, pulando...`);
+            continue;
+          }
 
           // Cria objeto ProductItem
           const newProduct: ProductItem = {
@@ -347,6 +354,7 @@ export default function NewCount() {
 
           // Adiciona à lista de novos produtos
           novosProdutos.push(newProduct);
+          idsExistentes.add(productId);
 
           // Salva no Supabase imediatamente (usa função auxiliar - DRY)
           if (currentCountId) {
