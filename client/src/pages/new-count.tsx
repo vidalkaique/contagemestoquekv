@@ -730,12 +730,10 @@ export default function NewCount() {
 
       console.log('💾 Salvando produto no Supabase:', product.nome);
 
-      // Faz upsert no Supabase
+      // Insere no Supabase (usa insert ao invés de upsert para evitar problemas com constraints)
       const { error } = await supabase
         .from('itens_contagem')
-        .upsert(itemData, {
-          onConflict: 'contagem_id,produto_id'
-        });
+        .insert(itemData);
 
       if (error) {
         console.error('❌ Erro ao salvar produto no Supabase:', error);
