@@ -33,7 +33,6 @@ type DatabaseContagem = {
     unidades: number;
     total: number;
     total_pacotes: number;
-    created_at: string;
     produtos: {
       id: string;
       codigo: string;
