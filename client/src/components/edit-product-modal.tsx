@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { X, AlertCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { NumberInputWithButtons } from "@/components/ui/number-input-with-buttons";
 import { RoundingSuggestion } from "@/components/rounding-suggestion";
 import { useToast } from "@/hooks/use-toast";
+import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import type { ProductItem } from "@/pages/new-count";
 import { StockFieldsGrid } from "@/components/stock-field-renderer";
@@ -149,7 +150,47 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
     setFormData({ ...updatedFormData, totalPacotes: newTotalPacotes });
   };
 
-  // Submete o formulário
+  // Hook de debounce para auto-save (aguarda 1 segundo sem mudanças)
+  const debouncedFormData = useDebounce(formData, 1000);
+  
+  // Ref para rastrear se é a primeira renderização (evita salvar ao abrir o modal)
+  const isInitialMount = useRef(true);
+  
+  // Auto-save: salva automaticamente quando formData para de mudar por 1 segundo
+  useEffect(() => {
+    // Pula auto-save na primeira renderização (quando o modal abre)
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    
+    // Pula se não houver produto
+    if (!product) return;
+    
+    // Cria o produto atualizado
+    const updatedProduct: ProductItem = {
+      ...product,
+      ...debouncedFormData,
+      unidadesPorPacote: useCustomParams ? customParams.unidadesPorPacote : debouncedFormData.unidadesPorPacote,
+      pacotesPorLastro: useCustomParams ? customParams.pacotesPorLastro : debouncedFormData.pacotesPorLastro,
+      lastrosPorPallet: useCustomParams ? customParams.lastrosPorPallet : debouncedFormData.lastrosPorPallet,
+      totalPacotes: calculateTotalPacotes()
+    };
+    
+    // Salva automaticamente (sem fechar o modal)
+    console.log('💾 Auto-save ativado para:', product.nome);
+    onSave(updatedProduct);
+    
+  }, [debouncedFormData, product, useCustomParams, customParams]);
+  
+  // Reseta a flag ao abrir o modal
+  useEffect(() => {
+    if (isOpen) {
+      isInitialMount.current = true;
+    }
+  }, [isOpen]);
+
+  // Submete o formulário (salvamento manual + fecha o modal)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
