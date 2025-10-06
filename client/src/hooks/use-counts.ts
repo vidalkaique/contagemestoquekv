@@ -86,7 +86,7 @@ export function useUnfinishedCount() {
       // Passo 3: Busca os itens da contagem separadamente
       const { data: itensData, error: itensError } = await supabase
         .from('itens_contagem')
-        .select('id, contagem_id, produto_id, nome_livre, pallets, lastros, pacotes, unidades, total, total_pacotes, created_at')
+        .select('id, contagem_id, produto_id, nome_livre, pallets, lastros, pacotes, unidades, total, total_pacotes')
         .eq('contagem_id', first.id);
 
       if (itensError) {
