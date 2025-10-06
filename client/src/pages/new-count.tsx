@@ -256,7 +256,7 @@ export default function NewCount() {
   };
 
   // Salva as alterações de um produto
-  const handleSaveEdit = (updatedProduct: ProductItem) => {
+  const handleSaveEdit = async (updatedProduct: ProductItem, shouldClose: boolean = true) => {
     if (updatedProduct) {
       // Atualiza o produto na lista de produtos
       setProducts(prevProducts => 
@@ -287,11 +287,47 @@ export default function NewCount() {
       };
       
       saveCurrentCount(currentCount);
+      
+      // Salva no Supabase se não for um draft (para ativar realtime)
+      if (currentCountId && !currentCountId.startsWith('draft-')) {
+        try {
+          const isProdutoCadastrado = !updatedProduct.id.startsWith('free-');
+          
+          // Atualiza o item no Supabase
+          const { error } = await supabase
+            .from('itens_contagem')
+            .upsert({
+              contagem_id: currentCountId,
+              produto_id: isProdutoCadastrado ? updatedProduct.id : null,
+              nome_livre: !isProdutoCadastrado ? updatedProduct.nome : null,
+              pallets: updatedProduct.pallets ?? 0,
+              lastros: updatedProduct.lastros ?? 0,
+              pacotes: updatedProduct.pacotes ?? 0,
+              unidades: updatedProduct.unidades ?? 0,
+              total_pacotes: updatedProduct.totalPacotes ?? 0,
+              total: calculateProductTotal(updatedProduct),
+              codigo: updatedProduct.codigo || null,
+              quantidade_sistema: updatedProduct.quantidadeSistema ?? 0,
+            }, {
+              onConflict: 'contagem_id,produto_id'
+            });
+          
+          if (error) {
+            console.error('Erro ao salvar no Supabase:', error);
+          } else {
+            console.log('✅ Produto salvo no Supabase (realtime ativado)');
+          }
+        } catch (error) {
+          console.error('Erro ao salvar produto no Supabase:', error);
+        }
+      }
     }
     
-    // Limpa os estados de edição
-    setEditingProductIndex(null);
-    setEditingProduct(null);
+    // Só fecha o modal se shouldClose for true (salvamento manual)
+    if (shouldClose) {
+      setEditingProductIndex(null);
+      setEditingProduct(null);
+    }
   };
 
 

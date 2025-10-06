@@ -19,7 +19,7 @@ interface EditProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   product: ProductItem | null;
-  onSave: (product: ProductItem) => void;
+  onSave: (product: ProductItem, shouldClose?: boolean) => void;
   tipoEstoque: StockType;
 }
 
@@ -179,7 +179,7 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
     
     // Salva automaticamente (sem fechar o modal)
     console.log('💾 Auto-save ativado para:', product.nome);
-    onSave(updatedProduct);
+    onSave(updatedProduct, false); // shouldClose = false
     
   }, [debouncedFormData, product, useCustomParams, customParams]);
   
@@ -207,7 +207,7 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
       totalPacotes: calculateTotalPacotes()
     };
     
-    onSave(updatedProduct);
+    onSave(updatedProduct, true); // shouldClose = true
     onClose();
     
     toast({
