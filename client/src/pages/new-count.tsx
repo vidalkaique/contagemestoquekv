@@ -280,6 +280,139 @@ export default function NewCount() {
     }
   }, [currentCountId]);
 
+  // Função para salvar a contagem como rascunho (CIRURGICAMENTE ADICIONADA)
+  const handleSaveDraft = async () => {
+    if (!currentCountId || products.length === 0) {
+      toast({
+        title: "Nada para salvar",
+        description: "Adicione itens à contagem antes de salvar.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    
+    try {
+      // 1. Cria ou atualiza a contagem no Supabase
+      const { data: contagem, error: contagemError } = await supabase
+        .from('contagens')
+        .upsert({
+          id: currentCountId.startsWith('draft-') ? undefined : currentCountId,
+          data: countDate,
+          finalizada: false,
+          estoque_id: 1,
+          nome: userInfo?.nome || null,
+          matricula: userInfo?.matricula || null
+        })
+        .select()
+        .single();
+
+      if (contagemError) throw contagemError;
+      
+      const finalCountId = contagem.id;
+
+      // 2. Remove itens antigos se existirem
+      const { error: deleteError } = await supabase
+        .from('itens_contagem')
+        .delete()
+        .eq('contagem_id', finalCountId);
+
+      if (deleteError) throw deleteError;
+
+      // 3. Adiciona os itens atuais com TODOS os campos do Estoque 10
+      const itemsToSave = products.map(product => ({
+        contagem_id: finalCountId,
+        produto_id: product.id.startsWith('free-') ? null : product.id,
+        nome_livre: product.id.startsWith('free-') ? product.nome : null,
+        // Estoque 11
+        pallets: product.pallets || 0,
+        lastros: product.lastros || 0,
+        pacotes: product.pacotes || 0,
+        unidades: product.unidades || 0,
+        // Estoque 10 - GARRAFAS
+        chao_cheio: product.chaoCheio || 0,
+        chao_cheio_pallets: product.chaoCheio_pallets || 0,
+        chao_cheio_lastros: product.chaoCheio_lastros || 0,
+        chao_cheio_caixas: product.chaoCheio_caixas || 0,
+        chao_vazio: product.chaoVazio || 0,
+        chao_vazio_pallets: product.chaoVazio_pallets || 0,
+        chao_vazio_lastros: product.chaoVazio_lastros || 0,
+        chao_vazio_caixas: product.chaoVazio_caixas || 0,
+        refugo: product.refugo || 0,
+        refugo_pallets: product.refugo_pallets || 0,
+        refugo_lastros: product.refugo_lastros || 0,
+        refugo_caixas: product.refugo_caixas || 0,
+        avaria: product.avaria || 0,
+        avaria_pallets: product.avaria_pallets || 0,
+        avaria_lastros: product.avaria_lastros || 0,
+        avaria_caixas: product.avaria_caixas || 0,
+        // Estoque 10 - GARRAFEIRAS
+        garrafeiras_chao_cheio: product.garrafeiras_chaoCheio || 0,
+        garrafeiras_chao_cheio_pallets: product.garrafeiras_chaoCheio_pallets || 0,
+        garrafeiras_chao_cheio_lastros: product.garrafeiras_chaoCheio_lastros || 0,
+        garrafeiras_chao_cheio_caixas: product.garrafeiras_chaoCheio_caixas || 0,
+        garrafeiras_chao_vazio: product.garrafeiras_chaoVazio || 0,
+        garrafeiras_chao_vazio_pallets: product.garrafeiras_chaoVazio_pallets || 0,
+        garrafeiras_chao_vazio_lastros: product.garrafeiras_chaoVazio_lastros || 0,
+        garrafeiras_chao_vazio_caixas: product.garrafeiras_chaoVazio_caixas || 0,
+        garrafeiras_avaria: product.garrafeiras_avaria || 0,
+        garrafeiras_avaria_pallets: product.garrafeiras_avaria_pallets || 0,
+        garrafeiras_avaria_lastros: product.garrafeiras_avaria_lastros || 0,
+        garrafeiras_avaria_caixas: product.garrafeiras_avaria_caixas || 0,
+        garrafeiras_refugo: product.garrafeiras_refugo || 0,
+        garrafeiras_refugo_pallets: product.garrafeiras_refugo_pallets || 0,
+        garrafeiras_refugo_lastros: product.garrafeiras_refugo_lastros || 0,
+        garrafeiras_refugo_caixas: product.garrafeiras_refugo_caixas || 0,
+        // Estoque 10 - EQUIPAMENTOS
+        sucata: product.sucata || 0,
+        manutencao: product.manutencao || 0,
+        novo: product.novo || 0,
+        bloqueado: product.bloqueado || 0,
+        // Totais
+        total_pacotes: calculateTotalPacotes(product),
+        total: calculateProductTotal(product),
+        codigo: product.codigo || null
+      }));
+
+      const { error: insertError } = await supabase
+        .from('itens_contagem')
+        .insert(itemsToSave);
+
+      if (insertError) throw insertError;
+
+      toast({
+        title: "Contagem salva",
+        description: "Sua contagem foi salva como rascunho com sucesso.",
+      });
+
+      // Atualiza a lista de contagens
+      await queryClient.invalidateQueries({ queryKey: ['contagens'] });
+      
+      // Navega para a tela inicial
+      navigate('/');
+    } catch (error) {
+      console.error('Erro ao salvar rascunho:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar a contagem. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+      setShowExitModal(false);
+    }
+  };
+
+  // Função para descartar alterações e sair (CIRURGICAMENTE ADICIONADA)
+  const handleDiscardChanges = () => {
+    // Limpa o localStorage
+    clearCurrentCount();
+    
+    // Navega para a tela inicial
+    navigate('/');
+  };
+
   // Sincroniza os itens da contagem em tempo real
   useCountRealtime(
     currentCountId,
