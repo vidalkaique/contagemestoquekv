@@ -204,83 +204,7 @@ export function Stock10ExpandableSections({
         onSubfieldChange={(field, value) => handleSubfieldChange('refugo', field, value)}
         conversionRates={conversionRates}
       />
-      
-      {/* GARRAFEIRAS */}
-      <div className="mt-6 mb-3 pt-3 border-t border-gray-300">
-        <h4 className="font-semibold text-gray-700 mb-2">GARRAFEIRAS</h4>
-      </div>
-      
-      <ExpandableStockField
-        label="Chão Cheio"
-        value={calculateTotal(
-          data.garrafeiras_chaoCheio_pallets || 0,
-          data.garrafeiras_chaoCheio_lastros || 0,
-          data.garrafeiras_chaoCheio_caixas || 0
-        )}
-        unit="cx"
-        hasSubfields
-        subfields={{
-          pallets: data.garrafeiras_chaoCheio_pallets || 0,
-          lastros: data.garrafeiras_chaoCheio_lastros || 0,
-          caixas: data.garrafeiras_chaoCheio_caixas || 0
-        }}
-        onSubfieldChange={(field, value) => handleSubfieldChange('garrafeiras_chaoCheio', field, value)}
-        conversionRates={conversionRates}
-      />
-      
-      <ExpandableStockField
-        label="Chão Vazio"
-        value={calculateTotal(
-          data.garrafeiras_chaoVazio_pallets || 0,
-          data.garrafeiras_chaoVazio_lastros || 0,
-          data.garrafeiras_chaoVazio_caixas || 0
-        )}
-        unit="cx"
-        hasSubfields
-        subfields={{
-          pallets: data.garrafeiras_chaoVazio_pallets || 0,
-          lastros: data.garrafeiras_chaoVazio_lastros || 0,
-          caixas: data.garrafeiras_chaoVazio_caixas || 0
-        }}
-        onSubfieldChange={(field, value) => handleSubfieldChange('garrafeiras_chaoVazio', field, value)}
-        conversionRates={conversionRates}
-      />
-      
-      <ExpandableStockField
-        label="Avaria"
-        value={calculateTotal(
-          data.garrafeiras_avaria_pallets || 0,
-          data.garrafeiras_avaria_lastros || 0,
-          data.garrafeiras_avaria_caixas || 0
-        )}
-        unit="cx"
-        hasSubfields
-        subfields={{
-          pallets: data.garrafeiras_avaria_pallets || 0,
-          lastros: data.garrafeiras_avaria_lastros || 0,
-          caixas: data.garrafeiras_avaria_caixas || 0
-        }}
-        onSubfieldChange={(field, value) => handleSubfieldChange('garrafeiras_avaria', field, value)}
-        conversionRates={conversionRates}
-      />
-      
-      <ExpandableStockField
-        label="Refugo"
-        value={calculateTotal(
-          data.garrafeiras_refugo_pallets || 0,
-          data.garrafeiras_refugo_lastros || 0,
-          data.garrafeiras_refugo_caixas || 0
-        )}
-        unit="cx"
-        hasSubfields
-        subfields={{
-          pallets: data.garrafeiras_refugo_pallets || 0,
-          lastros: data.garrafeiras_refugo_lastros || 0,
-          caixas: data.garrafeiras_refugo_caixas || 0
-        }}
-        onSubfieldChange={(field, value) => handleSubfieldChange('garrafeiras_refugo', field, value)}
-        conversionRates={conversionRates}
-      />
+
     </>
   );
 
@@ -335,7 +259,7 @@ export function Stock10ExpandableSections({
 
   return (
     <div className="space-y-3">
-      {renderSection("GARRAFAS/GARRAFEIRAS", "garrafas", "🍾🏪")}
+      {renderSection("GARRAFAS", "garrafas", "🍾")}
       {renderSection("EQUIPAMENTOS", "equipamentos", "🔧")}
     </div>
   );

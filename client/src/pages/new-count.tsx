@@ -2517,12 +2517,66 @@ export default function NewCount() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                  <div><span className="font-medium">Pallets:</span> {product.pallets}</div>
-                  <div><span className="font-medium">Lastros:</span> {product.lastros}</div>
-                  <div><span className="font-medium">Pacotes:</span> {product.pacotes}</div>
-                  <div><span className="font-medium">Unidades:</span> {product.unidades}</div>
-                </div>
+                {/* Exibe campos baseado no tipo de estoque */}
+                {(() => {
+                  // Detecta se é Estoque 10 (tem campos como chaoCheio, chaoVazio, etc)
+                  const isEstoque10 = (product.chaoCheio !== undefined || product.chaoVazio !== undefined || 
+                                       product.refugo !== undefined || product.avaria !== undefined ||
+                                       product.sucata !== undefined || product.manutencao !== undefined ||
+                                       product.novo !== undefined || product.bloqueado !== undefined);
+                  
+                  if (isEstoque10) {
+                    // Exibe campos do Estoque 10
+                    return (
+                      <div className="space-y-2">
+                        {/* GARRAFAS */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                          {(product.chaoCheio ?? 0) > 0 && (
+                            <div><span className="font-medium">Chão Cheio:</span> {product.chaoCheio} cx</div>
+                          )}
+                          {(product.chaoVazio ?? 0) > 0 && (
+                            <div><span className="font-medium">Chão Vazio:</span> {product.chaoVazio} cx</div>
+                          )}
+                          {(product.refugo ?? 0) > 0 && (
+                            <div><span className="font-medium">Refugo:</span> {product.refugo} cx</div>
+                          )}
+                          {(product.avaria ?? 0) > 0 && (
+                            <div><span className="font-medium">Avaria:</span> {product.avaria} cx</div>
+                          )}
+                        </div>
+                        
+                        {/* EQUIPAMENTOS */}
+                        {((product.novo ?? 0) > 0 || (product.manutencao ?? 0) > 0 || 
+                          (product.sucata ?? 0) > 0 || (product.bloqueado ?? 0) > 0) && (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm border-t pt-2">
+                            {(product.novo ?? 0) > 0 && (
+                              <div><span className="font-medium">Novo:</span> {product.novo} un</div>
+                            )}
+                            {(product.manutencao ?? 0) > 0 && (
+                              <div><span className="font-medium">Manutenção:</span> {product.manutencao} un</div>
+                            )}
+                            {(product.sucata ?? 0) > 0 && (
+                              <div><span className="font-medium">Sucata:</span> {product.sucata} un</div>
+                            )}
+                            {(product.bloqueado ?? 0) > 0 && (
+                              <div><span className="font-medium">Bloqueado:</span> {product.bloqueado} un</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  } else {
+                    // Exibe campos do Estoque 11 (padrão)
+                    return (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                        <div><span className="font-medium">Pallets:</span> {product.pallets}</div>
+                        <div><span className="font-medium">Lastros:</span> {product.lastros}</div>
+                        <div><span className="font-medium">Pacotes:</span> {product.pacotes}</div>
+                        <div><span className="font-medium">Unidades:</span> {product.unidades}</div>
+                      </div>
+                    );
+                  }
+                })()}
 
                 {(product.unidadesPorPacote !== undefined || product.pacotesPorLastro !== undefined || product.lastrosPorPallet !== undefined || product.quantidadePacsPorPallet !== undefined) && (
                   <div className="border-t pt-3 mt-3 text-xs text-gray-600">
