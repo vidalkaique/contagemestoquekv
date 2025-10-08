@@ -74,6 +74,8 @@ export const itensContagem = pgTable("itens_contagem", {
   unidades: integer("unidades").notNull().default(0),
   total: integer("total").notNull().default(0),
   totalPacotes: integer("total_pacotes").notNull().default(0),
+  // Estoque 23 - SIMPLIFICADO
+  un: integer("un").notNull().default(0),
 });
 
 // Relations

@@ -52,6 +52,8 @@ export interface RealtimeProductItem {
   manutencao?: number;
   novo?: number;
   bloqueado?: number;
+  // Estoque 23 - SIMPLIFICADO
+  un?: number;
   // Parâmetros
   unidadesPorPacote?: number;
   pacotesPorLastro?: number;
@@ -126,6 +128,8 @@ export function useCountRealtime(
         manutencao: item.manutencao ?? 0,
         novo: item.novo ?? 0,
         bloqueado: item.bloqueado ?? 0,
+        // Estoque 23 - SIMPLIFICADO
+        un: item.un ?? 0,
         // Parâmetros
         unidadesPorPacote: prod?.unidades_por_pacote ?? undefined,
         pacotesPorLastro: prod?.pacotes_por_lastro ?? undefined,

@@ -369,6 +369,8 @@ export default function NewCount() {
         manutencao: product.manutencao || 0,
         novo: product.novo || 0,
         bloqueado: product.bloqueado || 0,
+        // Estoque 23 - SIMPLIFICADO
+        un: product.un || 0,
         // Totais
         total_pacotes: calculateTotalPacotes(product),
         total: calculateProductTotal(product),
@@ -818,6 +820,8 @@ export default function NewCount() {
             manutencao: product.manutencao ?? 0,
             novo: product.novo ?? 0,
             bloqueado: product.bloqueado ?? 0,
+            // Estoque 23 - SIMPLIFICADO
+            un: product.un ?? 0,
             // Totais e código
             total: total,
             totalPacotes: totalPacotes,
@@ -1000,6 +1004,8 @@ export default function NewCount() {
         manutencao: item.manutencao || 0,
         novo: item.novo || 0,
         bloqueado: item.bloqueado || 0,
+        // Estoque 23 - SIMPLIFICADO
+        un: item.un || 0,
         // Totais
         total: item.total || 0,
         total_pacotes: totalPacotes,
