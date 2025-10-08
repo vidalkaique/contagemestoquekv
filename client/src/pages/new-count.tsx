@@ -2526,43 +2526,62 @@ export default function NewCount() {
                                        product.novo !== undefined || product.bloqueado !== undefined);
                   
                   if (isEstoque10) {
-                    // Exibe campos do Estoque 10
+                    // Resumo bonito para Estoque 10 (igual ao modal)
+                    const totalGarrafas = (product.chaoCheio || 0) + (product.chaoVazio || 0) + 
+                                          (product.refugo || 0) + (product.avaria || 0);
+                    const totalEquipamentos = (product.novo || 0) + (product.manutencao || 0) + 
+                                              (product.sucata || 0) + (product.bloqueado || 0);
+                    
+                    if (totalGarrafas === 0 && totalEquipamentos === 0) return null;
+                    
                     return (
-                      <div className="space-y-2">
-                        {/* GARRAFAS */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                          {(product.chaoCheio ?? 0) > 0 && (
-                            <div><span className="font-medium">Chão Cheio:</span> {product.chaoCheio} cx</div>
-                          )}
-                          {(product.chaoVazio ?? 0) > 0 && (
-                            <div><span className="font-medium">Chão Vazio:</span> {product.chaoVazio} cx</div>
-                          )}
-                          {(product.refugo ?? 0) > 0 && (
-                            <div><span className="font-medium">Refugo:</span> {product.refugo} cx</div>
-                          )}
-                          {(product.avaria ?? 0) > 0 && (
-                            <div><span className="font-medium">Avaria:</span> {product.avaria} cx</div>
-                          )}
-                        </div>
+                      <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <h4 className="font-semibold text-gray-800 mb-2 text-xs">📊 Resumo da Contagem</h4>
                         
-                        {/* EQUIPAMENTOS */}
-                        {((product.novo ?? 0) > 0 || (product.manutencao ?? 0) > 0 || 
-                          (product.sucata ?? 0) > 0 || (product.bloqueado ?? 0) > 0) && (
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm border-t pt-2">
-                            {(product.novo ?? 0) > 0 && (
-                              <div><span className="font-medium">Novo:</span> {product.novo} un</div>
-                            )}
-                            {(product.manutencao ?? 0) > 0 && (
-                              <div><span className="font-medium">Manutenção:</span> {product.manutencao} un</div>
-                            )}
-                            {(product.sucata ?? 0) > 0 && (
-                              <div><span className="font-medium">Sucata:</span> {product.sucata} un</div>
-                            )}
-                            {(product.bloqueado ?? 0) > 0 && (
-                              <div><span className="font-medium">Bloqueado:</span> {product.bloqueado} un</div>
-                            )}
+                        {totalGarrafas > 0 && (
+                          <div className="mb-2">
+                            <div className="text-xs font-medium text-gray-600 mb-1">GARRAFAS:</div>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              {(product.chaoCheio || 0) > 0 && (
+                                <div><span className="font-medium">Chão Cheio:</span> <span className="text-blue-600 font-bold">{product.chaoCheio} cx</span></div>
+                              )}
+                              {(product.chaoVazio || 0) > 0 && (
+                                <div><span className="font-medium">Chão Vazio:</span> <span className="text-blue-600 font-bold">{product.chaoVazio} cx</span></div>
+                              )}
+                              {(product.refugo || 0) > 0 && (
+                                <div><span className="font-medium">Refugo:</span> <span className="text-blue-600 font-bold">{product.refugo} cx</span></div>
+                              )}
+                              {(product.avaria || 0) > 0 && (
+                                <div><span className="font-medium">Avaria:</span> <span className="text-blue-600 font-bold">{product.avaria} cx</span></div>
+                              )}
+                            </div>
                           </div>
                         )}
+                        
+                        {totalEquipamentos > 0 && (
+                          <div className={totalGarrafas > 0 ? "border-t border-blue-300 pt-2" : ""}>
+                            <div className="text-xs font-medium text-gray-600 mb-1">EQUIPAMENTOS:</div>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              {(product.novo || 0) > 0 && (
+                                <div><span className="font-medium">Novo:</span> <span className="text-blue-600 font-bold">{product.novo} un</span></div>
+                              )}
+                              {(product.manutencao || 0) > 0 && (
+                                <div><span className="font-medium">Manutenção:</span> <span className="text-blue-600 font-bold">{product.manutencao} un</span></div>
+                              )}
+                              {(product.sucata || 0) > 0 && (
+                                <div><span className="font-medium">Sucata:</span> <span className="text-blue-600 font-bold">{product.sucata} un</span></div>
+                              )}
+                              {(product.bloqueado || 0) > 0 && (
+                                <div><span className="font-medium">Bloqueado:</span> <span className="text-blue-600 font-bold">{product.bloqueado} un</span></div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        <div className="mt-2 pt-2 border-t border-blue-300 text-right">
+                          <span className="text-xs font-semibold text-gray-700">Total Geral: </span>
+                          <span className="text-sm font-bold text-blue-700">{totalGarrafas + totalEquipamentos}</span>
+                        </div>
                       </div>
                     );
                   } else {
