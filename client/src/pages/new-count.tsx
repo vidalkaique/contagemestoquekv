@@ -2519,11 +2519,8 @@ export default function NewCount() {
 
                 {/* Exibe campos baseado no tipo de estoque */}
                 {(() => {
-                  // Detecta se é Estoque 10 (verifica se as propriedades EXISTEM, mesmo que sejam 0)
-                  const isEstoque10 = ('chaoCheio' in product || 'chaoVazio' in product || 
-                                       'refugo' in product || 'avaria' in product ||
-                                       'sucata' in product || 'manutencao' in product ||
-                                       'novo' in product || 'bloqueado' in product);
+                  // Usa a variável tipoEstoque para detectar corretamente
+                  const isEstoque10 = tipoEstoque === '10';
                   
                   if (isEstoque10) {
                     // Resumo bonito para Estoque 10 (igual ao modal)
