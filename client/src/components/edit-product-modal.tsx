@@ -465,7 +465,7 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
                     
                     {totalGarrafas > 0 && (
                       <div className="mb-3">
-                        <div className="text-xs font-medium text-gray-600 mb-2">GARRAFAS:</div>
+                        <div className="text-xs font-medium text-gray-600 mb-2">Garrafas/Garrafeiras:</div>
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           {chaoCheio > 0 && (
                             <div><span className="font-medium">Chão Cheio:</span> <span className="text-blue-600 font-bold">{chaoCheio} cx</span></div>
