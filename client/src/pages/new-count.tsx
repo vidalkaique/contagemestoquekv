@@ -2738,6 +2738,20 @@ export default function NewCount() {
                         </div>
                       </div>
                     );
+                  } else if (tipoEstoque === '23') {
+                    // Exibe campo do Estoque 23 (simplificado)
+                    const totalUn = product.un || 0;
+                    
+                    if (totalUn === 0) return null;
+                    
+                    return (
+                      <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                        <h4 className="font-semibold text-gray-800 mb-2 text-xs">📊 Resumo da Contagem</h4>
+                        <div className="text-sm">
+                          <span className="font-medium">UN:</span> <span className="text-green-600 font-bold">{totalUn}</span>
+                        </div>
+                      </div>
+                    );
                   } else {
                     // Exibe campos do Estoque 11 (padrão)
                     return (
