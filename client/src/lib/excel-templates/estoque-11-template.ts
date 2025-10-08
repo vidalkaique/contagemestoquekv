@@ -18,6 +18,7 @@ export class Estoque11Template implements ExcelTemplate {
 
   getColumns(): string[] {
     return [
+      'Código',
       'Produto',
       'Pallets',
       'Lastros', 
@@ -69,6 +70,7 @@ export class Estoque11Template implements ExcelTemplate {
                           pacotes;
 
       return [
+        product.codigo || 'N/A', // Código do produto
         product.nome,
         pallets,
         lastros,
@@ -170,6 +172,7 @@ export class Estoque11Template implements ExcelTemplate {
    */
   private getColumnWidths(): XLSX.ColInfo[] {
     return [
+      { wch: 15 }, // Código
       { wch: 30 }, // Produto
       { wch: 12 }, // Pallets
       { wch: 12 }, // Lastros

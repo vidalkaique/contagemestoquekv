@@ -18,6 +18,7 @@ export class Estoque23Template implements ExcelTemplate {
 
   getColumns(): string[] {
     return [
+      'Código',
       'Produto',
       'UN',
       'Total'
@@ -57,6 +58,7 @@ export class Estoque23Template implements ExcelTemplate {
       const un = product.un || 0;
 
       return [
+        product.codigo || 'N/A', // Código do produto
         product.nome,
         un,
         un // Total é igual ao UN no Estoque 23
@@ -156,6 +158,7 @@ export class Estoque23Template implements ExcelTemplate {
    */
   private getColumnWidths(): XLSX.ColInfo[] {
     return [
+      { wch: 15 }, // Código
       { wch: 35 }, // Produto
       { wch: 15 }, // UN
       { wch: 15 }  // Total

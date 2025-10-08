@@ -18,9 +18,9 @@ export class Estoque10Template implements ExcelTemplate {
 
   getColumns(): string[] {
     return [
+      'Código',
       'Produto',
-      'Ch', 'Vz', 'Rf', 'Av', // Garrafas
-      'G.Ch', 'G.Vz', 'G.Rf', 'G.Av', // Garrafeiras
+      'Ch', 'Vz', 'Rf', 'Av', // Garrafas (removido G.Ch, G.Vz, G.Rf, G.Av)
       'Nv', 'Mn', 'Sc', 'Bl', // Equipamentos
       'Total'
     ];
@@ -57,24 +57,19 @@ export class Estoque10Template implements ExcelTemplate {
       // Calcula totais (Regra #8: Tratamento correto de dados)
       const totalGarrafas = (product.chaoCheio || 0) + (product.chaoVazio || 0) + 
                            (product.refugo || 0) + (product.avaria || 0);
-      const totalGarrafeiras = (product.garrafeiras_chaoCheio || 0) + (product.garrafeiras_chaoVazio || 0) + 
-                              (product.garrafeiras_refugo || 0) + (product.garrafeiras_avaria || 0);
       const totalEquipamentos = (product.novo || 0) + (product.manutencao || 0) + 
                                (product.sucata || 0) + (product.bloqueado || 0);
-      const total = totalGarrafas + totalGarrafeiras + totalEquipamentos;
+      // Removido totalGarrafeiras conforme solicitado
+      const total = totalGarrafas + totalEquipamentos;
 
       return [
+        product.codigo || 'N/A', // Código do produto
         product.nome,
-        // Garrafas
+        // Garrafas (removido campos das garrafeiras)
         product.chaoCheio || 0,
         product.chaoVazio || 0,
         product.refugo || 0,
         product.avaria || 0,
-        // Garrafeiras
-        product.garrafeiras_chaoCheio || 0,
-        product.garrafeiras_chaoVazio || 0,
-        product.garrafeiras_refugo || 0,
-        product.garrafeiras_avaria || 0,
         // Equipamentos
         product.novo || 0,
         product.manutencao || 0,
@@ -109,11 +104,11 @@ export class Estoque10Template implements ExcelTemplate {
     // Calcula totais (Regra #8: Tratamento correto de dados)
     const totals = this.calculateTotals(formattedData);
     
-    // Combina tudo
+    // Combina tudo (removido linha de totais conforme solicitado)
     const sheetData = [
       ...header,
-      ...formattedData,
-      ['TOTAL', ...totals.slice(1)] // Remove primeiro elemento (nome do produto)
+      ...formattedData
+      // Removido: ['TOTAL', ...totals.slice(1)]
     ];
 
     // Cria planilha
@@ -165,14 +160,7 @@ export class Estoque10Template implements ExcelTemplate {
       }
     }
 
-    // Formata linha de totais
-    const totalRowIndex = rowCount - 1;
-    for (let col = 0; col < columns.length; col++) {
-      const cellAddress = XLSX.utils.encode_cell({ r: totalRowIndex, c: col });
-      if (ws[cellAddress]) {
-        ws[cellAddress].s = styles.total;
-      }
-    }
+    // Removido: Formatação da linha de totais (não existe mais)
   }
 
   /**
@@ -180,15 +168,13 @@ export class Estoque10Template implements ExcelTemplate {
    */
   private getColumnWidths(): XLSX.ColInfo[] {
     return [
+      { wch: 15 }, // Código
       { wch: 25 }, // Produto
       { wch: 8 },  // Ch
       { wch: 8 },  // Vz
       { wch: 8 },  // Rf
       { wch: 8 },  // Av
-      { wch: 8 },  // G.Ch
-      { wch: 8 },  // G.Vz
-      { wch: 8 },  // G.Rf
-      { wch: 8 },  // G.Av
+      // Removido: G.Ch, G.Vz, G.Rf, G.Av
       { wch: 8 },  // Nv
       { wch: 8 },  // Mn
       { wch: 8 },  // Sc
