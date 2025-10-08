@@ -203,15 +203,15 @@ export function calculateStockTotal(
     }
     
     case '10': {
-      // Estoque 10: Calcula com conversão baseada em parâmetros do produto
-      const { unidadesPorPacote = 1, pacotesPorLastro = 1, lastrosPorPallet = 1 } = params || {};
+      // Estoque 10: Calcula em CAIXAS baseado em parâmetros do produto
+      const { pacotesPorLastro = 1, lastrosPorPallet = 1 } = params || {};
       
-      // Função auxiliar para calcular total com conversão (DRY - Regra #1)
+      // Função auxiliar para calcular total em CAIXAS (DRY - Regra #1)
       const calcularComConversao = (pallets: number, lastros: number, caixas: number): number => {
         return (
-          pallets * lastrosPorPallet * pacotesPorLastro * unidadesPorPacote +
-          lastros * pacotesPorLastro * unidadesPorPacote +
-          caixas * unidadesPorPacote
+          pallets * lastrosPorPallet * pacotesPorLastro +
+          lastros * pacotesPorLastro +
+          caixas
         );
       };
       

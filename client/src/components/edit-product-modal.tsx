@@ -155,18 +155,18 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
     
     if (!product) return;
     
-    // Função auxiliar para calcular total com conversão (DRY - Regra #1)
+    // Função auxiliar para calcular total em CAIXAS (DRY - Regra #1)
     const calcularTotal = (pallets: number, lastros: number, caixas: number): number => {
       const params = useCustomParams ? customParams : {
-        unidadesPorPacote: formData.unidadesPorPacote || 1,
         pacotesPorLastro: formData.pacotesPorLastro || 1,
         lastrosPorPallet: formData.lastrosPorPallet || 1
       };
       
+      // Calcula total em CAIXAS/PACOTES (não em unidades)
       return (
-        pallets * params.lastrosPorPallet * params.pacotesPorLastro * params.unidadesPorPacote +
-        lastros * params.pacotesPorLastro * params.unidadesPorPacote +
-        caixas * params.unidadesPorPacote
+        pallets * params.lastrosPorPallet * params.pacotesPorLastro +
+        lastros * params.pacotesPorLastro +
+        caixas
       );
     };
     
@@ -366,15 +366,113 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Campos dinâmicos baseados no tipo de estoque */}
           {tipoEstoque === '10' ? (
-            /* Seções expansíveis para Estoque 10 (Ativos) */
-            <Stock10ExpandableSections
-              data={formData}
-              onChange={handleFieldChange}
-              conversionRates={{
-                caixasPorLastro: useCustomParams ? customParams.pacotesPorLastro : (formData.pacotesPorLastro || 12),
-                lastrosPorPallet: useCustomParams ? customParams.lastrosPorPallet : (formData.lastrosPorPallet || 10)
-              }}
-            />
+            <>
+              {/* Seções expansíveis para Estoque 10 (Ativos) */}
+              <Stock10ExpandableSections
+                data={formData}
+                onChange={handleFieldChange}
+                conversionRates={{
+                  caixasPorLastro: useCustomParams ? customParams.pacotesPorLastro : (formData.pacotesPorLastro || 12),
+                  lastrosPorPallet: useCustomParams ? customParams.lastrosPorPallet : (formData.lastrosPorPallet || 10)
+                }}
+              />
+              
+              {/* Resumo dos totais calculados (Estoque 10) */}
+              {(() => {
+                const params = useCustomParams ? customParams : {
+                  pacotesPorLastro: formData.pacotesPorLastro || 1,
+                  lastrosPorPallet: formData.lastrosPorPallet || 1
+                };
+                
+                const calcTotal = (pallets: number, lastros: number, caixas: number): number => {
+                  return (
+                    pallets * params.lastrosPorPallet * params.pacotesPorLastro +
+                    lastros * params.pacotesPorLastro +
+                    caixas
+                  );
+                };
+                
+                const chaoCheio = calcTotal(
+                  formData.chaoCheio_pallets || 0,
+                  formData.chaoCheio_lastros || 0,
+                  formData.chaoCheio_caixas || 0
+                );
+                
+                const chaoVazio = calcTotal(
+                  formData.chaoVazio_pallets || 0,
+                  formData.chaoVazio_lastros || 0,
+                  formData.chaoVazio_caixas || 0
+                );
+                
+                const refugo = calcTotal(
+                  formData.refugo_pallets || 0,
+                  formData.refugo_lastros || 0,
+                  formData.refugo_caixas || 0
+                );
+                
+                const avaria = calcTotal(
+                  formData.avaria_pallets || 0,
+                  formData.avaria_lastros || 0,
+                  formData.avaria_caixas || 0
+                );
+                
+                const totalGarrafas = chaoCheio + chaoVazio + refugo + avaria;
+                const totalEquipamentos = (formData.novo || 0) + (formData.manutencao || 0) + (formData.sucata || 0) + (formData.bloqueado || 0);
+                
+                if (totalGarrafas === 0 && totalEquipamentos === 0) return null;
+                
+                return (
+                  <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h4 className="font-semibold text-gray-800 mb-3 text-sm">📊 Resumo da Contagem</h4>
+                    
+                    {totalGarrafas > 0 && (
+                      <div className="mb-3">
+                        <div className="text-xs font-medium text-gray-600 mb-2">GARRAFAS:</div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          {chaoCheio > 0 && (
+                            <div><span className="font-medium">Chão Cheio:</span> <span className="text-blue-600 font-bold">{chaoCheio} cx</span></div>
+                          )}
+                          {chaoVazio > 0 && (
+                            <div><span className="font-medium">Chão Vazio:</span> <span className="text-blue-600 font-bold">{chaoVazio} cx</span></div>
+                          )}
+                          {refugo > 0 && (
+                            <div><span className="font-medium">Refugo:</span> <span className="text-blue-600 font-bold">{refugo} cx</span></div>
+                          )}
+                          {avaria > 0 && (
+                            <div><span className="font-medium">Avaria:</span> <span className="text-blue-600 font-bold">{avaria} cx</span></div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {totalEquipamentos > 0 && (
+                      <div className="border-t border-blue-300 pt-3">
+                        <div className="text-xs font-medium text-gray-600 mb-2">EQUIPAMENTOS:</div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          {(formData.novo || 0) > 0 && (
+                            <div><span className="font-medium">Novo:</span> <span className="text-blue-600 font-bold">{formData.novo} un</span></div>
+                          )}
+                          {(formData.manutencao || 0) > 0 && (
+                            <div><span className="font-medium">Manutenção:</span> <span className="text-blue-600 font-bold">{formData.manutencao} un</span></div>
+                          )}
+                          {(formData.sucata || 0) > 0 && (
+                            <div><span className="font-medium">Sucata:</span> <span className="text-blue-600 font-bold">{formData.sucata} un</span></div>
+                          )}
+                          {(formData.bloqueado || 0) > 0 && (
+                            <div><span className="font-medium">Bloqueado:</span> <span className="text-blue-600 font-bold">{formData.bloqueado} un</span></div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="mt-3 pt-3 border-t border-blue-300 text-right">
+                      <span className="text-sm font-semibold text-gray-700">Total Geral: </span>
+                      <span className="text-lg font-bold text-blue-700">{totalGarrafas + totalEquipamentos}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </>
           ) : (
             /* Grid padrão para outros estoques (11 e 23) */
             stockConfig && (
