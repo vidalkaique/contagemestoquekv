@@ -280,6 +280,33 @@ export default function NewCount() {
     }
   }, [currentCountId]);
 
+  // Função para obter o UUID do estoque baseado no tipo
+  const getEstoqueIdByTipo = async (tipo: string): Promise<string> => {
+    try {
+      const { data, error } = await supabase
+        .from('estoques')
+        .select('id')
+        .ilike('nome', `%${tipo}%`)
+        .single();
+      
+      if (error || !data) {
+        console.error('Erro ao buscar estoque por tipo:', error);
+        // Fallback para Estoque 11 se não encontrar
+        const { data: fallbackData } = await supabase
+          .from('estoques')
+          .select('id')
+          .ilike('nome', '%11%')
+          .single();
+        return fallbackData?.id || '3dd14edb-66cd-4374-abaa-9827936823a3';
+      }
+      
+      return data.id;
+    } catch (error) {
+      console.error('Erro ao buscar estoque:', error);
+      return '3dd14edb-66cd-4374-abaa-9827936823a3'; // Fallback para Estoque 10
+    }
+  };
+
   // Função para salvar a contagem como rascunho (CIRURGICAMENTE ADICIONADA)
   const handleSaveDraft = async () => {
     if (!currentCountId || products.length === 0) {
@@ -301,7 +328,7 @@ export default function NewCount() {
           id: currentCountId.startsWith('draft-') ? undefined : currentCountId,
           data: countDate,
           finalizada: false,
-          estoque_id: '3dd14edb-66cd-4374-abaa-9827936823a3', // UUID do Estoque 10
+          estoque_id: await getEstoqueIdByTipo(tipoEstoque), // UUID dinâmico baseado no tipo
           nome: userInfo?.nome || null,
           matricula: userInfo?.matricula || null
         })
