@@ -500,67 +500,6 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
             </div>
           )}
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
-            {/* Total de Pacotes (somente leitura) */}
-            <div className="space-y-2">
-              <Label>Total de Pacotes</Label>
-              <Input
-                value={formData.totalPacotes}
-                readOnly
-                className="bg-gray-100"
-              />
-            </div>
-            
-            {/* Quantidade no Sistema (se disponível) */}
-            {formData.quantidadeSistema !== undefined && (
-              <>
-                <div className="space-y-2">
-                  <Label>Quantidade no Sistema</Label>
-                  <Input
-                    value={formData.quantidadeSistema.toLocaleString()}
-                    readOnly
-                    className="bg-gray-100 font-medium"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Total Contado (Unidades)</Label>
-                  <Input
-                    value={calculateTotalUnidades().toLocaleString()}
-                    readOnly
-                    className="bg-gray-100 font-medium"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Diferença (Pacotes)</Label>
-                  <div className={cn(
-                    "p-2 rounded font-bold text-center flex items-center justify-center gap-2",
-                    formData.totalPacotes > formData.quantidadeSistema
-                      ? "text-green-700 bg-green-50"
-                      : formData.totalPacotes < formData.quantidadeSistema
-                        ? "text-red-700 bg-red-50"
-                        : "text-gray-700 bg-gray-100"
-                  )}>
-                    {formData.totalPacotes > formData.quantidadeSistema && (
-                      <AlertCircle className="h-4 w-4" />
-                    )}
-                    {formData.totalPacotes < formData.quantidadeSistema && (
-                      <AlertCircle className="h-4 w-4" />
-                    )}
-                    {formData.totalPacotes === formData.quantidadeSistema && (
-                      <CheckCircle className="h-4 w-4" />
-                    )}
-                    {(formData.totalPacotes - formData.quantidadeSistema) > 0
-                      ? `+${(formData.totalPacotes - formData.quantidadeSistema).toLocaleString()}`
-                      : (formData.totalPacotes - formData.quantidadeSistema).toLocaleString()}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-          
           <div className="flex justify-end space-x-2 pt-4">
             <Button
               type="button"
