@@ -301,7 +301,7 @@ export default function NewCount() {
           id: currentCountId.startsWith('draft-') ? undefined : currentCountId,
           data: countDate,
           finalizada: false,
-          estoque_id: 1,
+          estoque_id: '3dd14edb-66cd-4374-abaa-9827936823a3', // UUID do Estoque 10
           nome: userInfo?.nome || null,
           matricula: userInfo?.matricula || null
         })
