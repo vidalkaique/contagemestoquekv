@@ -846,10 +846,59 @@ export default function NewCount() {
         contagem_id: item.contagemId,
         produto_id: item.produtoId || null,
         nome_livre: item.nomeLivre || null,
+        // Estoque 11 (padrão)
         pallets: item.pallets || 0,
         lastros: item.lastros || 0,
         pacotes: item.pacotes || 0,
         unidades: item.unidades || 0,
+        // Estoque 10 - GARRAFAS (com subcampos)
+        chao_cheio: item.chaoCheio || 0,
+        chao_cheio_pallets: item.chaoCheio_pallets || 0,
+        chao_cheio_lastros: item.chaoCheio_lastros || 0,
+        chao_cheio_caixas: item.chaoCheio_caixas || 0,
+        
+        chao_vazio: item.chaoVazio || 0,
+        chao_vazio_pallets: item.chaoVazio_pallets || 0,
+        chao_vazio_lastros: item.chaoVazio_lastros || 0,
+        chao_vazio_caixas: item.chaoVazio_caixas || 0,
+        
+        refugo: item.refugo || 0,
+        refugo_pallets: item.refugo_pallets || 0,
+        refugo_lastros: item.refugo_lastros || 0,
+        refugo_caixas: item.refugo_caixas || 0,
+        
+        avaria: item.avaria || 0,
+        avaria_pallets: item.avaria_pallets || 0,
+        avaria_lastros: item.avaria_lastros || 0,
+        avaria_caixas: item.avaria_caixas || 0,
+        
+        // Estoque 10 - GARRAFEIRAS (com subcampos)
+        garrafeiras_chao_cheio: item.garrafeiras_chaoCheio || 0,
+        garrafeiras_chao_cheio_pallets: item.garrafeiras_chaoCheio_pallets || 0,
+        garrafeiras_chao_cheio_lastros: item.garrafeiras_chaoCheio_lastros || 0,
+        garrafeiras_chao_cheio_caixas: item.garrafeiras_chaoCheio_caixas || 0,
+        
+        garrafeiras_chao_vazio: item.garrafeiras_chaoVazio || 0,
+        garrafeiras_chao_vazio_pallets: item.garrafeiras_chaoVazio_pallets || 0,
+        garrafeiras_chao_vazio_lastros: item.garrafeiras_chaoVazio_lastros || 0,
+        garrafeiras_chao_vazio_caixas: item.garrafeiras_chaoVazio_caixas || 0,
+        
+        garrafeiras_avaria: item.garrafeiras_avaria || 0,
+        garrafeiras_avaria_pallets: item.garrafeiras_avaria_pallets || 0,
+        garrafeiras_avaria_lastros: item.garrafeiras_avaria_lastros || 0,
+        garrafeiras_avaria_caixas: item.garrafeiras_avaria_caixas || 0,
+        
+        garrafeiras_refugo: item.garrafeiras_refugo || 0,
+        garrafeiras_refugo_pallets: item.garrafeiras_refugo_pallets || 0,
+        garrafeiras_refugo_lastros: item.garrafeiras_refugo_lastros || 0,
+        garrafeiras_refugo_caixas: item.garrafeiras_refugo_caixas || 0,
+        
+        // Estoque 10 - EQUIPAMENTOS (apenas UN)
+        sucata: item.sucata || 0,
+        manutencao: item.manutencao || 0,
+        novo: item.novo || 0,
+        bloqueado: item.bloqueado || 0,
+        // Totais
         total: item.total || 0,
         total_pacotes: totalPacotes,
       };
