@@ -83,10 +83,22 @@ export function useUnfinishedCount() {
         }
       }
 
-      // Passo 3: Busca os itens da contagem separadamente
+      // Passo 3: Busca os itens da contagem separadamente (inclui todos os campos do Estoque 10)
       const { data: itensData, error: itensError } = await supabase
         .from('itens_contagem')
-        .select('id, contagem_id, produto_id, nome_livre, pallets, lastros, pacotes, unidades, total, total_pacotes, created_at')
+        .select(`
+          id, contagem_id, produto_id, nome_livre, 
+          pallets, lastros, pacotes, unidades, total, total_pacotes,
+          chao_cheio, chao_cheio_pallets, chao_cheio_lastros, chao_cheio_caixas,
+          chao_vazio, chao_vazio_pallets, chao_vazio_lastros, chao_vazio_caixas,
+          refugo, refugo_pallets, refugo_lastros, refugo_caixas,
+          avaria, avaria_pallets, avaria_lastros, avaria_caixas,
+          garrafeiras_chao_cheio, garrafeiras_chao_cheio_pallets, garrafeiras_chao_cheio_lastros, garrafeiras_chao_cheio_caixas,
+          garrafeiras_chao_vazio, garrafeiras_chao_vazio_pallets, garrafeiras_chao_vazio_lastros, garrafeiras_chao_vazio_caixas,
+          garrafeiras_avaria, garrafeiras_avaria_pallets, garrafeiras_avaria_lastros, garrafeiras_avaria_caixas,
+          garrafeiras_refugo, garrafeiras_refugo_pallets, garrafeiras_refugo_lastros, garrafeiras_refugo_caixas,
+          sucata, manutencao, novo, bloqueado
+        `)
         .eq('contagem_id', first.id);
 
       if (itensError) {
@@ -115,12 +127,53 @@ export function useUnfinishedCount() {
           contagemId: item.contagem_id,
           produtoId: item.produto_id,
           nomeLivre: item.nome_livre,
+          // Estoque 11
           pallets: item.pallets,
           lastros: item.lastros,
           pacotes: item.pacotes,
           unidades: item.unidades,
           total: item.total,
           totalPacotes: item.total_pacotes,
+          // Estoque 10 - GARRAFAS
+          chaoCheio: item.chao_cheio,
+          chaoCheio_pallets: item.chao_cheio_pallets,
+          chaoCheio_lastros: item.chao_cheio_lastros,
+          chaoCheio_caixas: item.chao_cheio_caixas,
+          chaoVazio: item.chao_vazio,
+          chaoVazio_pallets: item.chao_vazio_pallets,
+          chaoVazio_lastros: item.chao_vazio_lastros,
+          chaoVazio_caixas: item.chao_vazio_caixas,
+          refugo: item.refugo,
+          refugo_pallets: item.refugo_pallets,
+          refugo_lastros: item.refugo_lastros,
+          refugo_caixas: item.refugo_caixas,
+          avaria: item.avaria,
+          avaria_pallets: item.avaria_pallets,
+          avaria_lastros: item.avaria_lastros,
+          avaria_caixas: item.avaria_caixas,
+          // Estoque 10 - GARRAFEIRAS
+          garrafeiras_chaoCheio: item.garrafeiras_chao_cheio,
+          garrafeiras_chaoCheio_pallets: item.garrafeiras_chao_cheio_pallets,
+          garrafeiras_chaoCheio_lastros: item.garrafeiras_chao_cheio_lastros,
+          garrafeiras_chaoCheio_caixas: item.garrafeiras_chao_cheio_caixas,
+          garrafeiras_chaoVazio: item.garrafeiras_chao_vazio,
+          garrafeiras_chaoVazio_pallets: item.garrafeiras_chao_vazio_pallets,
+          garrafeiras_chaoVazio_lastros: item.garrafeiras_chao_vazio_lastros,
+          garrafeiras_chaoVazio_caixas: item.garrafeiras_chao_vazio_caixas,
+          garrafeiras_avaria: item.garrafeiras_avaria,
+          garrafeiras_avaria_pallets: item.garrafeiras_avaria_pallets,
+          garrafeiras_avaria_lastros: item.garrafeiras_avaria_lastros,
+          garrafeiras_avaria_caixas: item.garrafeiras_avaria_caixas,
+          garrafeiras_refugo: item.garrafeiras_refugo,
+          garrafeiras_refugo_pallets: item.garrafeiras_refugo_pallets,
+          garrafeiras_refugo_lastros: item.garrafeiras_refugo_lastros,
+          garrafeiras_refugo_caixas: item.garrafeiras_refugo_caixas,
+          // Estoque 10 - EQUIPAMENTOS
+          sucata: item.sucata,
+          manutencao: item.manutencao,
+          novo: item.novo,
+          bloqueado: item.bloqueado,
+          // Parâmetros
           unidadesPorPacote: undefined,
           pacotesPorLastro: undefined,
           lastrosPorPallet: undefined,
