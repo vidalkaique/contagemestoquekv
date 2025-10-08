@@ -155,6 +155,71 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
     
     if (!product) return;
     
+    // Função auxiliar para calcular total com conversão (DRY - Regra #1)
+    const calcularTotal = (pallets: number, lastros: number, caixas: number): number => {
+      const params = useCustomParams ? customParams : {
+        unidadesPorPacote: formData.unidadesPorPacote || 1,
+        pacotesPorLastro: formData.pacotesPorLastro || 1,
+        lastrosPorPallet: formData.lastrosPorPallet || 1
+      };
+      
+      return (
+        pallets * params.lastrosPorPallet * params.pacotesPorLastro * params.unidadesPorPacote +
+        lastros * params.pacotesPorLastro * params.unidadesPorPacote +
+        caixas * params.unidadesPorPacote
+      );
+    };
+    
+    // Calcula totais do Estoque 10 (GARRAFAS)
+    const chaoCheio = calcularTotal(
+      formData.chaoCheio_pallets || 0,
+      formData.chaoCheio_lastros || 0,
+      formData.chaoCheio_caixas || 0
+    );
+    
+    const chaoVazio = calcularTotal(
+      formData.chaoVazio_pallets || 0,
+      formData.chaoVazio_lastros || 0,
+      formData.chaoVazio_caixas || 0
+    );
+    
+    const refugo = calcularTotal(
+      formData.refugo_pallets || 0,
+      formData.refugo_lastros || 0,
+      formData.refugo_caixas || 0
+    );
+    
+    const avaria = calcularTotal(
+      formData.avaria_pallets || 0,
+      formData.avaria_lastros || 0,
+      formData.avaria_caixas || 0
+    );
+    
+    // Calcula totais do Estoque 10 (GARRAFEIRAS)
+    const garrafeiras_chaoCheio = calcularTotal(
+      formData.garrafeiras_chaoCheio_pallets || 0,
+      formData.garrafeiras_chaoCheio_lastros || 0,
+      formData.garrafeiras_chaoCheio_caixas || 0
+    );
+    
+    const garrafeiras_chaoVazio = calcularTotal(
+      formData.garrafeiras_chaoVazio_pallets || 0,
+      formData.garrafeiras_chaoVazio_lastros || 0,
+      formData.garrafeiras_chaoVazio_caixas || 0
+    );
+    
+    const garrafeiras_avaria = calcularTotal(
+      formData.garrafeiras_avaria_pallets || 0,
+      formData.garrafeiras_avaria_lastros || 0,
+      formData.garrafeiras_avaria_caixas || 0
+    );
+    
+    const garrafeiras_refugo = calcularTotal(
+      formData.garrafeiras_refugo_pallets || 0,
+      formData.garrafeiras_refugo_lastros || 0,
+      formData.garrafeiras_refugo_caixas || 0
+    );
+    
     // Atualiza o produto com os novos valores, incluindo parâmetros customizados se ativados
     const updatedProduct: ProductItem = {
       ...product,
@@ -163,7 +228,17 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
       unidadesPorPacote: useCustomParams ? customParams.unidadesPorPacote : formData.unidadesPorPacote,
       pacotesPorLastro: useCustomParams ? customParams.pacotesPorLastro : formData.pacotesPorLastro,
       lastrosPorPallet: useCustomParams ? customParams.lastrosPorPallet : formData.lastrosPorPallet,
-      totalPacotes: calculateTotalPacotes()
+      totalPacotes: calculateTotalPacotes(),
+      // Campos calculados do Estoque 10 (GARRAFAS)
+      chaoCheio,
+      chaoVazio,
+      refugo,
+      avaria,
+      // Campos calculados do Estoque 10 (GARRAFEIRAS)
+      garrafeiras_chaoCheio,
+      garrafeiras_chaoVazio,
+      garrafeiras_avaria,
+      garrafeiras_refugo
     };
     
     onSave(updatedProduct);
