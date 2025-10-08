@@ -21,6 +21,57 @@ import EditProductModal from "@/components/edit-product-modal";
 import { saveCurrentCount, getCurrentCount, clearCurrentCount, saveToCountHistory, getCountHistory, type CurrentCount } from "@/lib/localStorage";
 import type { InsertContagem, InsertItemContagem, ContagemWithItens } from "@shared/schema";
 import { usePreventRefresh } from "@/hooks/use-prevent-refresh";
+
+// Interface estendida para incluir campos do Estoque 10
+interface ExtendedInsertItemContagem extends Omit<InsertItemContagem, 'id' | 'created_at'> {
+  // Campos do Estoque 10 - GARRAFAS
+  chaoCheio?: number;
+  chaoCheio_pallets?: number;
+  chaoCheio_lastros?: number;
+  chaoCheio_caixas?: number;
+  
+  chaoVazio?: number;
+  chaoVazio_pallets?: number;
+  chaoVazio_lastros?: number;
+  chaoVazio_caixas?: number;
+  
+  refugo?: number;
+  refugo_pallets?: number;
+  refugo_lastros?: number;
+  refugo_caixas?: number;
+  
+  avaria?: number;
+  avaria_pallets?: number;
+  avaria_lastros?: number;
+  avaria_caixas?: number;
+  
+  // Campos do Estoque 10 - GARRAFEIRAS
+  garrafeiras_chaoCheio?: number;
+  garrafeiras_chaoCheio_pallets?: number;
+  garrafeiras_chaoCheio_lastros?: number;
+  garrafeiras_chaoCheio_caixas?: number;
+  
+  garrafeiras_chaoVazio?: number;
+  garrafeiras_chaoVazio_pallets?: number;
+  garrafeiras_chaoVazio_lastros?: number;
+  garrafeiras_chaoVazio_caixas?: number;
+  
+  garrafeiras_avaria?: number;
+  garrafeiras_avaria_pallets?: number;
+  garrafeiras_avaria_lastros?: number;
+  garrafeiras_avaria_caixas?: number;
+  
+  garrafeiras_refugo?: number;
+  garrafeiras_refugo_pallets?: number;
+  garrafeiras_refugo_lastros?: number;
+  garrafeiras_refugo_caixas?: number;
+  
+  // Campos do Estoque 10 - EQUIPAMENTOS
+  sucata?: number;
+  manutencao?: number;
+  novo?: number;
+  bloqueado?: number;
+}
 import { ImportStockScreen, type ImportedProduct } from "@/components/import-stock-screen";
 import { SaveCountModal } from "@/components/modals/save-count-modal";
 
@@ -814,7 +865,7 @@ export default function NewCount() {
    * Adiciona um item a uma contagem existente
    */
   const addItemMutation = useMutation({
-    mutationFn: async (item: Omit<InsertItemContagem, 'id' | 'created_at'>) => {
+    mutationFn: async (item: ExtendedInsertItemContagem) => {
       console.log('Iniciando mutação para adicionar item:', {
         produto: item.nomeLivre || `ID: ${item.produtoId}`,
         totalPacotes: item.totalPacotes,
