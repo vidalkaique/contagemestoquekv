@@ -2519,11 +2519,11 @@ export default function NewCount() {
 
                 {/* Exibe campos baseado no tipo de estoque */}
                 {(() => {
-                  // Detecta se é Estoque 10 (tem campos como chaoCheio, chaoVazio, etc)
-                  const isEstoque10 = (product.chaoCheio !== undefined || product.chaoVazio !== undefined || 
-                                       product.refugo !== undefined || product.avaria !== undefined ||
-                                       product.sucata !== undefined || product.manutencao !== undefined ||
-                                       product.novo !== undefined || product.bloqueado !== undefined);
+                  // Detecta se é Estoque 10 (verifica se as propriedades EXISTEM, mesmo que sejam 0)
+                  const isEstoque10 = ('chaoCheio' in product || 'chaoVazio' in product || 
+                                       'refugo' in product || 'avaria' in product ||
+                                       'sucata' in product || 'manutencao' in product ||
+                                       'novo' in product || 'bloqueado' in product);
                   
                   if (isEstoque10) {
                     // Resumo bonito para Estoque 10 (igual ao modal)
