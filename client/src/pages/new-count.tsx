@@ -2721,7 +2721,7 @@ export default function NewCount() {
                         
                         {totalGarrafas > 0 && (
                           <div className="mb-2">
-                            <div className="text-xs font-medium text-gray-600 mb-1">GARRAFAS:</div>
+                            <div className="text-xs font-medium text-gray-600 mb-1">Garrafas/Garrafeiras:</div>
                             <div className="grid grid-cols-2 gap-2 text-xs">
                               {(product.chaoCheio || 0) > 0 && (
                                 <div><span className="font-medium">Chão Cheio:</span> <span className="text-blue-600 font-bold">{product.chaoCheio} cx</span></div>
