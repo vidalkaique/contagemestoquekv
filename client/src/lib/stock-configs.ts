@@ -203,19 +203,97 @@ export function calculateStockTotal(
     }
     
     case '10': {
-      // Estoque 10: Soma de todos os campos de status
-      const { 
-        chaoCheio = 0, 
-        chaoVazio = 0, 
-        refugo = 0, 
-        sucata = 0, 
-        avaria = 0, 
-        manutencao = 0, 
-        novo = 0, 
-        bloqueado = 0 
-      } = data;
+      // Estoque 10: Calcula com conversão baseada em parâmetros do produto
+      const { unidadesPorPacote = 1, pacotesPorLastro = 1, lastrosPorPallet = 1 } = params || {};
       
-      return chaoCheio + chaoVazio + refugo + sucata + avaria + manutencao + novo + bloqueado;
+      // Função auxiliar para calcular total com conversão (DRY - Regra #1)
+      const calcularComConversao = (pallets: number, lastros: number, caixas: number): number => {
+        return (
+          pallets * lastrosPorPallet * pacotesPorLastro * unidadesPorPacote +
+          lastros * pacotesPorLastro * unidadesPorPacote +
+          caixas * unidadesPorPacote
+        );
+      };
+      
+      // GARRAFAS
+      const chaoCheio = calcularComConversao(
+        data.chaoCheio_pallets || 0,
+        data.chaoCheio_lastros || 0,
+        data.chaoCheio_caixas || 0
+      );
+      
+      const chaoVazio = calcularComConversao(
+        data.chaoVazio_pallets || 0,
+        data.chaoVazio_lastros || 0,
+        data.chaoVazio_caixas || 0
+      );
+      
+      const avaria = calcularComConversao(
+        data.avaria_pallets || 0,
+        data.avaria_lastros || 0,
+        data.avaria_caixas || 0
+      );
+      
+      const refugo = calcularComConversao(
+        data.refugo_pallets || 0,
+        data.refugo_lastros || 0,
+        data.refugo_caixas || 0
+      );
+      
+      // GARRAFEIRAS
+      const garrafeiras_chaoCheio = calcularComConversao(
+        data.garrafeiras_chaoCheio_pallets || 0,
+        data.garrafeiras_chaoCheio_lastros || 0,
+        data.garrafeiras_chaoCheio_caixas || 0
+      );
+      
+      const garrafeiras_chaoVazio = calcularComConversao(
+        data.garrafeiras_chaoVazio_pallets || 0,
+        data.garrafeiras_chaoVazio_lastros || 0,
+        data.garrafeiras_chaoVazio_caixas || 0
+      );
+      
+      const garrafeiras_avaria = calcularComConversao(
+        data.garrafeiras_avaria_pallets || 0,
+        data.garrafeiras_avaria_lastros || 0,
+        data.garrafeiras_avaria_caixas || 0
+      );
+      
+      const garrafeiras_refugo = calcularComConversao(
+        data.garrafeiras_refugo_pallets || 0,
+        data.garrafeiras_refugo_lastros || 0,
+        data.garrafeiras_refugo_caixas || 0
+      );
+      
+      // EQUIPAMENTOS (agora com conversão!)
+      const novo = calcularComConversao(
+        data.novo_pallets || 0,
+        data.novo_lastros || 0,
+        data.novo_caixas || 0
+      );
+      
+      const manutencao = calcularComConversao(
+        data.manutencao_pallets || 0,
+        data.manutencao_lastros || 0,
+        data.manutencao_caixas || 0
+      );
+      
+      const sucata = calcularComConversao(
+        data.sucata_pallets || 0,
+        data.sucata_lastros || 0,
+        data.sucata_caixas || 0
+      );
+      
+      const bloqueado = calcularComConversao(
+        data.bloqueado_pallets || 0,
+        data.bloqueado_lastros || 0,
+        data.bloqueado_caixas || 0
+      );
+      
+      // Soma todos os totais
+      return chaoCheio + chaoVazio + avaria + refugo +
+             garrafeiras_chaoCheio + garrafeiras_chaoVazio + garrafeiras_avaria + garrafeiras_refugo +
+             novo + manutencao + sucata + bloqueado;
     }
     
     case '23': {

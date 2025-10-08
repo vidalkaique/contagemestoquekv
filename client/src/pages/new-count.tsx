@@ -2510,35 +2510,16 @@ export default function NewCount() {
                   </div>
                 )}
                 
-                {(calculateProductTotal(product) > 0 || (product.totalPacotes ?? 0) > 0 || (product.quantidadeSistema ?? 0) > 0) && (
-                  (() => {
-                    const totalPacotes = product.totalPacotes ?? 0;
-                    const quantidadeSistema = product.quantidadeSistema ?? 0;
-                    const difference = totalPacotes - quantidadeSistema;
-                    // Sistema de cores: Vermelho=Faltando, Verde=OK, Azul=Sobrando
-                    const differenceColor = difference < 0 ? 'text-red-700' : difference === 0 ? 'text-green-700' : 'text-blue-700';
-                    const differenceBg = difference < 0 ? 'bg-red-100' : difference === 0 ? 'bg-green-100' : 'bg-blue-100';
-
-                    return (
-                      <div className={`p-3 rounded-lg mt-3 text-sm font-medium ${differenceBg}`}>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                          <div className="text-left">Total Unidades:</div>
-                          <div className="text-right font-bold">{calculateProductTotal(product).toLocaleString()}</div>
-                          
-                          <div className="text-left">Total Pacotes:</div>
-                          <div className="text-right font-bold">{totalPacotes.toLocaleString()}</div>
-
-                          <div className="text-left">Sistema (Pacotes):</div>
-                          <div className="text-right font-bold">{quantidadeSistema.toLocaleString()}</div>
-
-                          <div className={`text-left font-bold ${differenceColor}`}>Diferença (Pacotes):</div>
-                          <div className={`text-right font-bold ${differenceColor}`}>
-                            {difference > 0 ? `+${difference.toLocaleString()}` : difference.toLocaleString()}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()
+                {(calculateProductTotal(product) > 0 || (product.totalPacotes ?? 0) > 0) && (
+                  <div className="p-3 rounded-lg mt-3 text-sm font-medium bg-blue-50">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                      <div className="text-left">Total Unidades:</div>
+                      <div className="text-right font-bold">{calculateProductTotal(product).toLocaleString()}</div>
+                      
+                      <div className="text-left">Total Pacotes:</div>
+                      <div className="text-right font-bold">{(product.totalPacotes ?? 0).toLocaleString()}</div>
+                    </div>
+                  </div>
                 )}
               </div>
             ))}

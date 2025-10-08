@@ -45,11 +45,26 @@ interface Stock10Data {
   garrafeiras_refugo_lastros: number;
   garrafeiras_refugo_caixas: number;
   
-  // EQUIPAMENTOS
+  // EQUIPAMENTOS (com subcampos para conversão)
   novo: number;
+  novo_pallets: number;
+  novo_lastros: number;
+  novo_caixas: number;
+  
   manutencao: number;
+  manutencao_pallets: number;
+  manutencao_lastros: number;
+  manutencao_caixas: number;
+  
   sucata: number;
+  sucata_pallets: number;
+  sucata_lastros: number;
+  sucata_caixas: number;
+  
   bloqueado: number;
+  bloqueado_pallets: number;
+  bloqueado_lastros: number;
+  bloqueado_caixas: number;
 }
 
 interface Stock10ExpandableSectionsProps {
@@ -286,51 +301,79 @@ export function Stock10ExpandableSections({
     </>
   );
 
-  // Renderiza campos da seção EQUIPAMENTOS
+  // Renderiza campos da seção EQUIPAMENTOS (com pallets, lastros, pacotes, unidades)
   const renderEquipamentosFields = () => (
     <>
       <ExpandableStockField
         label="Novo"
-        value={data.novo || 0}
-        unit="un"
+        value={calculateTotal(
+          data.novo_pallets || 0,
+          data.novo_lastros || 0,
+          data.novo_caixas || 0
+        )}
+        unit="cx"
         hasSubfields
         subfields={{
-          quantidade: data.novo || 0
+          pallets: data.novo_pallets || 0,
+          lastros: data.novo_lastros || 0,
+          caixas: data.novo_caixas || 0
         }}
-        onSubfieldChange={(field, value) => onChange('novo', value)}
+        onSubfieldChange={(field, value) => handleSubfieldChange('novo', field, value)}
+        conversionRates={conversionRates}
       />
       
       <ExpandableStockField
         label="Manutenção"
-        value={data.manutencao || 0}
-        unit="un"
+        value={calculateTotal(
+          data.manutencao_pallets || 0,
+          data.manutencao_lastros || 0,
+          data.manutencao_caixas || 0
+        )}
+        unit="cx"
         hasSubfields
         subfields={{
-          quantidade: data.manutencao || 0
+          pallets: data.manutencao_pallets || 0,
+          lastros: data.manutencao_lastros || 0,
+          caixas: data.manutencao_caixas || 0
         }}
-        onSubfieldChange={(field, value) => onChange('manutencao', value)}
+        onSubfieldChange={(field, value) => handleSubfieldChange('manutencao', field, value)}
+        conversionRates={conversionRates}
       />
       
       <ExpandableStockField
         label="Sucata"
-        value={data.sucata || 0}
-        unit="un"
+        value={calculateTotal(
+          data.sucata_pallets || 0,
+          data.sucata_lastros || 0,
+          data.sucata_caixas || 0
+        )}
+        unit="cx"
         hasSubfields
         subfields={{
-          quantidade: data.sucata || 0
+          pallets: data.sucata_pallets || 0,
+          lastros: data.sucata_lastros || 0,
+          caixas: data.sucata_caixas || 0
         }}
-        onSubfieldChange={(field, value) => onChange('sucata', value)}
+        onSubfieldChange={(field, value) => handleSubfieldChange('sucata', field, value)}
+        conversionRates={conversionRates}
       />
       
       <ExpandableStockField
         label="Bloqueado"
-        value={data.bloqueado || 0}
-        unit="un"
+        value={calculateTotal(
+          data.bloqueado_pallets || 0,
+          data.bloqueado_lastros || 0,
+          data.bloqueado_caixas || 0
+        )}
+        unit="cx"
         hasSubfields
         subfields={{
-          quantidade: data.bloqueado || 0
+          pallets: data.bloqueado_pallets || 0,
+          lastros: data.bloqueado_lastros || 0,
+          caixas: data.bloqueado_caixas || 0
         }}
-        onSubfieldChange={(field, value) => onChange('bloqueado', value)}
+        onSubfieldChange={(field, value) => handleSubfieldChange('bloqueado', field, value)}
+        conversionRates={conversionRates}
       />
     </>
   );

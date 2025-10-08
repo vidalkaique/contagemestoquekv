@@ -133,23 +133,22 @@ export function ImportStockScreen({ isOpen, onClose, contagemId, onImportComplet
       // Agrupar produtos por ID para lidar com duplicatas
       const produtosAgrupados = new Map();
       
+      // Contagem Cega: Importa apenas códigos, SEM valores do sistema
       previewData
         .filter(item => codigoParaId.has(item.codigo))
         .forEach(item => {
           const produtoId = codigoParaId.get(item.codigo)!;
           const chave = `${contagemId}-${produtoId}`;
           
-          if (produtosAgrupados.has(chave)) {
-            // Se já existe, soma a quantidade
-            produtosAgrupados.get(chave).quantidade_sistema += item.quantidade;
-          } else {
-            // Se não existe, adiciona novo
+          if (!produtosAgrupados.has(chave)) {
+            // Adiciona produto sem quantidade do sistema (contagem cega)
             produtosAgrupados.set(chave, {
               contagem_id: contagemId,
               produto_id: produtoId,
-              quantidade_sistema: item.quantidade,
+              quantidade_sistema: 0, // Contagem cega: sempre 0
             });
           }
+          // Se já existe, não faz nada (evita duplicatas)
         });
       
       // Converter o Map de volta para array
