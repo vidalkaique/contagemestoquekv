@@ -461,7 +461,7 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
                 
                 return (
                   <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h4 className="font-semibold text-gray-800 mb-3 text-sm">📊 Resumo da Contagem</h4>
+                    <h4 className="font-semibold text-gray-800 mb-3 text-sm">Resumo da Contagem</h4>
                     
                     {totalGarrafas > 0 && (
                       <div className="mb-3">

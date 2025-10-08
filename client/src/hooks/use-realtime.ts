@@ -16,7 +16,7 @@ export const useContagensRealtime = () => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    console.log('🔄 Iniciando listener realtime para contagens globais');
+    console.log('Iniciando listener realtime para contagens globais');
 
     const channel = supabase
       .channel('contagens-global-changes')
@@ -28,7 +28,7 @@ export const useContagensRealtime = () => {
           table: 'contagens'
         },
         (payload) => {
-          console.log('📡 Mudança detectada em contagens:', payload);
+          console.log('Mudança detectada em contagens:', payload);
           
           // Invalida todas as queries relacionadas a contagens
           queryClient.invalidateQueries({ queryKey: ['contagens'] });
@@ -56,7 +56,7 @@ export const useContagensRealtime = () => {
       .subscribe();
 
     return () => {
-      console.log('🔄 Removendo listener realtime para contagens globais');
+      console.log('Removendo listener realtime para contagens globais');
       supabase.removeChannel(channel);
     };
   }, [queryClient]);
@@ -75,7 +75,7 @@ export const useContagemItensRealtime = (contagemId?: string) => {
       return;
     }
 
-    console.log('🔄 Iniciando listener realtime para itens da contagem:', contagemId);
+    console.log('Iniciando listener realtime para itens da contagem:', contagemId);
 
     const channel = supabase
       .channel(`contagem-itens-${contagemId}`)
@@ -88,7 +88,7 @@ export const useContagemItensRealtime = (contagemId?: string) => {
           filter: `contagem_id=eq.${contagemId}`
         },
         (payload) => {
-          console.log('📡 Mudança detectada nos itens da contagem:', payload);
+          console.log('Mudança detectada nos itens da contagem:', payload);
           
           // Invalida queries específicas da contagem
           queryClient.invalidateQueries({ queryKey: ['contagem', contagemId] });
@@ -125,7 +125,7 @@ export const useContagemItensRealtime = (contagemId?: string) => {
       .subscribe();
 
     return () => {
-      console.log('🔄 Removendo listener realtime para itens da contagem:', contagemId);
+      console.log('Removendo listener realtime para itens da contagem:', contagemId);
       supabase.removeChannel(channel);
     };
   }, [contagemId, queryClient]);
@@ -146,7 +146,7 @@ export const useContagemUserInfoRealtime = (
       return;
     }
 
-    console.log('🔄 Iniciando listener realtime para informações do usuário da contagem:', contagemId);
+    console.log('Iniciando listener realtime para informações do usuário da contagem:', contagemId);
 
     const channel = supabase
       .channel(`contagem-userinfo-${contagemId}`)
@@ -159,7 +159,7 @@ export const useContagemUserInfoRealtime = (
           filter: `id=eq.${contagemId}`
         },
         (payload) => {
-          console.log('📡 Informações do usuário atualizadas:', payload);
+          console.log('Informações do usuário atualizadas:', payload);
           
           // Se nome ou matrícula mudaram
           if (
@@ -191,7 +191,7 @@ export const useContagemUserInfoRealtime = (
       .subscribe();
 
     return () => {
-      console.log('🔄 Removendo listener realtime para informações do usuário');
+      console.log('Removendo listener realtime para informações do usuário');
       supabase.removeChannel(channel);
     };
   }, [contagemId, onUserInfoUpdate, queryClient]);

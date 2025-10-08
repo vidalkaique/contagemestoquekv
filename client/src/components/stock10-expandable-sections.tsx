@@ -259,8 +259,8 @@ export function Stock10ExpandableSections({
 
   return (
     <div className="space-y-3">
-      {renderSection("GARRAFAS", "garrafas", "🍾")}
-      {renderSection("EQUIPAMENTOS", "equipamentos", "🔧")}
+      {renderSection("GARRAFAS", "garrafas", "")}
+      {renderSection("EQUIPAMENTOS", "equipamentos", "")}
     </div>
   );
 }

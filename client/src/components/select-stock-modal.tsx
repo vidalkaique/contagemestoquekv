@@ -47,8 +47,8 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
   // Selecionar automaticamente o primeiro estoque quando a lista for carregada
   useEffect(() => {
     if (stocks && stocks.length > 0 && !selectedStock) {
-      console.log('📦 Estoques disponíveis (em ordem):', stocks.map(s => ({ id: s.id, nome: s.nome })));
-      console.log('🎯 Selecionando automaticamente:', stocks[0].nome);
+      console.log('Estoques disponíveis (em ordem):', stocks.map(s => ({ id: s.id, nome: s.nome })));
+      console.log('Selecionando automaticamente:', stocks[0].nome);
       setSelectedStock(stocks[0].id);
       setFocusedIndex(0);
     }
@@ -162,7 +162,7 @@ export const SelectStockModal = ({ isOpen, onOpenChange, onStockSelected }: Sele
 
     const selectedStockData = stocks?.find(s => s.id === selectedStock);
     
-    console.log('✅ CONFIRMAÇÃO - Estoque selecionado:');
+    console.log('CONFIRMAÇÃO - Estoque selecionado:');
     console.log('ID:', selectedStock);
     console.log('Dados:', selectedStockData);
     

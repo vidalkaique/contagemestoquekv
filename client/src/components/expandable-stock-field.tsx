@@ -135,8 +135,8 @@ export function ExpandableStockField({
           {/* Informações de conversão (opcional) */}
           {conversionRates.caixasPorLastro && conversionRates.lastrosPorPallet && (
             <div className="mt-3 pt-3 border-t border-gray-300 text-xs text-gray-500">
-              <div>📦 Conversão: {conversionRates.lastrosPorPallet} lastros/pallet</div>
-              <div>📦 {conversionRates.caixasPorLastro} caixas/lastro</div>
+              <div>Conversão: {conversionRates.lastrosPorPallet} lastros/pallet</div>
+              <div>{conversionRates.caixasPorLastro} caixas/lastro</div>
             </div>
           )}
         </div>

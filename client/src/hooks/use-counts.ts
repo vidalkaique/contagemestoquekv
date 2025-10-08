@@ -77,9 +77,9 @@ export function useUnfinishedCount() {
         
         if (!estoqueError && estoqueData) {
           estoque = estoqueData;
-          console.log('✅ Estoque carregado com sucesso:', estoqueData);
+          console.log('Estoque carregado com sucesso:', estoqueData);
         } else {
-          console.warn('⚠️ Erro ao carregar estoque:', estoqueError);
+          console.warn('Erro ao carregar estoque:', estoqueError);
         }
       }
 
@@ -102,7 +102,7 @@ export function useUnfinishedCount() {
         .eq('contagem_id', first.id);
 
       if (itensError) {
-        console.warn('⚠️ Erro ao carregar itens:', itensError);
+        console.warn('Erro ao carregar itens:', itensError);
       }
 
 

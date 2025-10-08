@@ -214,7 +214,7 @@ export default function NewCount() {
             
             if (!estoqueError && estoqueData) {
               const estoqueNome = estoqueData.nome?.toLowerCase() || '';
-              console.log('✅ Estoque carregado:', estoqueData.nome);
+              console.log('Estoque carregado:', estoqueData.nome);
               
               // Detecta tipo de estoque pelo nome
               if (estoqueNome.includes('10')) {
@@ -239,7 +239,7 @@ export default function NewCount() {
   useFullRealtime(
     currentCountId, 
     (updatedUserInfo) => {
-      console.log('🔄 Informações do usuário atualizadas via realtime:', updatedUserInfo);
+      console.log('Informações do usuário atualizadas via realtime:', updatedUserInfo);
       setUserInfo({
         matricula: updatedUserInfo.matricula || '',
         nome: updatedUserInfo.nome || ''
@@ -2717,7 +2717,7 @@ export default function NewCount() {
                     
                     return (
                       <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <h4 className="font-semibold text-gray-800 mb-2 text-xs">📊 Resumo da Contagem</h4>
+                        <h4 className="font-semibold text-gray-800 mb-2 text-xs">Resumo da Contagem</h4>
                         
                         {totalGarrafas > 0 && (
                           <div className="mb-2">
@@ -2773,7 +2773,7 @@ export default function NewCount() {
                     
                     return (
                       <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                        <h4 className="font-semibold text-gray-800 mb-2 text-xs">📊 Resumo da Contagem</h4>
+                        <h4 className="font-semibold text-gray-800 mb-2 text-xs">Resumo da Contagem</h4>
                         <div className="text-sm">
                           <span className="font-medium">UN:</span> <span className="text-green-600 font-bold">{totalUn}</span>
                         </div>
