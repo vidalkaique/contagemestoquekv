@@ -50,12 +50,50 @@ export interface ProductItem {
   pacotes: number;
   unidades: number;
   
-  // Campos do Estoque 10 (Status)
+  // Campos do Estoque 10 (Status) - GARRAFAS
   chaoCheio?: number;
+  chaoCheio_pallets?: number;
+  chaoCheio_lastros?: number;
+  chaoCheio_caixas?: number;
+  
   chaoVazio?: number;
+  chaoVazio_pallets?: number;
+  chaoVazio_lastros?: number;
+  chaoVazio_caixas?: number;
+  
   refugo?: number;
-  sucata?: number;
+  refugo_pallets?: number;
+  refugo_lastros?: number;
+  refugo_caixas?: number;
+  
   avaria?: number;
+  avaria_pallets?: number;
+  avaria_lastros?: number;
+  avaria_caixas?: number;
+  
+  // Campos do Estoque 10 (Status) - GARRAFEIRAS
+  garrafeiras_chaoCheio?: number;
+  garrafeiras_chaoCheio_pallets?: number;
+  garrafeiras_chaoCheio_lastros?: number;
+  garrafeiras_chaoCheio_caixas?: number;
+  
+  garrafeiras_chaoVazio?: number;
+  garrafeiras_chaoVazio_pallets?: number;
+  garrafeiras_chaoVazio_lastros?: number;
+  garrafeiras_chaoVazio_caixas?: number;
+  
+  garrafeiras_avaria?: number;
+  garrafeiras_avaria_pallets?: number;
+  garrafeiras_avaria_lastros?: number;
+  garrafeiras_avaria_caixas?: number;
+  
+  garrafeiras_refugo?: number;
+  garrafeiras_refugo_pallets?: number;
+  garrafeiras_refugo_lastros?: number;
+  garrafeiras_refugo_caixas?: number;
+  
+  // Campos do Estoque 10 (Status) - EQUIPAMENTOS (apenas UN)
+  sucata?: number;
   manutencao?: number;
   novo?: number;
   bloqueado?: number;

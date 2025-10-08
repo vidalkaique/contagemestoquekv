@@ -265,30 +265,11 @@ export function calculateStockTotal(
         data.garrafeiras_refugo_caixas || 0
       );
       
-      // EQUIPAMENTOS (agora com conversão!)
-      const novo = calcularComConversao(
-        data.novo_pallets || 0,
-        data.novo_lastros || 0,
-        data.novo_caixas || 0
-      );
-      
-      const manutencao = calcularComConversao(
-        data.manutencao_pallets || 0,
-        data.manutencao_lastros || 0,
-        data.manutencao_caixas || 0
-      );
-      
-      const sucata = calcularComConversao(
-        data.sucata_pallets || 0,
-        data.sucata_lastros || 0,
-        data.sucata_caixas || 0
-      );
-      
-      const bloqueado = calcularComConversao(
-        data.bloqueado_pallets || 0,
-        data.bloqueado_lastros || 0,
-        data.bloqueado_caixas || 0
-      );
+      // EQUIPAMENTOS (apenas UN - soma simples)
+      const novo = data.novo || 0;
+      const manutencao = data.manutencao || 0;
+      const sucata = data.sucata || 0;
+      const bloqueado = data.bloqueado || 0;
       
       // Soma todos os totais
       return chaoCheio + chaoVazio + avaria + refugo +

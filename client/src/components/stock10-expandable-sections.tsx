@@ -45,26 +45,11 @@ interface Stock10Data {
   garrafeiras_refugo_lastros: number;
   garrafeiras_refugo_caixas: number;
   
-  // EQUIPAMENTOS (com subcampos para conversão)
+  // EQUIPAMENTOS (apenas UN - unidades simples)
   novo: number;
-  novo_pallets: number;
-  novo_lastros: number;
-  novo_caixas: number;
-  
   manutencao: number;
-  manutencao_pallets: number;
-  manutencao_lastros: number;
-  manutencao_caixas: number;
-  
   sucata: number;
-  sucata_pallets: number;
-  sucata_lastros: number;
-  sucata_caixas: number;
-  
   bloqueado: number;
-  bloqueado_pallets: number;
-  bloqueado_lastros: number;
-  bloqueado_caixas: number;
 }
 
 interface Stock10ExpandableSectionsProps {
@@ -87,7 +72,6 @@ export function Stock10ExpandableSections({
 }: Stock10ExpandableSectionsProps) {
   const [expandedSections, setExpandedSections] = useState({
     garrafas: true,
-    garrafeiras: false,
     equipamentos: false
   });
 
@@ -139,16 +123,15 @@ export function Stock10ExpandableSections({
       
       {expandedSections[sectionKey] && (
         <div className="p-4 bg-white">
-          {sectionKey === 'garrafas' && renderGarrafasFields()}
-          {sectionKey === 'garrafeiras' && renderGarrafeirasFields()}
+          {sectionKey === 'garrafas' && renderGarrafasEGarrafeirasFields()}
           {sectionKey === 'equipamentos' && renderEquipamentosFields()}
         </div>
       )}
     </div>
   );
 
-  // Renderiza campos da seção GARRAFAS
-  const renderGarrafasFields = () => (
+  // Renderiza campos da seção GARRAFAS/GARRAFEIRAS (unificado)
+  const renderGarrafasEGarrafeirasFields = () => (
     <>
       <ExpandableStockField
         label="Chão Cheio"
@@ -221,12 +204,12 @@ export function Stock10ExpandableSections({
         onSubfieldChange={(field, value) => handleSubfieldChange('refugo', field, value)}
         conversionRates={conversionRates}
       />
-    </>
-  );
-
-  // Renderiza campos da seção GARRAFEIRAS
-  const renderGarrafeirasFields = () => (
-    <>
+      
+      {/* GARRAFEIRAS */}
+      <div className="mt-6 mb-3 pt-3 border-t border-gray-300">
+        <h4 className="font-semibold text-gray-700 mb-2">GARRAFEIRAS</h4>
+      </div>
+      
       <ExpandableStockField
         label="Chão Cheio"
         value={calculateTotal(
@@ -301,87 +284,58 @@ export function Stock10ExpandableSections({
     </>
   );
 
-  // Renderiza campos da seção EQUIPAMENTOS (com pallets, lastros, pacotes, unidades)
+  // Renderiza campos da seção EQUIPAMENTOS (apenas UN - unidades)
   const renderEquipamentosFields = () => (
     <>
       <ExpandableStockField
         label="Novo"
-        value={calculateTotal(
-          data.novo_pallets || 0,
-          data.novo_lastros || 0,
-          data.novo_caixas || 0
-        )}
-        unit="cx"
+        value={data.novo || 0}
+        unit="un"
         hasSubfields
         subfields={{
-          pallets: data.novo_pallets || 0,
-          lastros: data.novo_lastros || 0,
-          caixas: data.novo_caixas || 0
+          quantidade: data.novo || 0
         }}
-        onSubfieldChange={(field, value) => handleSubfieldChange('novo', field, value)}
-        conversionRates={conversionRates}
+        onSubfieldChange={(field, value) => onChange('novo', value)}
       />
       
       <ExpandableStockField
         label="Manutenção"
-        value={calculateTotal(
-          data.manutencao_pallets || 0,
-          data.manutencao_lastros || 0,
-          data.manutencao_caixas || 0
-        )}
-        unit="cx"
+        value={data.manutencao || 0}
+        unit="un"
         hasSubfields
         subfields={{
-          pallets: data.manutencao_pallets || 0,
-          lastros: data.manutencao_lastros || 0,
-          caixas: data.manutencao_caixas || 0
+          quantidade: data.manutencao || 0
         }}
-        onSubfieldChange={(field, value) => handleSubfieldChange('manutencao', field, value)}
-        conversionRates={conversionRates}
+        onSubfieldChange={(field, value) => onChange('manutencao', value)}
       />
       
       <ExpandableStockField
         label="Sucata"
-        value={calculateTotal(
-          data.sucata_pallets || 0,
-          data.sucata_lastros || 0,
-          data.sucata_caixas || 0
-        )}
-        unit="cx"
+        value={data.sucata || 0}
+        unit="un"
         hasSubfields
         subfields={{
-          pallets: data.sucata_pallets || 0,
-          lastros: data.sucata_lastros || 0,
-          caixas: data.sucata_caixas || 0
+          quantidade: data.sucata || 0
         }}
-        onSubfieldChange={(field, value) => handleSubfieldChange('sucata', field, value)}
-        conversionRates={conversionRates}
+        onSubfieldChange={(field, value) => onChange('sucata', value)}
       />
       
       <ExpandableStockField
         label="Bloqueado"
-        value={calculateTotal(
-          data.bloqueado_pallets || 0,
-          data.bloqueado_lastros || 0,
-          data.bloqueado_caixas || 0
-        )}
-        unit="cx"
+        value={data.bloqueado || 0}
+        unit="un"
         hasSubfields
         subfields={{
-          pallets: data.bloqueado_pallets || 0,
-          lastros: data.bloqueado_lastros || 0,
-          caixas: data.bloqueado_caixas || 0
+          quantidade: data.bloqueado || 0
         }}
-        onSubfieldChange={(field, value) => handleSubfieldChange('bloqueado', field, value)}
-        conversionRates={conversionRates}
+        onSubfieldChange={(field, value) => onChange('bloqueado', value)}
       />
     </>
   );
 
   return (
     <div className="space-y-3">
-      {renderSection("GARRAFAS", "garrafas", "🍾")}
-      {renderSection("GARRAFEIRAS", "garrafeiras", "🏪")}
+      {renderSection("GARRAFAS/GARRAFEIRAS", "garrafas", "🍾🏪")}
       {renderSection("EQUIPAMENTOS", "equipamentos", "🔧")}
     </div>
   );
