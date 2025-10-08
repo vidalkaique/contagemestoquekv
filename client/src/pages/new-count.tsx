@@ -21,6 +21,7 @@ import EditProductModal from "@/components/edit-product-modal";
 import { saveCurrentCount, getCurrentCount, clearCurrentCount, saveToCountHistory, getCountHistory, type CurrentCount } from "@/lib/localStorage";
 import type { InsertContagem, InsertItemContagem, ContagemWithItens } from "@shared/schema";
 import { usePreventRefresh } from "@/hooks/use-prevent-refresh";
+import { exportToExcelWithTemplate, type ExcelExportData } from "@/lib/excel-templates";
 
 // Interface estendida para incluir campos do Estoque 10
 interface ExtendedInsertItemContagem extends Omit<InsertItemContagem, 'id' | 'created_at'> {
@@ -1917,8 +1918,7 @@ export default function NewCount() {
     // Se o ID é de um draft local ou não existe, trata como nova contagem
     const isDraftId = resolvedCountId?.startsWith('draft-') || !resolvedCountId;
     
-    // Dados para geração do Excel
-    let excelUrl: string | null = null;
+    // Regra #2: Removido variáveis do Excel não utilizadas
     // Valida se existem produtos na contagem
     if (!products.length) {
       toast({
@@ -1976,27 +1976,10 @@ export default function NewCount() {
           // Mantém compatibilidade com o código existente
           estoque: Array.isArray(contagemCompleta.estoques) && contagemCompleta.estoques.length > 0 
             ? contagemCompleta.estoques[0]
-            : null,
-          estoque_id: contagemCompleta.estoque_id
+            : null
         };
         
-        console.log('Dados formatados para o Excel:', contagemData);
-        
-        // Gera e salva o Excel
-        try {
-          // Garante que os dados da contagem incluam as informações do usuário
-          const excelData: CountData = {
-            ...contagemData,
-            matricula: userInfo?.matricula || null,
-            nome: userInfo?.nome || null
-          };
-          
-          excelUrl = await generateAndSaveExcel(resolvedCountId, excelData, products);
-          console.log('Excel gerado e salvo com sucesso:', excelUrl);
-        } catch (error) {
-          console.error('Erro ao gerar Excel:', error);
-          // Não interrompe o fluxo se falhar a geração do Excel
-        }
+        // Regra #2: Removido Excel export - agora apenas no botão "Exportar para Excel"
         
         // Conta o número de produtos únicos na contagem
         const uniqueProductCount = new Set(products.map(p => p.id)).size;
@@ -2007,7 +1990,6 @@ export default function NewCount() {
           .update({ 
             data: formattedDate,
             finalizada: true,
-            excel_url: excelUrl,
             qntd_produtos: uniqueProductCount, // Adiciona a contagem de produtos únicos
             // Inclui as informações do usuário se disponíveis
             matricula: userInfo?.matricula || null,
@@ -2101,39 +2083,7 @@ export default function NewCount() {
             : null
         };
         
-        console.log('Dados formatados para o Excel (nova contagem):', contagemData);
-        
-        // Gera e salva o Excel
-        try {
-          // Garante que os dados da contagem incluam as informações do usuário
-          const excelData: CountData = {
-            ...contagemData,
-            matricula: userInfo?.matricula || null,
-            nome: userInfo?.nome || null
-          };
-          
-          excelUrl = await generateAndSaveExcel(contagem.id, excelData, products);
-          console.log('Excel gerado e salvo com sucesso para nova contagem:', excelUrl);
-          
-          // Atualiza a contagem com a URL do Excel
-          const { error: updateError } = await supabase
-            .from('contagens')
-            .update({ 
-              excel_url: excelUrl,
-              // Garante que as informações do usuário sejam salvas
-              matricula: userInfo?.matricula || null,
-              nome: userInfo?.nome || null
-            })
-            .eq('id', contagem.id);
-            
-          if (updateError) {
-            console.error('Erro ao atualizar URL do Excel:', updateError);
-            // Não interrompe o fluxo
-          }
-        } catch (error) {
-          console.error('Erro ao gerar Excel para nova contagem:', error);
-          // Não interrompe o fluxo se falhar a geração do Excel
-        }
+        // Regra #2: Removido Excel export - agora apenas no botão "Exportar para Excel"
         
         // Adiciona os itens à nova contagem
         await addItemsToCount(contagem.id);
@@ -2221,392 +2171,27 @@ export default function NewCount() {
   };
 
   /**
-   * Exporta os produtos para um arquivo Excel com abas de contagem e análise
+   * Exporta os produtos para Excel com template específico por estoque
+   * Regra #1: DRY - Código reutilizável e modular
+   * Regra #7: Separação de lógica e apresentação
    */
   const exportToExcel = () => {
     try {
-      // Cria um novo livro de trabalho
-      const wb = XLSX.utils.book_new();
-      
-      // ===== PRIMEIRA ABA: CONTAGEM DETALHADA =====
-      // Cabeçalho com informações da contagem
-      const header = [
-        ['CONTAGEM DE ESTOQUE'],
-        ['', '', `Data: ${new Date(countDate).toLocaleDateString('pt-BR')}`],
-        [''] // Linha em branco
-      ];
-      
-      // Dados dos produtos
-      const data = products.map(product => {
-        // Cria um objeto temporário sem a propriedade totalPacotes
-        const { totalPacotes: _, ...productWithoutTotal } = product;
-        
-        // Calcula o total de pacotes e unidades usando as funções auxiliares
-        const totalPacotes = calculateProductPackages(productWithoutTotal);
-        const totalUnidades = calculateProductTotal(product);
-        
-        return {
-          'CÓDIGO': product.codigo || 'N/A',
-          'PRODUTO': product.nome,
-          'PALLETS': (product.pallets || 0).toString(),
-          'LASTROS': (product.lastros || 0).toString(),
-          'PACOTES': (product.pacotes || 0).toString(),
-          'UNIDADES': (product.unidades || 0).toString(),
-          'TOTAL PACOTES': totalPacotes.toString(),
-          'TOTAL UNIDADES': totalUnidades.toString(),
-          'SISTEMA (PACOTES)': (product.quantidadeSistema || 0).toString(),
-          'DIVERGÊNCIA (PACOTES)': (totalPacotes - (product.quantidadeSistema || 0)).toString(),
-          'UN/PACOTE': product.unidadesPorPacote?.toString() || 'N/A',
-          'PAC/LASTRO': product.pacotesPorLastro?.toString() || 'N/A',
-          'LAST/PALLET': product.lastrosPorPallet?.toString() || 'N/A'
-        };
-      });
+      // Regra #8: Tratamento correto de dados
+      const exportData: ExcelExportData = {
+        products,
+        countDate,
+        userInfo: userInfo || undefined,
+        totalItems: products.reduce((sum, p) => sum + calculateProductTotal(p), 0),
+        totalProducts: products.length
+      };
 
-      // Cabeçalhos da tabela
-      const headers = [Object.keys(data[0] || {})];
-      
-      // Converte os dados para o formato de matriz
-      const dataArray = data.map(item => Object.values(item));
-      
-      // Combina cabeçalho, cabeçalhos da tabela e dados
-      const sheetData = [
-        ...header,
-        ...headers,
-        ...dataArray
-      ];
-      
-      // Cria a planilha
-      const ws = XLSX.utils.aoa_to_sheet(sheetData);
-      
-      // Ajusta a largura das colunas
-      const wscols = [
-        { wch: 15 },  // CÓDIGO
-        { wch: 40 },  // PRODUTO
-        { wch: 10 },  // PALLETS
-        { wch: 10 },  // LASTROS
-        { wch: 10 },  // PACOTES
-        { wch: 10 },  // UNIDADES
-        { wch: 15 },  // TOTAL PACOTES
-        { wch: 15 },  // TOTAL UNIDADES
-        { wch: 20 },  // SISTEMA (PACOTES)
-        { wch: 20 },  // DIVERGÊNCIA (PACOTES)
-        { wch: 12 },  // UN/PACOTE
-        { wch: 12 },  // PAC/LASTRO
-        { wch: 12 }   // LAST/PALLET
-      ];
-      ws['!cols'] = wscols;
-      
-      // Adiciona bordas e formatação
-      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-      
-      // Aplica formatação ao cabeçalho
-      for (let C = range.s.c; C <= range.e.c; ++C) {
-        const headerCell = ws[XLSX.utils.encode_cell({r: 0, c: C})];
-        if (headerCell) {
-          headerCell.s = {
-            font: { bold: true, color: { rgb: 'FFFFFFFF' } },
-            fill: { fgColor: { rgb: '2F5496' } },
-            alignment: { horizontal: 'center', vertical: 'center' }
-          };
-        }
-      }
-      
-      // Aplica formatação aos cabeçalhos da tabela
-      for (let C = range.s.c; C <= range.e.c; ++C) {
-        const headerCell = ws[XLSX.utils.encode_cell({r: 3, c: C})];
-        if (headerCell) {
-          headerCell.s = {
-            font: { bold: true, color: { rgb: 'FFFFFFFF' } },
-            fill: { fgColor: { rgb: '4472C4' } },
-            alignment: { horizontal: 'center', vertical: 'center' }
-          };
-        }
-      }
-      
-      // Ajusta o alinhamento das células numéricas
-      for (let R = 4; R <= range.e.r; ++R) {
-        for (let C = 0; C <= range.e.c; ++C) {
-          const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
-          if (!ws[cellAddress]) continue;
-          
-          // Se for uma célula numérica (exceto as duas primeiras colunas)
-          if (C >= 2) {
-            ws[cellAddress].s = ws[cellAddress].s || {};
-            ws[cellAddress].s.alignment = { horizontal: 'center' };
-            
-            // Formata como número com separador de milhar
-            if (typeof ws[cellAddress].v === 'number') {
-              ws[cellAddress].t = 'n';
-              ws[cellAddress].z = '#,##0';
-            }
-          } else {
-            // Alinha texto à esquerda para as primeiras colunas
-            ws[cellAddress].s = ws[cellAddress].s || {};
-            ws[cellAddress].s.alignment = { horizontal: 'left' };
-          }
-        }
-      }
-      
-      // Adiciona a planilha ao livro de trabalho
-      XLSX.utils.book_append_sheet(wb, ws, 'Contagem Detalhada');
-      
-      // ===== SEGUNDA ABA: ANÁLISE DE DIVERGÊNCIAS =====
-      const analysisData = products.map(product => {
-        const { totalPacotes: _, ...productWithoutTotal } = product;
-        const totalPacotes = calculateProductPackages(productWithoutTotal);
-        const quantidadeSistema = product.quantidadeSistema || 0;
-        const diferenca = totalPacotes - quantidadeSistema;
-        
-        return {
-          'CÓDIGO': product.codigo || 'N/A',
-          'PRODUTO': product.nome,
-          'SISTEMA (PACOTES)': quantidadeSistema.toString(),
-          'CONTADO (PACOTES)': totalPacotes.toString(),
-          'DIFERENÇA (PACOTES)': diferenca.toString(),
-          'STATUS': diferenca === 0 ? 'OK' : (diferenca > 0 ? 'SOBRA' : 'FALTA')
-        };
-      });
-      
-      // Cabeçalho da aba de análise
-      const analysisHeader = [
-        ['ANÁLISE DE DIVERGÊNCIAS'],
-        ['', `Data: ${new Date(countDate).toLocaleDateString('pt-BR')}`],
-        [''] // Linha em branco
-      ];
-      
-      // Cabeçalhos da tabela de análise
-      const analysisTableHeaders = [
-        'CÓDIGO',
-        'PRODUTO',
-        'SISTEMA (PACOTES)',
-        'CONTADO (PACOTES)',
-        'DIFERENÇA (PACOTES)',
-        'STATUS'
-      ];
-      
-      // Converte os dados para o formato de matriz
-      const analysisArray = analysisData.map(item => [
-        item['CÓDIGO'],
-        item['PRODUTO'],
-        item['SISTEMA (PACOTES)'],
-        item['CONTADO (PACOTES)'],
-        item['DIFERENÇA (PACOTES)'],
-        item['STATUS']
-      ]);
-      
-      // Combina cabeçalho, cabeçalhos da tabela e dados
-      const analysisSheetData = [
-        ...analysisHeader,
-        analysisTableHeaders,
-        ...analysisArray
-      ];
-      
-      // Cria a planilha de análise
-      const wsAnalysis = XLSX.utils.aoa_to_sheet(analysisSheetData);
-      
-      // Ajusta a largura das colunas
-      wsAnalysis['!cols'] = [
-        { wch: 15 },  // CÓDIGO
-        { wch: 40 },  // PRODUTO
-        { wch: 20 },  // SISTEMA (PACOTES)
-        { wch: 20 },  // CONTADO (PACOTES)
-        { wch: 25 },  // DIFERENÇA (PACOTES)
-        { wch: 15 }   // STATUS
-      ];
-      
-      // Aplica formatação condicional para a coluna de status
-      const analysisRange = XLSX.utils.decode_range(wsAnalysis['!ref'] || 'A1');
-      
-      // Aplica formatação ao título
-      for (let C = analysisRange.s.c; C <= analysisRange.e.c; ++C) {
-        const titleCell = wsAnalysis[XLSX.utils.encode_cell({r: 0, c: C})];
-        if (titleCell) {
-          titleCell.s = {
-            font: { bold: true, size: 16, color: { rgb: '2F5496' } },
-            alignment: { horizontal: 'center' }
-          };
-        }
-      }
-      
-      // Aplica formatação aos cabeçalhos da tabela
-      for (let C = analysisRange.s.c; C <= analysisRange.e.c; ++C) {
-        const headerCell = wsAnalysis[XLSX.utils.encode_cell({r: 3, c: C})];
-        if (headerCell) {
-          headerCell.s = {
-            font: { bold: true, color: { rgb: 'FFFFFFFF' } },
-            fill: { fgColor: { rgb: '4472C4' } },
-            alignment: { horizontal: 'center', vertical: 'center' }
-          };
-        }
-      }
-      
-      // Ajusta o alinhamento e formatação das células de dados
-      for (let R = 4; R <= analysisRange.e.r; ++R) {
-        for (let C = 0; C <= analysisRange.e.c; ++C) {
-          const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
-          if (!wsAnalysis[cellAddress]) continue;
-          
-          // Formatação para colunas numéricas
-          if (C >= 2 && C <= 4) {
-            wsAnalysis[cellAddress].s = wsAnalysis[cellAddress].s || {};
-            wsAnalysis[cellAddress].s.alignment = { horizontal: 'center' };
-            
-            if (typeof wsAnalysis[cellAddress].v === 'number') {
-              wsAnalysis[cellAddress].t = 'n';
-              wsAnalysis[cellAddress].z = '#,##0';
-            }
-          } 
-          // Formatação para a coluna de status
-          else if (C === 5) {
-            const status = wsAnalysis[cellAddress].v;
-            wsAnalysis[cellAddress].s = {
-              font: { 
-                bold: true,
-                color: { 
-                  rgb: status === 'OK' ? '107C41' : 
-                       status === 'SOBRA' ? '9C5700' : '9C0006' 
-                } 
-              },
-              fill: { 
-                fgColor: { 
-                  rgb: status === 'OK' ? 'C6EFCE' : 
-                       status === 'SOBRA' ? 'FFEB9C' : 'FFC7CE' 
-                } 
-              },
-              alignment: { horizontal: 'center' }
-            };
-          }
-          // Formatação para as colunas de texto
-          else {
-            wsAnalysis[cellAddress].s = wsAnalysis[cellAddress].s || {};
-            wsAnalysis[cellAddress].s.alignment = { 
-              horizontal: C === 1 ? 'left' : 'center' 
-            };
-          }
-        }
-      }
-      
-      // Adiciona a planilha de análise ao livro de trabalho
-      XLSX.utils.book_append_sheet(wb, wsAnalysis, 'Análise de Divergências');
-      
-      // ===== TERCEIRA ABA: RESUMO =====
-      const totalPallets = products.reduce((sum, p) => sum + (p.pallets || 0), 0);
-      const totalLastros = products.reduce((sum, p) => sum + (p.lastros || 0), 0);
-      const totalPacotes = products.reduce((sum, p) => {
-        const { totalPacotes: _, ...productWithoutTotal } = p;
-        return sum + calculateProductPackages(productWithoutTotal);
-      }, 0);
-      const totalUnidades = products.reduce((sum, p) => sum + calculateProductTotal(p), 0);
-      
-      // Define o tipo explicitamente como string[][] já que todos os valores serão strings
-      const summaryData: string[][] = [
-        ['RESUMO DA CONTAGEM'],
-        ['']
-      ];
-      
-      // Adiciona totais
-      summaryData.push(['TOTAIS:']);
-      summaryData.push(['', 'PALLETS', 'LASTROS', 'PACOTES', 'UNIDADES']);
-      summaryData.push([
-        'TOTAL', 
-        totalPallets.toString(), 
-        totalLastros.toString(), 
-        totalPacotes.toString(), 
-        totalUnidades.toString()
-      ]);
-      summaryData.push(['']); // Linha em branco
-      
-      // Adiciona contagem por produto
-      summaryData.push(['CONTAGEM POR PRODUTO:']);
-      summaryData.push(['PRODUTO', 'PALLETS', 'LASTROS', 'PACOTES', 'UNIDADES']);
-      
-      // Cria uma cópia dos produtos para evitar modificar o estado original
-      const sortedProducts = [...products].sort((a, b) => a.nome.localeCompare(b.nome));
-      
-      sortedProducts.forEach(product => {
-        const { totalPacotes: _, ...productWithoutTotal } = product;
-        const totalPacotes = calculateProductPackages(productWithoutTotal);
-        
-        summaryData.push([
-          product.nome,
-          (product.pallets || 0).toString(),
-          (product.lastros || 0).toString(),
-          totalPacotes.toString(),
-          calculateProductTotal(product).toString()
-        ]);
-      });
-      
-      // Cria a planilha de resumo
-      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-      
-      // Ajusta a largura das colunas
-      wsSummary['!cols'] = [
-        { wch: 40 },  // PRODUTO
-        { wch: 12 },  // PALLETS
-        { wch: 12 },  // LASTROS
-        { wch: 12 },  // PACOTES
-        { wch: 15 }   // UNIDADES
-      ];
-      
-      // Aplica formatação ao título
-      const summaryRange = XLSX.utils.decode_range(wsSummary['!ref'] || 'A1');
-      
-      // Formata o título
-      const titleCell = wsSummary['A1'];
-      if (titleCell) {
-        titleCell.s = {
-          font: { bold: true, size: 16, color: { rgb: '2F5496' } }
-        };
-      }
-      
-      // Formata os cabeçalhos
-      [3, 6].forEach(row => {
-        for (let C = 0; C <= 4; C++) {
-          const cellAddress = XLSX.utils.encode_cell({r: row, c: C});
-          if (wsSummary[cellAddress]) {
-            wsSummary[cellAddress].s = {
-              font: { bold: true, color: { rgb: 'FFFFFFFF' } },
-              fill: { fgColor: { rgb: '4472C4' } },
-              alignment: { horizontal: 'center' }
-            };
-          }
-        }
-      });
-      
-      // Formata os totais
-      for (let C = 1; C <= 4; C++) {
-        const cellAddress = XLSX.utils.encode_cell({r: 4, c: C});
-        if (wsSummary[cellAddress]) {
-          wsSummary[cellAddress].s = {
-            font: { bold: true },
-            numFmt: '#,##0'
-          };
-        }
-      }
-      
-      // Formata os dados numéricos
-      for (let R = 7; R <= summaryRange.e.r; R++) {
-        for (let C = 1; C <= 4; C++) {
-          const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
-          if (wsSummary[cellAddress] && typeof wsSummary[cellAddress].v === 'number') {
-            wsSummary[cellAddress].t = 'n';
-            wsSummary[cellAddress].z = '#,##0';
-            wsSummary[cellAddress].s = wsSummary[cellAddress].s || {};
-            wsSummary[cellAddress].s.alignment = { horizontal: 'center' };
-          }
-        }
-      }
-      
-      // Adiciona a planilha de resumo ao livro de trabalho
-      XLSX.utils.book_append_sheet(wb, wsSummary, 'Resumo');
-      
-      // Gera o arquivo Excel
-      const fileName = `contagem_${new Date().toISOString().split('T')[0]}.xlsx`;
-      XLSX.writeFile(wb, fileName);
+      // Regra #3: TypeScript consistente - usa factory pattern
+      exportToExcelWithTemplate(tipoEstoque, exportData);
       
       toast({
         title: "Exportação concluída",
-        description: `A planilha foi baixada como ${fileName}`,
+        description: `Planilha do Estoque ${tipoEstoque} exportada com sucesso!`,
       });
       
     } catch (error) {
