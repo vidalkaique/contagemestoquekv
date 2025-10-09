@@ -154,23 +154,17 @@ const saveToSupabase = async (data: CountBackupData): Promise<void> => {
       return calculateTotalPacotes(product) * (product.unidadesPorPacote || 1) + (product.unidades || 0);
     };
 
-    // 4. Filtra produtos válidos e adiciona os itens atuais com TODOS os campos (Regra #1: DRY - mesma lógica robusta)
-    const validProducts = data.products.filter(product => {
-      // Valida se o produto_id existe (não é free- e não é inválido)
-      if (product.id.startsWith('free-')) return true; // Produtos livres são válidos
-      if (!product.id || product.id.length < 10) return false; // IDs muito curtos são inválidos
-      return true;
-    });
-
-    if (validProducts.length === 0) {
-      console.warn('⚠️ Auto-save: Nenhum produto válido para salvar');
+    // 4. ESTRATÉGIA SEGURA: Salvar todos os produtos como nome_livre para evitar Foreign Key Error
+    // Isso garante que o auto-save sempre funcione, independente da existência do produto no banco
+    if (data.products.length === 0) {
+      console.warn('⚠️ Auto-save: Nenhum produto para salvar');
       return;
     }
 
-    const itemsToSave = validProducts.map(product => ({
+    const itemsToSave = data.products.map(product => ({
       contagem_id: finalCountId,
-      produto_id: product.id.startsWith('free-') ? null : product.id,
-      nome_livre: product.id.startsWith('free-') ? product.nome : null,
+      produto_id: null, // SEMPRE NULL - Evita Foreign Key Error
+      nome_livre: product.nome || `Produto ${product.codigo || 'sem código'}`, // SEMPRE nome_livre
       // Estoque 11 (padrão)
       pallets: product.pallets || 0,
       lastros: product.lastros || 0,
@@ -230,10 +224,8 @@ const saveToSupabase = async (data: CountBackupData): Promise<void> => {
 
     if (insertError) throw insertError;
 
-    console.log(`✅ Auto-save Supabase: ${validProducts.length} produtos válidos salvos na contagem ${finalCountId}`);
-    if (validProducts.length < data.products.length) {
-      console.warn(`⚠️ ${data.products.length - validProducts.length} produtos inválidos foram ignorados`);
-    }
+    console.log(`✅ Auto-save Supabase: ${data.products.length} produtos salvos como nome_livre na contagem ${finalCountId}`);
+    console.log('ℹ️ Estratégia segura: Todos os produtos salvos como nome_livre para evitar Foreign Key Error');
     
   } catch (error) {
     console.warn('❌ Auto-save Supabase falhou:', error);
