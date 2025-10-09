@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from "react";
+import React, { useState, useEffect, useMemo, useCallback, type ReactNode } from "react";
 import { useLocation, useParams } from "wouter";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Check, Trash2, Package, Search, Pencil, X, Upload, Download } from "lucide-react";
@@ -22,6 +22,9 @@ import { saveCurrentCount, getCurrentCount, clearCurrentCount, saveToCountHistor
 import type { InsertContagem, InsertItemContagem, ContagemWithItens } from "@shared/schema";
 import { usePreventRefresh } from "@/hooks/use-prevent-refresh";
 import { exportToExcelWithTemplate, type ExcelExportData } from "@/lib/excel-templates";
+import { useAutoSave } from "@/hooks/use-auto-save";
+import { AutoSaveIndicator } from "@/components/auto-save-indicator";
+import { saveWithBackupStrategy, type CountBackupData } from "@/lib/backup-utils";
 
 // Interface estendida para incluir campos do Estoque 10
 interface ExtendedInsertItemContagem extends Omit<InsertItemContagem, 'id' | 'created_at'> {
@@ -190,6 +193,61 @@ export default function NewCount() {
   const [currentCountId, setCurrentCountId] = useState<string | undefined>(undefined);
   const [showExitModal, setShowExitModal] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+
+  // Auto-save: Dados para backup (Regra #6: useMemo para otimização)
+  const autoSaveData = useMemo((): CountBackupData => ({
+    products,
+    countDate,
+    currentCountId: currentCountId || null, // Regra #3: TypeScript consistente
+    userInfo,
+    lastUpdated: new Date().toISOString()
+  }), [products, countDate, currentCountId, userInfo]);
+
+  // Auto-save: Função de salvamento (Regra #6: useCallback para estabilidade)
+  const saveFunction = useCallback(async (data: CountBackupData) => {
+    const result = await saveWithBackupStrategy(data);
+    
+    if (!result.success) {
+      throw result.error || new Error('Falha no auto-save');
+    }
+    
+    // Se salvou apenas no localStorage, avisa sobre Supabase
+    if (result.method === 'localStorage' && result.error) {
+      console.warn('Auto-save: Supabase falhou, dados salvos localmente:', result.error);
+    }
+  }, []);
+
+  // Auto-save: Hook principal (Regra #1: DRY - Lógica centralizada)
+  const {
+    saveStatus,
+    lastSaved,
+    hasUnsavedChanges: autoSaveHasChanges,
+    manualSave
+  } = useAutoSave(autoSaveData, saveFunction, {
+    debounceMs: 2000,     // 2s após parar de editar
+    maxWaitMs: 30000,     // Força save a cada 30s
+    enableAutoSave: true,
+    onSaveStart: () => console.log('🔄 Auto-save iniciado'),
+    onSaveSuccess: () => {
+      console.log('✅ Auto-save concluído');
+      setHasUnsavedChanges(false); // Sincroniza com estado existente
+    },
+    onSaveError: (error) => {
+      console.error('❌ Auto-save falhou:', error);
+      toast({
+        title: "Erro no salvamento automático",
+        description: "Dados salvos localmente. Verifique sua conexão.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Sincroniza hasUnsavedChanges existente com auto-save
+  useEffect(() => {
+    if (autoSaveHasChanges !== hasUnsavedChanges) {
+      setHasUnsavedChanges(autoSaveHasChanges);
+    }
+  }, [autoSaveHasChanges, hasUnsavedChanges]);
 
   // Busca informações do estoque da contagem atual quando ela for definida
   useEffect(() => {
@@ -2216,6 +2274,15 @@ export default function NewCount() {
               {contagemId ? `Contagem #${contagemId}` : "Nova Contagem"}
             </h1>
           </div>
+          
+          {/* Indicador de Auto-save (Regra #7: Componente de apresentação) */}
+          <AutoSaveIndicator
+            status={saveStatus}
+            lastSaved={lastSaved}
+            hasUnsavedChanges={autoSaveHasChanges}
+            onManualSave={manualSave}
+            className="text-xs"
+          />
         </div>
 
         <div className="mb-4">
