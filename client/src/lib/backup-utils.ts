@@ -154,8 +154,20 @@ const saveToSupabase = async (data: CountBackupData): Promise<void> => {
       return calculateTotalPacotes(product) * (product.unidadesPorPacote || 1) + (product.unidades || 0);
     };
 
-    // 4. Adiciona os itens atuais com TODOS os campos (Regra #1: DRY - mesma lógica robusta)
-    const itemsToSave = data.products.map(product => ({
+    // 4. Filtra produtos válidos e adiciona os itens atuais com TODOS os campos (Regra #1: DRY - mesma lógica robusta)
+    const validProducts = data.products.filter(product => {
+      // Valida se o produto_id existe (não é free- e não é inválido)
+      if (product.id.startsWith('free-')) return true; // Produtos livres são válidos
+      if (!product.id || product.id.length < 10) return false; // IDs muito curtos são inválidos
+      return true;
+    });
+
+    if (validProducts.length === 0) {
+      console.warn('⚠️ Auto-save: Nenhum produto válido para salvar');
+      return;
+    }
+
+    const itemsToSave = validProducts.map(product => ({
       contagem_id: finalCountId,
       produto_id: product.id.startsWith('free-') ? null : product.id,
       nome_livre: product.id.startsWith('free-') ? product.nome : null,
@@ -218,7 +230,10 @@ const saveToSupabase = async (data: CountBackupData): Promise<void> => {
 
     if (insertError) throw insertError;
 
-    console.log(`✅ Auto-save Supabase: ${data.products.length} produtos salvos na contagem ${finalCountId}`);
+    console.log(`✅ Auto-save Supabase: ${validProducts.length} produtos válidos salvos na contagem ${finalCountId}`);
+    if (validProducts.length < data.products.length) {
+      console.warn(`⚠️ ${data.products.length - validProducts.length} produtos inválidos foram ignorados`);
+    }
     
   } catch (error) {
     console.warn('❌ Auto-save Supabase falhou:', error);

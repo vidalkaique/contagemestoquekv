@@ -97,7 +97,7 @@ export function useUnfinishedCount() {
           garrafeiras_chao_vazio, garrafeiras_chao_vazio_pallets, garrafeiras_chao_vazio_lastros, garrafeiras_chao_vazio_caixas,
           garrafeiras_avaria, garrafeiras_avaria_pallets, garrafeiras_avaria_lastros, garrafeiras_avaria_caixas,
           garrafeiras_refugo, garrafeiras_refugo_pallets, garrafeiras_refugo_lastros, garrafeiras_refugo_caixas,
-          sucata, manutencao, novo, bloqueado, un,
+          sucata, manutencao, novo, bloqueado, un
         `)
         .eq('contagem_id', first.id);
 

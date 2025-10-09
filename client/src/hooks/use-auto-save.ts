@@ -68,7 +68,7 @@ export const useAutoSave = <T>(
   const {
     debounceMs = 2000,
     maxWaitMs = 30000,
-    enableAutoSave = true,
+    enableAutoSave = false, // TEMPORARIAMENTE DESABILITADO - LOOP INFINITO
     onSaveStart,
     onSaveSuccess,
     onSaveError

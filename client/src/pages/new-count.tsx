@@ -226,7 +226,7 @@ export default function NewCount() {
   } = useAutoSave(autoSaveData, saveFunction, {
     debounceMs: 2000,     // 2s após parar de editar
     maxWaitMs: 30000,     // Força save a cada 30s
-    enableAutoSave: true,
+    enableAutoSave: false, // TEMPORARIAMENTE DESABILITADO - LOOP INFINITO
     onSaveStart: () => console.log('🔄 Auto-save iniciado'),
     onSaveSuccess: () => {
       console.log('✅ Auto-save concluído');
