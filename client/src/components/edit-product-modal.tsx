@@ -512,16 +512,104 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
               })()}
             </>
           ) : (
-            /* Grid padrão para outros estoques (11 e 23) */
-            stockConfig && (
-              <StockFieldsGrid
-                fields={stockConfig.fields}
-                values={formData}
-                onChange={handleFieldChange}
-                columns={2}
-                className="mb-4"
-              />
-            )
+            <>
+              {/* Grid padrão para outros estoques (11 e 23) */}
+              {stockConfig && (
+                <StockFieldsGrid
+                  fields={stockConfig.fields}
+                  values={formData}
+                  onChange={handleFieldChange}
+                  columns={2}
+                  className="mb-4"
+                />
+              )}
+              
+              {/* Resumo para Estoque 11 */}
+              {tipoEstoque === '11' && (() => {
+                // Calcula total de pacotes (pallets → lastros → pacotes)
+                const params = {
+                  pacotesPorLastro: useCustomParams ? customParams.pacotesPorLastro : (formData.pacotesPorLastro || 1),
+                  lastrosPorPallet: useCustomParams ? customParams.lastrosPorPallet : (formData.lastrosPorPallet || 1),
+                  unidadesPorPacote: useCustomParams ? customParams.unidadesPorPacote : (formData.unidadesPorPacote || 1)
+                };
+                
+                const totalPacotes = (
+                  (formData.pallets || 0) * params.lastrosPorPallet * params.pacotesPorLastro +
+                  (formData.lastros || 0) * params.pacotesPorLastro +
+                  (formData.pacotes || 0)
+                );
+                
+                const totalUnidades = totalPacotes * params.unidadesPorPacote + (formData.unidades || 0);
+                
+                // Só mostra o resumo se houver valores
+                if (totalPacotes === 0 && (formData.unidades || 0) === 0) return null;
+                
+                return (
+                  <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                    <h4 className="font-semibold text-gray-800 mb-3 text-sm flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      Resumo da Contagem
+                    </h4>
+                    
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      {/* Breakdown dos valores inseridos */}
+                      <div className="space-y-2">
+                        <div className="text-xs font-medium text-gray-600 mb-2">Valores Inseridos:</div>
+                        {(formData.pallets || 0) > 0 && (
+                          <div className="flex justify-between">
+                            <span>Pallets:</span>
+                            <span className="font-medium">{formData.pallets}</span>
+                          </div>
+                        )}
+                        {(formData.lastros || 0) > 0 && (
+                          <div className="flex justify-between">
+                            <span>Lastros:</span>
+                            <span className="font-medium">{formData.lastros}</span>
+                          </div>
+                        )}
+                        {(formData.pacotes || 0) > 0 && (
+                          <div className="flex justify-between">
+                            <span>Pacotes:</span>
+                            <span className="font-medium">{formData.pacotes}</span>
+                          </div>
+                        )}
+                        {(formData.unidades || 0) > 0 && (
+                          <div className="flex justify-between">
+                            <span>Unidades:</span>
+                            <span className="font-medium">{formData.unidades}</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Totais calculados */}
+                      <div className="space-y-2">
+                        <div className="text-xs font-medium text-gray-600 mb-2">Totais Calculados:</div>
+                        <div className="flex justify-between">
+                          <span>Total Pacotes:</span>
+                          <span className="font-bold text-green-600">{totalPacotes.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Total Unidades:</span>
+                          <span className="font-bold text-green-600">{totalUnidades.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Parâmetros de conversão */}
+                    {(params.pacotesPorLastro > 1 || params.lastrosPorPallet > 1 || params.unidadesPorPacote > 1) && (
+                      <div className="mt-3 pt-3 border-t border-green-300">
+                        <div className="text-xs font-medium text-gray-600 mb-2">Parâmetros de Conversão:</div>
+                        <div className="grid grid-cols-3 gap-2 text-xs text-gray-500">
+                          <div>{params.pacotesPorLastro} pacs/lastro</div>
+                          <div>{params.lastrosPorPallet} lastros/pallet</div>
+                          <div>{params.unidadesPorPacote} un/pac</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </>
           )}
           
           {/* RoundingSuggestion apenas para Estoque 11 */}
