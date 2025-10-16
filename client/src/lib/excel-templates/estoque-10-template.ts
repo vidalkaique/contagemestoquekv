@@ -484,8 +484,8 @@ export class Estoque10Template implements ExcelTemplate {
               border: {
                 top: { style: 'medium', color: { rgb: '000000' } },
                 bottom: { style: 'medium', color: { rgb: '000000' } },
-                left: borderStyle,
-                right: borderStyle
+                left: { style: 'medium', color: { rgb: '000000' } },
+                right: { style: 'medium', color: { rgb: '000000' } }
               }
             };
           }
@@ -532,8 +532,8 @@ export class Estoque10Template implements ExcelTemplate {
       }
     }
     
-    // Adiciona bordas extras para delimitar seções (como na imagem)
-    this.addSectionBorders(ws, rowCount);
+    // Bordas extras já são aplicadas pela função addSectionContours
+    // Removido addSectionBorders pois foi substituída por addSectionContours
   }
   
   /**
