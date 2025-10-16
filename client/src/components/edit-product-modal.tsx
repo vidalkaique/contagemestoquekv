@@ -487,8 +487,19 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
                 const totalGarrafas = chaoCheio + chaoVazio + refugo + avaria;
                 const totalEquipamentos = (formData.novo || 0) + (formData.manutencao || 0) + (formData.sucata || 0) + (formData.bloqueado || 0);
                 
-                // Cálculos de Garrafeiras Vazias - Correção: 1 pallet = 60 cx
-                const garrafeirasVazias = (formData.garrafeirasVazias_pallets || 0) * 60 + 
+                // Cálculos de Garrafeiras Vazias - Detecta tipo do produto
+                const productName = formData.nome?.toLowerCase() || '';
+                let palletMultiplier = 60; // Padrão para 1L
+                
+                if (productName.includes('300ml') || productName.includes('300')) {
+                  palletMultiplier = 49; // 300ML: 1 pallet = 49 cx
+                } else if (productName.includes('600ml') || productName.includes('600')) {
+                  palletMultiplier = 49; // 600ML: 1 pallet = 49 cx
+                } else if (productName.includes('1l') || productName.includes('1000ml') || productName.includes('1000')) {
+                  palletMultiplier = 60; // 1L: 1 pallet = 60 cx
+                }
+                
+                const garrafeirasVazias = (formData.garrafeirasVazias_pallets || 0) * palletMultiplier + 
                                         (formData.garrafeirasVazias_lastros || 0) * 24 + 
                                         (formData.garrafeirasVazias_caixas || 0);
                 const gajPbrGarrafeirasVazias = formData.gajPbr || 0;

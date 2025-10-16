@@ -2344,8 +2344,19 @@ export default function NewCount() {
                     const totalEquipamentos = (product.novo || 0) + (product.manutencao || 0) + 
                                               (product.sucata || 0) + (product.bloqueado || 0);
                     
-                    // Cálculos de Garrafeiras Vazias - Correção: 1 pallet = 60 cx
-                    const garrafeirasVazias = (product.garrafeirasVazias_pallets || 0) * 60 + 
+                    // Cálculos de Garrafeiras Vazias - Detecta tipo do produto
+                    const productName = product.nome?.toLowerCase() || '';
+                    let palletMultiplier = 60; // Padrão para 1L
+                    
+                    if (productName.includes('300ml') || productName.includes('300')) {
+                      palletMultiplier = 49; // 300ML: 1 pallet = 49 cx
+                    } else if (productName.includes('600ml') || productName.includes('600')) {
+                      palletMultiplier = 49; // 600ML: 1 pallet = 49 cx
+                    } else if (productName.includes('1l') || productName.includes('1000ml') || productName.includes('1000')) {
+                      palletMultiplier = 60; // 1L: 1 pallet = 60 cx
+                    }
+                    
+                    const garrafeirasVazias = (product.garrafeirasVazias_pallets || 0) * palletMultiplier + 
                                             (product.garrafeirasVazias_lastros || 0) * 24 + 
                                             (product.garrafeirasVazias_caixas || 0);
                     const gajPbrGarrafeirasVazias = product.gajPbr || 0;
