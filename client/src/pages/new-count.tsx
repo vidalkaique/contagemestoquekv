@@ -2344,6 +2344,12 @@ export default function NewCount() {
                     const totalEquipamentos = (product.novo || 0) + (product.manutencao || 0) + 
                                               (product.sucata || 0) + (product.bloqueado || 0);
                     
+                    // Cálculos de Garrafeiras Vazias
+                    const garrafeirasVazias = (product.garrafeirasVazias_pallets || 0) * 24 * 12 + 
+                                            (product.garrafeirasVazias_lastros || 0) * 24 + 
+                                            (product.garrafeirasVazias_caixas || 0);
+                    const gajPbrGarrafeirasVazias = product.gajPbr || 0;
+                    
                     if (totalGarrafas === 0 && totalEquipamentos === 0) return null;
                     
                     return (
@@ -2394,6 +2400,23 @@ export default function NewCount() {
                                 </div>
                               </div>
                             )}
+                          </div>
+                        )}
+                        
+                        {/* Garrafeiras Vazias */}
+                        {garrafeirasVazias > 0 && (
+                          <div className="bg-purple-50 p-2 rounded border border-purple-200 mb-2">
+                            <div className="text-xs font-bold text-purple-800 mb-1">📦 Garrafeiras Vazias</div>
+                            <div className="space-y-1 text-xs">
+                              <div className="flex justify-between">
+                                <span className="text-purple-700">Total (CX):</span>
+                                <span className="font-bold text-purple-800">{garrafeirasVazias} cx</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-purple-700">GAJ/PBR:</span>
+                                <span className="font-bold text-purple-800">{gajPbrGarrafeirasVazias} un</span>
+                              </div>
+                            </div>
                           </div>
                         )}
                         

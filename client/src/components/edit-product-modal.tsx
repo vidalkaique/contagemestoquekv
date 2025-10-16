@@ -487,6 +487,12 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
                 const totalGarrafas = chaoCheio + chaoVazio + refugo + avaria;
                 const totalEquipamentos = (formData.novo || 0) + (formData.manutencao || 0) + (formData.sucata || 0) + (formData.bloqueado || 0);
                 
+                // Cálculos de Garrafeiras Vazias
+                const garrafeirasVazias = (formData.garrafeirasVazias_pallets || 0) * 24 * 12 + 
+                                        (formData.garrafeirasVazias_lastros || 0) * 24 + 
+                                        (formData.garrafeirasVazias_caixas || 0);
+                const gajPbrGarrafeirasVazias = formData.gajPbr || 0;
+                
                 if (totalGarrafas === 0 && totalEquipamentos === 0) return null;
                 
                 return (
@@ -537,6 +543,29 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
                             </div>
                           </div>
                         )}
+                      </div>
+                    )}
+                    
+                    {/* Garrafeiras Vazias */}
+                    {garrafeirasVazias > 0 && (
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                        <h4 className="font-semibold text-purple-800 mb-3 flex items-center gap-2">
+                          📦 Garrafeiras Vazias
+                        </h4>
+                        <div className="space-y-2">
+                          <div className="bg-white rounded-lg p-3">
+                            <div className="space-y-1 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-purple-700">Total (CX):</span>
+                                <span className="font-bold text-purple-800">{garrafeirasVazias} cx</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-purple-700">GAJ/PBR:</span>
+                                <span className="font-bold text-purple-800">{gajPbrGarrafeirasVazias} un</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
                     
