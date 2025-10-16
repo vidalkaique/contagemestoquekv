@@ -481,83 +481,96 @@ export class Estoque10Template implements ExcelTemplate {
     
     // Título RESUMO GERAL
     const resumoCell = worksheet.getCell(`H${currentRow}`);
-    resumoCell.value = 'RESUMO GERAL:';
+    resumoCell.value = 'RESUMO GERAL';
     resumoCell.font = { bold: true, size: 12 };
     resumoCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F3FF' } };
     this.addBorders(resumoCell, 'thick');
-    currentRow += 2;
+    currentRow++;
     
-    // CAIXAS
+    // CAIXAS:
     const caixasCell = worksheet.getCell(`H${currentRow}`);
     caixasCell.value = 'CAIXAS:';
     caixasCell.font = { bold: true };
     this.addBorders(caixasCell, 'medium');
     currentRow++;
     
-    const caixasData = [
-      [`TOTAL CAIXAS 600ML:`, totals.caixas_600ml],
-      [`TOTAL CAIXAS 300ML:`, totals.caixas_300ml],
-      [`TOTAL CAIXAS 1L:`, totals.caixas_1l]
-    ];
-    
-    caixasData.forEach(([label, value]) => {
-      const labelCell = worksheet.getCell(`H${currentRow}`);
-      const valueCell = worksheet.getCell(`I${currentRow}`);
-      labelCell.value = label;
-      valueCell.value = value;
-      this.addBorders(labelCell, 'thin');
-      this.addBorders(valueCell, 'thin');
-      currentRow++;
-    });
-    
-    currentRow++; // Espaço
-    
-    // GARRAFAS
-    const garrafasCell = worksheet.getCell(`H${currentRow}`);
-    garrafasCell.value = 'GARRAFAS:';
-    garrafasCell.font = { bold: true };
-    this.addBorders(garrafasCell, 'medium');
+    // TOTAL CAIXAS 600ML:
+    let labelCell = worksheet.getCell(`H${currentRow}`);
+    let valueCell = worksheet.getCell(`I${currentRow}`);
+    labelCell.value = 'TOTAL CAIXAS 600ML:';
+    valueCell.value = totals.caixas_600ml;
+    this.addBorders(labelCell, 'thin');
+    this.addBorders(valueCell, 'thin');
     currentRow++;
     
-    const garrafasData = [
-      [`TOTAL GARRAFAS 600ML:`, totals.garrafas_600ml],
-      [`TOTAL GARRAFAS 300ML:`, totals.garrafas_300ml],
-      [`TOTAL GARRAFAS 1L:`, totals.garrafas_1l]
-    ];
+    // TOTAL CAIXAS 300ML:
+    labelCell = worksheet.getCell(`H${currentRow}`);
+    valueCell = worksheet.getCell(`I${currentRow}`);
+    labelCell.value = 'TOTAL CAIXAS 300ML:';
+    valueCell.value = totals.caixas_300ml;
+    this.addBorders(labelCell, 'thin');
+    this.addBorders(valueCell, 'thin');
+    currentRow++;
     
-    garrafasData.forEach(([label, value]) => {
-      const labelCell = worksheet.getCell(`H${currentRow}`);
-      const valueCell = worksheet.getCell(`I${currentRow}`);
-      labelCell.value = label;
-      valueCell.value = value;
-      this.addBorders(labelCell, 'thin');
-      this.addBorders(valueCell, 'thin');
-      currentRow++;
-    });
+    // TOTAL CAIXAS 1L:
+    labelCell = worksheet.getCell(`H${currentRow}`);
+    valueCell = worksheet.getCell(`I${currentRow}`);
+    labelCell.value = 'TOTAL CAIXAS 1L:';
+    valueCell.value = totals.caixas_1l;
+    this.addBorders(labelCell, 'thin');
+    this.addBorders(valueCell, 'thin');
+    currentRow += 2; // Espaço
     
-    currentRow++; // Espaço
+    // TOTAL GARRAFAS 600M
+    labelCell = worksheet.getCell(`H${currentRow}`);
+    valueCell = worksheet.getCell(`I${currentRow}`);
+    labelCell.value = 'TOTAL GARRAFAS 600M';
+    valueCell.value = totals.garrafas_600ml;
+    this.addBorders(labelCell, 'thin');
+    this.addBorders(valueCell, 'thin');
+    currentRow++;
     
-    // GAJ/PBR
+    // TOTAL GARRAFAS 300M
+    labelCell = worksheet.getCell(`H${currentRow}`);
+    valueCell = worksheet.getCell(`I${currentRow}`);
+    labelCell.value = 'TOTAL GARRAFAS 300M';
+    valueCell.value = totals.garrafas_300ml;
+    this.addBorders(labelCell, 'thin');
+    this.addBorders(valueCell, 'thin');
+    currentRow++;
+    
+    // TOTAL GARRAFAS 1L:
+    labelCell = worksheet.getCell(`H${currentRow}`);
+    valueCell = worksheet.getCell(`I${currentRow}`);
+    labelCell.value = 'TOTAL GARRAFAS 1L:';
+    valueCell.value = totals.garrafas_1l;
+    this.addBorders(labelCell, 'thin');
+    this.addBorders(valueCell, 'thin');
+    currentRow += 2; // Espaço
+    
+    // GAJ/PBR:
     const gajPbrCell = worksheet.getCell(`H${currentRow}`);
     gajPbrCell.value = 'GAJ/PBR:';
     gajPbrCell.font = { bold: true };
     this.addBorders(gajPbrCell, 'medium');
     currentRow++;
     
-    const gajPbrData = [
-      [`TOTAL GAJ:`, totals.total_gaj],
-      [`TOTAL PBR:`, totals.total_pbr]
-    ];
+    // TOTAL GAJ:
+    labelCell = worksheet.getCell(`H${currentRow}`);
+    valueCell = worksheet.getCell(`I${currentRow}`);
+    labelCell.value = 'TOTAL GAJ:';
+    valueCell.value = totals.total_gaj;
+    this.addBorders(labelCell, 'thin');
+    this.addBorders(valueCell, 'thin');
+    currentRow++;
     
-    gajPbrData.forEach(([label, value]) => {
-      const labelCell = worksheet.getCell(`H${currentRow}`);
-      const valueCell = worksheet.getCell(`I${currentRow}`);
-      labelCell.value = label;
-      valueCell.value = value;
-      this.addBorders(labelCell, 'thin');
-      this.addBorders(valueCell, 'thin');
-      currentRow++;
-    });
+    // TOTAL PBR:
+    labelCell = worksheet.getCell(`H${currentRow}`);
+    valueCell = worksheet.getCell(`I${currentRow}`);
+    labelCell.value = 'TOTAL PBR:';
+    valueCell.value = totals.total_pbr;
+    this.addBorders(labelCell, 'thin');
+    this.addBorders(valueCell, 'thin');
   }
   
   /**
