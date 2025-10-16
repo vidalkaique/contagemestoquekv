@@ -66,7 +66,6 @@ export class Estoque10Template implements ExcelTemplate {
       },
       total: {
         font: { bold: true },
-        fill: { fgColor: { rgb: 'F0F0F0' } },
         alignment: { horizontal: 'center' }
       }
     };
@@ -91,7 +90,7 @@ export class Estoque10Template implements ExcelTemplate {
     worksheet.pageSetup = {
       orientation: 'landscape',
       fitToPage: true,
-      margins: { left: 0.7, right: 0.7, top: 0.75, bottom: 0.75 }
+      margins: { left: 0.7, right: 0.7, top: 0.75, bottom: 0.75, header: 0.3, footer: 0.3 }
     };
     
     let currentRow = 1;
@@ -154,7 +153,7 @@ export class Estoque10Template implements ExcelTemplate {
   /**
    * Formatar dados dos produtos
    */
-  private formatProductData(products: RealtimeProductItem[]) {
+  private formatProductData(products: any[]) {
     return products.map(product => {
       const nomeSimples = product.nome.replace(/\s*\([^)]*\)\s*$/, '');
       
@@ -205,7 +204,7 @@ export class Estoque10Template implements ExcelTemplate {
     headerCell.font = { bold: true, size: 12 };
     
     // Cores por seção
-    const colors = {
+    const colors: { [key: string]: string } = {
       'CHÃO CHEIO': 'FFE8F5E8',
       'CHÃO VAZIO': 'FFFFF2CC', 
       'GARRAFEIRA VAZIA': 'FFF2F2F2'
@@ -427,7 +426,7 @@ export class Estoque10Template implements ExcelTemplate {
   }
   
   private getSectionFields(section: string): string[] {
-    const fieldMap = {
+    const fieldMap: { [key: string]: string[] } = {
       'chaoCheio': ['chaoCheio_300ml_pbr', 'chaoCheio_300ml_cx', 'chaoCheio_600ml_gaj', 'chaoCheio_600ml_cx', 'chaoCheio_1000ml_gaj', 'chaoCheio_1000ml_cx'],
       'chaoVazio': ['chaoVazio_300ml_pbr', 'chaoVazio_300ml_cx', 'chaoVazio_600ml_gaj', 'chaoVazio_600ml_cx', 'chaoVazio_1000ml_gaj', 'chaoVazio_1000ml_cx'],
       'garrafeiraVazia': ['garrafeiraVazia_300ml_pbr', 'garrafeiraVazia_300ml_cx', 'garrafeiraVazia_600ml_gaj', 'garrafeiraVazia_600ml_cx', 'garrafeiraVazia_1000ml_gaj', 'garrafeiraVazia_1000ml_cx']
