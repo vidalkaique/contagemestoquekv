@@ -281,24 +281,20 @@ export class Estoque10Template implements ExcelTemplate {
     sheetData.push(['CÓDIGOS']);
     sheetData.push([]);
     
-    // Adiciona produtos com códigos (apenas produtos que têm dados)
-    const produtosComDados = data.products.filter(product => {
-      const hasChaoCheioDados = (product.chaoCheio || 0) > 0 || (product.chaoCheio_gajPbr || 0) > 0;
-      const hasChaoVazioDados = (product.chaoVazio || 0) > 0 || (product.chaoVazio_gajPbr || 0) > 0;
-      const hasGarrafeiraVaziaDados = (
-        (product.garrafeirasVazias_pallets || 0) > 0 || 
-        (product.garrafeirasVazias_lastros || 0) > 0 || 
-        (product.garrafeirasVazias_caixas || 0) > 0 || 
-        (product.gajPbr || 0) > 0
-      );
-      
-      return hasChaoCheioDados || hasChaoVazioDados || hasGarrafeiraVaziaDados;
-    });
+    // Códigos fixos predefinidos (conforme solicitação do usuário)
+    const codigosPredefinidos = [
+      ['1023392', 'GARRAFA 1L'],
+      ['1023384', 'GARRAFA 300ML'],
+      ['1023393', 'GARRAFA 600ML'],
+      ['1155350', 'GARRAFA VERDE 600ML'],
+      ['1022893', 'GARRAFEIRA 1L'],
+      ['1022894', 'GARRAFEIRA 300ML'],
+      ['1022895', 'GARRAFEIRA 600ML']
+    ];
     
-    produtosComDados.forEach(product => {
-      const nomeSimples = product.nome.replace(/\s*\([^)]*\)\s*$/, '');
-      const codigo = product.codigo || 'N/A';
-      sheetData.push([`${nomeSimples}`, `(${codigo})`]);
+    // Adiciona os códigos predefinidos
+    codigosPredefinidos.forEach(([codigo, descricao]) => {
+      sheetData.push([codigo, descricao]);
     });
     
     // Cria planilha
@@ -385,18 +381,8 @@ export class Estoque10Template implements ExcelTemplate {
       right: thickBorder
     };
     
-    // Aplica bordas em todas as células com conteúdo
-    for (let row = 0; row < rowCount; row++) {
-      for (let col = 0; col < 9; col++) { // Colunas A-I
-        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-        const cell = ws[cellAddress];
-        
-        if (cell && cell.v !== undefined && cell.v !== '') {
-          if (!cell.s) cell.s = {};
-          cell.s.border = defaultBorder;
-        }
-      }
-    }
+    // As bordas são aplicadas pela função addSectionContours
+    // Removido loop duplicado para evitar conflitos
     
     // Adiciona contornos especiais para delimitar seções
     this.addSectionContours(ws, rowCount);
@@ -537,74 +523,69 @@ export class Estoque10Template implements ExcelTemplate {
   }
   
   /**
-   * Adiciona contornos organizados para delimitar seções
+   * Adiciona contornos simples que funcionam no Excel
    */
   private addSectionContours(ws: XLSX.WorkSheet, rowCount: number): void {
-    const thickBorder = { style: 'thick', color: { rgb: '000000' } };
-    const mediumBorder = { style: 'medium', color: { rgb: '000000' } };
+    // Estilo de borda simples que funciona
+    const border = {
+      top: { style: 'thin' },
+      bottom: { style: 'thin' },
+      left: { style: 'thin' },
+      right: { style: 'thin' }
+    };
     
-    // 1. CONTORNO PRINCIPAL (Colunas A-F para dados principais)
+    const thickBorder = {
+      top: { style: 'thick' },
+      bottom: { style: 'thick' },
+      left: { style: 'thick' },
+      right: { style: 'thick' }
+    };
+    
+    // Aplica bordas em TODAS as células com conteúdo
     for (let row = 0; row < rowCount; row++) {
-      for (let col = 0; col < 6; col++) {
+      for (let col = 0; col < 9; col++) {
         const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
         const cell = ws[cellAddr];
-        if (cell && cell.v !== undefined && cell.v !== '') {
+        
+        if (cell && cell.v !== undefined && cell.v !== null && cell.v !== '') {
           if (!cell.s) cell.s = {};
-          if (!cell.s.border) cell.s.border = {};
-          
-          // Borda esquerda da área principal
-          if (col === 0) cell.s.border.left = thickBorder;
-          // Borda direita da área principal
-          if (col === 5) cell.s.border.right = thickBorder;
+          cell.s.border = border;
         }
       }
     }
     
-    // 2. CONTORNO DO RESUMO GERAL (Colunas H-I)
-    for (let row = 0; row < rowCount; row++) {
-      for (let col = 7; col < 9; col++) {
-        const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
-        const cell = ws[cellAddr];
-        if (cell && cell.v !== undefined && cell.v !== '') {
-          if (!cell.s) cell.s = {};
-          if (!cell.s.border) cell.s.border = {};
-          
-          // Borda esquerda do resumo
-          if (col === 7) cell.s.border.left = thickBorder;
-          // Borda direita do resumo
-          if (col === 8) cell.s.border.right = thickBorder;
-        }
-      }
-    }
-    
-    // 3. SEPARADORES ENTRE SEÇÕES
+    // Bordas grossas para separar seções
     for (let row = 0; row < rowCount; row++) {
       const cellA = ws[XLSX.utils.encode_cell({ r: row, c: 0 })];
       
       if (cellA && typeof cellA.v === 'string') {
-        // Borda grossa acima dos cabeçalhos das seções
-        if (cellA.v.includes('CHÃO CHEIO') || cellA.v.includes('CHÃO VAZIO') || cellA.v.includes('GARRAFEIRA VAZIA') || cellA.v === 'CÓDIGOS') {
+        // Cabeçalhos das seções com borda grossa
+        if (cellA.v.includes('CHÃO CHEIO') || 
+            cellA.v.includes('CHÃO VAZIO') || 
+            cellA.v.includes('GARRAFEIRA VAZIA') || 
+            cellA.v === 'CÓDIGOS' ||
+            cellA.v === 'RESUMO GERAL') {
+          
+          // Aplica borda grossa na linha inteira
+          for (let col = 0; col < 9; col++) {
+            const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
+            const cell = ws[cellAddr];
+            if (cell) {
+              if (!cell.s) cell.s = {};
+              cell.s.border = thickBorder;
+            }
+          }
+        }
+        
+        // Linhas de totais com borda grossa embaixo
+        if (cellA.v.includes('TOTAL')) {
           for (let col = 0; col < 9; col++) {
             const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
             const cell = ws[cellAddr];
             if (cell) {
               if (!cell.s) cell.s = {};
               if (!cell.s.border) cell.s.border = {};
-              cell.s.border.top = thickBorder;
-              cell.s.border.bottom = mediumBorder;
-            }
-          }
-        }
-        
-        // Borda grossa abaixo das linhas de totais
-        if (cellA.v.includes('TOTAL')) {
-          for (let col = 0; col < 6; col++) {
-            const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
-            const cell = ws[cellAddr];
-            if (cell) {
-              if (!cell.s) cell.s = {};
-              if (!cell.s.border) cell.s.border = {};
-              cell.s.border.bottom = mediumBorder;
+              cell.s.border.bottom = { style: 'thick' };
             }
           }
         }
