@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import * as XLSX from 'xlsx';
-import { RealtimeProductItem } from '../types';
+// import { RealtimeProductItem } from '../types';
 import { ExcelTemplate, ExcelExportData, ExcelStyles } from './index';
 import { ProductItem } from '@/pages/new-count';
 
@@ -11,7 +11,7 @@ export interface Estoque10ExportData {
     data_criacao: string;
     tipo_estoque: number;
   };
-  products: RealtimeProductItem[];
+  products: any[];
 }
 
 /**
@@ -63,6 +63,11 @@ export class Estoque10Template implements ExcelTemplate {
       data: {
         alignment: { horizontal: 'center' },
         numFmt: '#,##0'
+      },
+      total: {
+        font: { bold: true },
+        fill: { fgColor: { rgb: 'F0F0F0' } },
+        alignment: { horizontal: 'center' }
       }
     };
   }
