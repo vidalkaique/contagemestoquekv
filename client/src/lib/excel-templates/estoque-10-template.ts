@@ -523,74 +523,43 @@ export class Estoque10Template implements ExcelTemplate {
   }
   
   /**
-   * Adiciona contornos simples que funcionam no Excel
+   * Adiciona bordas que realmente funcionam no Excel
    */
   private addSectionContours(ws: XLSX.WorkSheet, rowCount: number): void {
-    // Estilo de borda simples que funciona
-    const border = {
-      top: { style: 'thin' },
-      bottom: { style: 'thin' },
-      left: { style: 'thin' },
-      right: { style: 'thin' }
-    };
+    // Força a criação de todas as células primeiro
+    for (let row = 0; row < rowCount; row++) {
+      for (let col = 0; col < 9; col++) {
+        const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
+        if (!ws[cellAddr]) {
+          ws[cellAddr] = { v: '', t: 's' };
+        }
+      }
+    }
     
-    const thickBorder = {
-      top: { style: 'thick' },
-      bottom: { style: 'thick' },
-      left: { style: 'thick' },
-      right: { style: 'thick' }
-    };
-    
-    // Aplica bordas em TODAS as células com conteúdo
+    // Aplica bordas em todas as células
     for (let row = 0; row < rowCount; row++) {
       for (let col = 0; col < 9; col++) {
         const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
         const cell = ws[cellAddr];
         
-        if (cell && cell.v !== undefined && cell.v !== null && cell.v !== '') {
+        if (cell) {
           if (!cell.s) cell.s = {};
-          cell.s.border = border;
+          cell.s.border = {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'thin', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          };
         }
       }
     }
     
-    // Bordas grossas para separar seções
-    for (let row = 0; row < rowCount; row++) {
-      const cellA = ws[XLSX.utils.encode_cell({ r: row, c: 0 })];
-      
-      if (cellA && typeof cellA.v === 'string') {
-        // Cabeçalhos das seções com borda grossa
-        if (cellA.v.includes('CHÃO CHEIO') || 
-            cellA.v.includes('CHÃO VAZIO') || 
-            cellA.v.includes('GARRAFEIRA VAZIA') || 
-            cellA.v === 'CÓDIGOS' ||
-            cellA.v === 'RESUMO GERAL') {
-          
-          // Aplica borda grossa na linha inteira
-          for (let col = 0; col < 9; col++) {
-            const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
-            const cell = ws[cellAddr];
-            if (cell) {
-              if (!cell.s) cell.s = {};
-              cell.s.border = thickBorder;
-            }
-          }
-        }
-        
-        // Linhas de totais com borda grossa embaixo
-        if (cellA.v.includes('TOTAL')) {
-          for (let col = 0; col < 9; col++) {
-            const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
-            const cell = ws[cellAddr];
-            if (cell) {
-              if (!cell.s) cell.s = {};
-              if (!cell.s.border) cell.s.border = {};
-              cell.s.border.bottom = { style: 'thick' };
-            }
-          }
-        }
-      }
-    }
+    // Define o range da planilha
+    const range = XLSX.utils.encode_range({
+      s: { c: 0, r: 0 },
+      e: { c: 8, r: rowCount - 1 }
+    });
+    ws['!ref'] = range;
   }
 
   /**
