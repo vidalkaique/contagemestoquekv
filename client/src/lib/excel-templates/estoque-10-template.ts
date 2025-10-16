@@ -65,8 +65,7 @@ export class Estoque10Template implements ExcelTemplate {
         numFmt: '#,##0'
       },
       total: {
-        font: { bold: true },
-        alignment: { horizontal: 'center' }
+        font: { bold: true }
       }
     };
   }
