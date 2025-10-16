@@ -2292,9 +2292,41 @@ export default function NewCount() {
                   const isEstoque10 = tipoEstoque === '10';
                   
                   if (isEstoque10) {
+                    // Detecta o tipo de garrafeira baseado no nome do produto
+                    const detectGarrafeiraType = (productName: string): '600ml' | '300ml' | '1l' | 'other' => {
+                      const nameUpper = productName.toUpperCase();
+                      if (nameUpper.includes('600ML') || nameUpper.includes('600')) return '600ml';
+                      if (nameUpper.includes('300ML') || nameUpper.includes('300')) return '300ml';
+                      if (nameUpper.includes('1L') || nameUpper.includes('1000ML')) return '1l';
+                      return 'other';
+                    };
+                    
+                    // Calcula garrafas baseado no tipo e quantidade de caixas
+                    const calculateGarrafas = (caixas: number): number => {
+                      const type = detectGarrafeiraType(product.nome || '');
+                      switch (type) {
+                        case '600ml':
+                        case '300ml':
+                          return caixas * 24;
+                        case '1l':
+                          return caixas * 12;
+                        default:
+                          return 0; // Outros produtos não convertem
+                      }
+                    };
+                    
                     // Resumo bonito para Estoque 10 (igual ao modal)
-                    const totalGarrafas = (product.chaoCheio || 0) + (product.chaoVazio || 0) + 
-                                          (product.refugo || 0) + (product.avaria || 0);
+                    const chaoCheio = product.chaoCheio || 0;
+                    const chaoVazio = product.chaoVazio || 0;
+                    const refugo = product.refugo || 0;
+                    const avaria = product.avaria || 0;
+                    
+                    // Cálculos de garrafas convertidas
+                    const chaoCheioGarrafas = calculateGarrafas(chaoCheio);
+                    const chaoVazioGarrafas = calculateGarrafas(chaoVazio);
+                    const gajPbrTotal = product.gajPbrRefugo || 0;
+                    
+                    const totalGarrafas = chaoCheio + chaoVazio + refugo + avaria;
                     const totalEquipamentos = (product.novo || 0) + (product.manutencao || 0) + 
                                               (product.sucata || 0) + (product.bloqueado || 0);
                     
@@ -2304,21 +2336,63 @@ export default function NewCount() {
                       <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
                         <h4 className="font-semibold text-gray-800 mb-2 text-xs">Resumo da Contagem</h4>
                         
-                        {totalGarrafas > 0 && (
+                        {/* Resumos de Garrafeiras com conversões */}
+                        {(chaoCheioGarrafas > 0 || chaoVazioGarrafas > 0) && (
+                          <div className="space-y-2 mb-3">
+                            {/* Resumo Chão Cheio */}
+                            {chaoCheioGarrafas > 0 && (
+                              <div className="bg-green-50 p-2 rounded border border-green-200">
+                                <div className="text-xs font-bold text-green-800 mb-1">📊 RESUMO CHÃO CHEIO</div>
+                                <div className="space-y-1 text-xs">
+                                  <div className="flex justify-between">
+                                    <span className="text-green-700">Total Garrafas Ch.Cheio:</span>
+                                    <span className="font-bold text-green-800">{chaoCheioGarrafas} un</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-green-700">Total Garrafeiras Ch.Cheio:</span>
+                                    <span className="font-bold text-green-800">{chaoCheio} cx</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-green-700">Total GAJ/PBR Ch.Cheio:</span>
+                                    <span className="font-bold text-green-800">{gajPbrTotal}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Resumo Chão Vazio */}
+                            {chaoVazioGarrafas > 0 && (
+                              <div className="bg-blue-50 p-2 rounded border border-blue-200">
+                                <div className="text-xs font-bold text-blue-800 mb-1">📊 RESUMO CHÃO VAZIO</div>
+                                <div className="space-y-1 text-xs">
+                                  <div className="flex justify-between">
+                                    <span className="text-blue-700">Total Garrafas Ch.Vazio:</span>
+                                    <span className="font-bold text-blue-800">{chaoVazioGarrafas} un</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-blue-700">Total Garrafeiras Ch.Vazio:</span>
+                                    <span className="font-bold text-blue-800">{chaoVazio} cx</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-blue-700">Total GAJ/PBR Ch.Vazio:</span>
+                                    <span className="font-bold text-blue-800">{gajPbrTotal}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Resumo tradicional para outros campos */}
+                        {(refugo > 0 || avaria > 0) && (
                           <div className="mb-2">
-                            <div className="text-xs font-medium text-gray-600 mb-1">Garrafas/Garrafeiras:</div>
+                            <div className="text-xs font-medium text-gray-600 mb-1">Outros:</div>
                             <div className="grid grid-cols-2 gap-2 text-xs">
-                              {(product.chaoCheio || 0) > 0 && (
-                                <div><span className="font-medium">Chão Cheio:</span> <span className="text-blue-600 font-bold">{product.chaoCheio} cx</span></div>
+                              {refugo > 0 && (
+                                <div><span className="font-medium">Refugo:</span> <span className="text-blue-600 font-bold">{refugo} cx</span></div>
                               )}
-                              {(product.chaoVazio || 0) > 0 && (
-                                <div><span className="font-medium">Chão Vazio:</span> <span className="text-blue-600 font-bold">{product.chaoVazio} cx</span></div>
-                              )}
-                              {(product.refugo || 0) > 0 && (
-                                <div><span className="font-medium">Refugo:</span> <span className="text-blue-600 font-bold">{product.refugo} cx</span></div>
-                              )}
-                              {(product.avaria || 0) > 0 && (
-                                <div><span className="font-medium">Avaria:</span> <span className="text-blue-600 font-bold">{product.avaria} cx</span></div>
+                              {avaria > 0 && (
+                                <div><span className="font-medium">Avaria:</span> <span className="text-blue-600 font-bold">{avaria} cx</span></div>
                               )}
                             </div>
                           </div>
