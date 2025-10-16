@@ -24,8 +24,7 @@ interface Stock10Data {
   refugo_lastros: number;
   refugo_caixas: number;
   
-  // GARRAFEIRAS VAZIAS (novos campos)
-  garrafeirasVazias: number;
+  // GARRAFEIRAS VAZIAS (nova seção)
   garrafeirasVazias_pallets: number;
   garrafeirasVazias_lastros: number;
   garrafeirasVazias_caixas: number;
@@ -81,6 +80,7 @@ export function Stock10ExpandableSections({
 }: Stock10ExpandableSectionsProps) {
   const [expandedSections, setExpandedSections] = useState({
     garrafas: true,
+    garrafeirasVazias: false,
     equipamentos: false
   });
 
@@ -133,6 +133,7 @@ export function Stock10ExpandableSections({
       {expandedSections[sectionKey] && (
         <div className="p-4 bg-white">
           {sectionKey === 'garrafas' && renderGarrafasEGarrafeirasFields()}
+          {sectionKey === 'garrafeirasVazias' && renderGarrafeirasVaziasFields()}
           {sectionKey === 'equipamentos' && renderEquipamentosFields()}
         </div>
       )}
@@ -213,45 +214,154 @@ export function Stock10ExpandableSections({
         onSubfieldChange={(field, value) => handleSubfieldChange('refugo', field, value)}
         conversionRates={conversionRates}
       />
-      
-      {/* Separador visual */}
-      <div className="border-t border-gray-200 my-4"></div>
-      
-      {/* GARRAFEIRAS VAZIAS */}
-      <ExpandableStockField
-        label="📦 Garrafeiras Vazias"
-        value={calculateTotal(
-          data.garrafeirasVazias_pallets || 0,
-          data.garrafeirasVazias_lastros || 0,
-          data.garrafeirasVazias_caixas || 0
-        )}
-        unit="cx"
-        hasSubfields
-        subfields={{
-          pallets: data.garrafeirasVazias_pallets || 0,
-          lastros: data.garrafeirasVazias_lastros || 0,
-          caixas: data.garrafeirasVazias_caixas || 0
-        }}
-        onSubfieldChange={(field, value) => handleSubfieldChange('garrafeirasVazias', field, value)}
-        conversionRates={conversionRates}
-      />
-      
-      {/* GAJ/PBR */}
-      <div className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg border">
-        <label className="text-sm font-medium text-gray-700">🏷️ GAJ/PBR</label>
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            value={data.gajPbr || 0}
-            onChange={(e) => onChange('gajPbr', parseInt(e.target.value) || 0)}
-            className="w-20 h-10 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-            min="0"
-            placeholder="0"
-          />
-          <span className="text-sm text-gray-600">un</span>
+
+    </>
+  );
+
+  // Renderiza campos da seção GARRAFEIRAS VAZIAS
+  const renderGarrafeirasVaziasFields = () => (
+    <>
+      {/* Campos Pallets, Lastros, Cx */}
+      <div className="space-y-3">
+        {/* Pallets */}
+        <div className="flex items-center justify-between py-2">
+          <span className="text-sm text-gray-700 min-w-[80px]">Pallets:</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const currentValue = data.garrafeirasVazias_pallets || 0;
+                if (currentValue > 0) {
+                  onChange('garrafeirasVazias_pallets', currentValue - 1);
+                }
+              }}
+              className="w-10 h-10 flex items-center justify-center bg-red-500 text-white rounded hover:bg-red-600 active:bg-red-700 transition-colors font-bold text-lg shadow-sm"
+            >
+              −
+            </button>
+            <input
+              type="number"
+              value={data.garrafeirasVazias_pallets || 0}
+              onChange={(e) => onChange('garrafeirasVazias_pallets', parseInt(e.target.value) || 0)}
+              className="w-16 h-10 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+              min="0"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const currentValue = data.garrafeirasVazias_pallets || 0;
+                onChange('garrafeirasVazias_pallets', currentValue + 1);
+              }}
+              className="w-10 h-10 flex items-center justify-center bg-red-500 text-white rounded hover:bg-red-600 active:bg-red-700 transition-colors font-bold text-lg shadow-sm"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        {/* Lastros */}
+        <div className="flex items-center justify-between py-2">
+          <span className="text-sm text-gray-700 min-w-[80px]">Lastros:</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const currentValue = data.garrafeirasVazias_lastros || 0;
+                if (currentValue > 0) {
+                  onChange('garrafeirasVazias_lastros', currentValue - 1);
+                }
+              }}
+              className="w-10 h-10 flex items-center justify-center bg-red-500 text-white rounded hover:bg-red-600 active:bg-red-700 transition-colors font-bold text-lg shadow-sm"
+            >
+              −
+            </button>
+            <input
+              type="number"
+              value={data.garrafeirasVazias_lastros || 0}
+              onChange={(e) => onChange('garrafeirasVazias_lastros', parseInt(e.target.value) || 0)}
+              className="w-16 h-10 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+              min="0"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const currentValue = data.garrafeirasVazias_lastros || 0;
+                onChange('garrafeirasVazias_lastros', currentValue + 1);
+              }}
+              className="w-10 h-10 flex items-center justify-center bg-red-500 text-white rounded hover:bg-red-600 active:bg-red-700 transition-colors font-bold text-lg shadow-sm"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        {/* Cx */}
+        <div className="flex items-center justify-between py-2">
+          <span className="text-sm text-gray-700 min-w-[80px]">Cx:</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const currentValue = data.garrafeirasVazias_caixas || 0;
+                if (currentValue > 0) {
+                  onChange('garrafeirasVazias_caixas', currentValue - 1);
+                }
+              }}
+              className="w-10 h-10 flex items-center justify-center bg-red-500 text-white rounded hover:bg-red-600 active:bg-red-700 transition-colors font-bold text-lg shadow-sm"
+            >
+              −
+            </button>
+            <input
+              type="number"
+              value={data.garrafeirasVazias_caixas || 0}
+              onChange={(e) => onChange('garrafeirasVazias_caixas', parseInt(e.target.value) || 0)}
+              className="w-16 h-10 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+              min="0"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const currentValue = data.garrafeirasVazias_caixas || 0;
+                onChange('garrafeirasVazias_caixas', currentValue + 1);
+              }}
+              className="w-10 h-10 flex items-center justify-center bg-red-500 text-white rounded hover:bg-red-600 active:bg-red-700 transition-colors font-bold text-lg shadow-sm"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        {/* Total calculado */}
+        <div className="flex items-center justify-between py-2 bg-blue-50 px-3 rounded border">
+          <span className="text-sm font-medium text-blue-700">Total:</span>
+          <span className="text-lg font-bold text-blue-800">
+            {calculateTotal(
+              data.garrafeirasVazias_pallets || 0,
+              data.garrafeirasVazias_lastros || 0,
+              data.garrafeirasVazias_caixas || 0
+            )} cx
+          </span>
+        </div>
+
+        {/* Separador */}
+        <div className="border-t border-gray-200 my-4"></div>
+
+        {/* GAJ/PBR */}
+        <div className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg border">
+          <label className="text-sm font-medium text-gray-700">🏷️ GAJ/PBR</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={data.gajPbr || 0}
+              onChange={(e) => onChange('gajPbr', parseInt(e.target.value) || 0)}
+              className="w-20 h-10 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+              min="0"
+              placeholder="0"
+            />
+            <span className="text-sm text-gray-600">un</span>
+          </div>
         </div>
       </div>
-
     </>
   );
 
@@ -306,8 +416,9 @@ export function Stock10ExpandableSections({
 
   return (
     <div className="space-y-3">
-      {renderSection("GARRAFAS", "garrafas", "")}
-      {renderSection("EQUIPAMENTOS", "equipamentos", "")}
+      {renderSection("GARRAFAS", "garrafas", "🍺")}
+      {renderSection("GARRAFEIRAS VAZIAS", "garrafeirasVazias", "📦")}
+      {renderSection("EQUIPAMENTOS", "equipamentos", "⚙️")}
     </div>
   );
 }
