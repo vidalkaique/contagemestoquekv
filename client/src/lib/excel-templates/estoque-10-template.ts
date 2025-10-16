@@ -293,16 +293,31 @@ export class Estoque10Template implements ExcelTemplate {
     };
     
     products.forEach(product => {
-      // Somar caixas
-      totals.caixas_300ml += (product.chaoCheio || 0) + (product.chaoVazio || 0) + (product.garrafeirasVazias_caixas || 0);
-      totals.caixas_600ml += (product.chaoCheio || 0) + (product.chaoVazio || 0) + (product.garrafeirasVazias_caixas || 0);
-      totals.caixas_1l += (product.chaoCheio || 0) + (product.chaoVazio || 0) + (product.garrafeirasVazias_caixas || 0);
+      // Identificar tipo do produto pelo nome
+      const nome = product.nome.toLowerCase();
+      const is300ml = nome.includes('300ml') || nome.includes('300');
+      const is600ml = nome.includes('600ml') || nome.includes('600');
+      const is1l = nome.includes('1l') || nome.includes('1000ml') || nome.includes('1000');
       
-      // Somar garrafas (caixas * taxa de conversão)
-      const caixas = (product.chaoCheio || 0) + (product.chaoVazio || 0);
-      totals.garrafas_300ml += caixas * 24;
-      totals.garrafas_600ml += caixas * 24;
-      totals.garrafas_1l += caixas * 12;
+      // Somar caixas por tipo
+      const totalCaixasProduto = (product.chaoCheio || 0) + (product.chaoVazio || 0) + (product.garrafeirasVazias_caixas || 0);
+      
+      if (is300ml) {
+        totals.caixas_300ml += totalCaixasProduto;
+        // Garrafas 300ML (apenas chão cheio e vazio)
+        const caixasGarrafas = (product.chaoCheio || 0) + (product.chaoVazio || 0);
+        totals.garrafas_300ml += caixasGarrafas * 24;
+      } else if (is600ml) {
+        totals.caixas_600ml += totalCaixasProduto;
+        // Garrafas 600ML (apenas chão cheio e vazio)
+        const caixasGarrafas = (product.chaoCheio || 0) + (product.chaoVazio || 0);
+        totals.garrafas_600ml += caixasGarrafas * 24;
+      } else if (is1l) {
+        totals.caixas_1l += totalCaixasProduto;
+        // Garrafas 1L (apenas chão cheio e vazio)
+        const caixasGarrafas = (product.chaoCheio || 0) + (product.chaoVazio || 0);
+        totals.garrafas_1l += caixasGarrafas * 12;
+      }
       
       // Somar GAJ/PBR
       totals.total_gaj += (product.chaoCheio_gajPbr || 0) + (product.chaoVazio_gajPbr || 0) + (product.garrafeirasVazias_lastros || 0);
