@@ -399,37 +399,84 @@ export class Estoque10Template implements ExcelTemplate {
    * Obter valores do produto para uma seção
    */
   private getProductValues(product: any, section: string): number[] {
+    // Identificar tipo do produto pelo nome
+    const nome = product.nome.toLowerCase();
+    const is300ml = nome.includes('300ml') || nome.includes('300');
+    const is600ml = nome.includes('600ml') || nome.includes('600');
+    const is1l = nome.includes('1l') || nome.includes('1000ml') || nome.includes('1000');
+    
     switch (section) {
       case 'chaoCheio':
-        return [
-          product.chaoCheio_gajPbr || 0, // 300ML PBR
-          product.chaoCheio || 0,        // 300ML CX
-          product.chaoCheio_gajPbr || 0, // 600ML GAJ
-          product.chaoCheio || 0,        // 600ML CX
-          product.chaoCheio_gajPbr || 0, // 1000ML GAJ
-          product.chaoCheio || 0         // 1000ML CX
-        ];
+        if (is300ml) {
+          return [
+            product.chaoCheio_gajPbr || 0, // 300ML PBR
+            product.chaoCheio || 0,        // 300ML CX
+            0, 0, 0, 0                     // 600ML e 1000ML = 0
+          ];
+        } else if (is600ml) {
+          return [
+            0, 0,                          // 300ML = 0
+            product.chaoCheio_gajPbr || 0, // 600ML GAJ
+            product.chaoCheio || 0,        // 600ML CX
+            0, 0                           // 1000ML = 0
+          ];
+        } else if (is1l) {
+          return [
+            0, 0, 0, 0,                    // 300ML e 600ML = 0
+            product.chaoCheio_gajPbr || 0, // 1000ML GAJ
+            product.chaoCheio || 0         // 1000ML CX
+          ];
+        }
+        break;
+        
       case 'chaoVazio':
-        return [
-          product.chaoVazio_gajPbr || 0, // 300ML PBR
-          product.chaoVazio || 0,        // 300ML CX
-          product.chaoVazio_gajPbr || 0, // 600ML GAJ
-          product.chaoVazio || 0,        // 600ML CX
-          product.chaoVazio_gajPbr || 0, // 1000ML GAJ
-          product.chaoVazio || 0         // 1000ML CX
-        ];
+        if (is300ml) {
+          return [
+            product.chaoVazio_gajPbr || 0, // 300ML PBR
+            product.chaoVazio || 0,        // 300ML CX
+            0, 0, 0, 0                     // 600ML e 1000ML = 0
+          ];
+        } else if (is600ml) {
+          return [
+            0, 0,                          // 300ML = 0
+            product.chaoVazio_gajPbr || 0, // 600ML GAJ
+            product.chaoVazio || 0,        // 600ML CX
+            0, 0                           // 1000ML = 0
+          ];
+        } else if (is1l) {
+          return [
+            0, 0, 0, 0,                    // 300ML e 600ML = 0
+            product.chaoVazio_gajPbr || 0, // 1000ML GAJ
+            product.chaoVazio || 0         // 1000ML CX
+          ];
+        }
+        break;
+        
       case 'garrafeiraVazia':
-        return [
-          product.garrafeirasVazias_pallets || 0, // 300ML PBR
-          product.garrafeirasVazias_caixas || 0,  // 300ML CX
-          product.garrafeirasVazias_lastros || 0, // 600ML GAJ
-          product.garrafeirasVazias_caixas || 0,  // 600ML CX
-          product.garrafeirasVazias_lastros || 0, // 1000ML GAJ
-          product.garrafeirasVazias_caixas || 0   // 1000ML CX
-        ];
-      default:
-        return [0, 0, 0, 0, 0, 0];
+        if (is300ml) {
+          return [
+            product.garrafeirasVazias_pallets || 0, // 300ML PBR
+            product.garrafeirasVazias_caixas || 0,  // 300ML CX
+            0, 0, 0, 0                              // 600ML e 1000ML = 0
+          ];
+        } else if (is600ml) {
+          return [
+            0, 0,                                   // 300ML = 0
+            product.garrafeirasVazias_lastros || 0, // 600ML GAJ
+            product.garrafeirasVazias_caixas || 0,  // 600ML CX
+            0, 0                                    // 1000ML = 0
+          ];
+        } else if (is1l) {
+          return [
+            0, 0, 0, 0,                             // 300ML e 600ML = 0
+            product.garrafeirasVazias_lastros || 0, // 1000ML GAJ
+            product.garrafeirasVazias_caixas || 0   // 1000ML CX
+          ];
+        }
+        break;
     }
+    
+    return [0, 0, 0, 0, 0, 0]; // Default: todos zeros
   }
   
   /**
@@ -477,7 +524,7 @@ export class Estoque10Template implements ExcelTemplate {
    * Adicionar RESUMO GERAL
    */
   private addResumoGeral(worksheet: ExcelJS.Worksheet, totals: any) {
-    let currentRow = 3;
+    let currentRow = 6; // Começar na linha 6 como na foto
     
     // Título RESUMO GERAL
     const resumoCell = worksheet.getCell(`H${currentRow}`);
@@ -499,6 +546,8 @@ export class Estoque10Template implements ExcelTemplate {
     let valueCell = worksheet.getCell(`I${currentRow}`);
     labelCell.value = 'TOTAL CAIXAS 600ML:';
     valueCell.value = totals.caixas_600ml;
+    labelCell.alignment = { horizontal: 'left' };
+    valueCell.alignment = { horizontal: 'right' };
     this.addBorders(labelCell, 'thin');
     this.addBorders(valueCell, 'thin');
     currentRow++;
@@ -508,6 +557,8 @@ export class Estoque10Template implements ExcelTemplate {
     valueCell = worksheet.getCell(`I${currentRow}`);
     labelCell.value = 'TOTAL CAIXAS 300ML:';
     valueCell.value = totals.caixas_300ml;
+    labelCell.alignment = { horizontal: 'left' };
+    valueCell.alignment = { horizontal: 'right' };
     this.addBorders(labelCell, 'thin');
     this.addBorders(valueCell, 'thin');
     currentRow++;
@@ -517,24 +568,30 @@ export class Estoque10Template implements ExcelTemplate {
     valueCell = worksheet.getCell(`I${currentRow}`);
     labelCell.value = 'TOTAL CAIXAS 1L:';
     valueCell.value = totals.caixas_1l;
+    labelCell.alignment = { horizontal: 'left' };
+    valueCell.alignment = { horizontal: 'right' };
     this.addBorders(labelCell, 'thin');
     this.addBorders(valueCell, 'thin');
     currentRow += 2; // Espaço
     
-    // TOTAL GARRAFAS 600M
+    // TOTAL GARRAFAS 600ML
     labelCell = worksheet.getCell(`H${currentRow}`);
     valueCell = worksheet.getCell(`I${currentRow}`);
-    labelCell.value = 'TOTAL GARRAFAS 600M';
+    labelCell.value = 'TOTAL GARRAFAS 600ML';
     valueCell.value = totals.garrafas_600ml;
+    labelCell.alignment = { horizontal: 'left' };
+    valueCell.alignment = { horizontal: 'right' };
     this.addBorders(labelCell, 'thin');
     this.addBorders(valueCell, 'thin');
     currentRow++;
     
-    // TOTAL GARRAFAS 300M
+    // TOTAL GARRAFAS 300ML
     labelCell = worksheet.getCell(`H${currentRow}`);
     valueCell = worksheet.getCell(`I${currentRow}`);
-    labelCell.value = 'TOTAL GARRAFAS 300M';
+    labelCell.value = 'TOTAL GARRAFAS 300ML';
     valueCell.value = totals.garrafas_300ml;
+    labelCell.alignment = { horizontal: 'left' };
+    valueCell.alignment = { horizontal: 'right' };
     this.addBorders(labelCell, 'thin');
     this.addBorders(valueCell, 'thin');
     currentRow++;
@@ -544,6 +601,8 @@ export class Estoque10Template implements ExcelTemplate {
     valueCell = worksheet.getCell(`I${currentRow}`);
     labelCell.value = 'TOTAL GARRAFAS 1L:';
     valueCell.value = totals.garrafas_1l;
+    labelCell.alignment = { horizontal: 'left' };
+    valueCell.alignment = { horizontal: 'right' };
     this.addBorders(labelCell, 'thin');
     this.addBorders(valueCell, 'thin');
     currentRow += 2; // Espaço
@@ -560,6 +619,8 @@ export class Estoque10Template implements ExcelTemplate {
     valueCell = worksheet.getCell(`I${currentRow}`);
     labelCell.value = 'TOTAL GAJ:';
     valueCell.value = totals.total_gaj;
+    labelCell.alignment = { horizontal: 'left' };
+    valueCell.alignment = { horizontal: 'right' };
     this.addBorders(labelCell, 'thin');
     this.addBorders(valueCell, 'thin');
     currentRow++;
@@ -569,6 +630,8 @@ export class Estoque10Template implements ExcelTemplate {
     valueCell = worksheet.getCell(`I${currentRow}`);
     labelCell.value = 'TOTAL PBR:';
     valueCell.value = totals.total_pbr;
+    labelCell.alignment = { horizontal: 'left' };
+    valueCell.alignment = { horizontal: 'right' };
     this.addBorders(labelCell, 'thin');
     this.addBorders(valueCell, 'thin');
   }
