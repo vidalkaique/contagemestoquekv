@@ -333,10 +333,10 @@ export class Estoque10Template implements ExcelTemplate {
       totalCaixas600: (totaisChaoCheio[3] || 0) + (totaisChaoVazio[3] || 0) + (totaisGarrafeiraVazia[3] || 0),
       totalCaixas1L: (totaisChaoCheio[5] || 0) + (totaisChaoVazio[5] || 0) + (totaisGarrafeiraVazia[5] || 0),
       
-      // GARRAFAS (caixas * garrafas por caixa)
-      totalGarrafas300: ((totaisChaoCheio[1] || 0) + (totaisChaoVazio[1] || 0) + (totaisGarrafeiraVazia[1] || 0)) * 24,
-      totalGarrafas600: ((totaisChaoCheio[3] || 0) + (totaisChaoVazio[3] || 0) + (totaisGarrafeiraVazia[3] || 0)) * 24,
-      totalGarrafas1L: ((totaisChaoCheio[5] || 0) + (totaisChaoVazio[5] || 0) + (totaisGarrafeiraVazia[5] || 0)) * 12,
+      // GARRAFAS (caixas * garrafas por caixa) - Garrafeiras Vazias NÃO multiplicam
+      totalGarrafas300: ((totaisChaoCheio[1] || 0) + (totaisChaoVazio[1] || 0)) * 24 + (totaisGarrafeiraVazia[1] || 0),
+      totalGarrafas600: ((totaisChaoCheio[3] || 0) + (totaisChaoVazio[3] || 0)) * 24 + (totaisGarrafeiraVazia[3] || 0),
+      totalGarrafas1L: ((totaisChaoCheio[5] || 0) + (totaisChaoVazio[5] || 0)) * 12 + (totaisGarrafeiraVazia[5] || 0),
       
       // GAJ/PBR
       totalGAJ: (totaisChaoCheio[2] || 0) + (totaisChaoVazio[2] || 0) + (totaisGarrafeiraVazia[2] || 0) + 
