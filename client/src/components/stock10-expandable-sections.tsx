@@ -24,7 +24,16 @@ interface Stock10Data {
   refugo_lastros: number;
   refugo_caixas: number;
   
-  // GARRAFEIRAS
+  // GARRAFEIRAS VAZIAS (novos campos)
+  garrafeirasVazias: number;
+  garrafeirasVazias_pallets: number;
+  garrafeirasVazias_lastros: number;
+  garrafeirasVazias_caixas: number;
+  
+  // GAJ/PBR (novo campo)
+  gajPbr: number;
+  
+  // GARRAFEIRAS (campos antigos - manter compatibilidade)
   garrafeiras_chaoCheio: number;
   garrafeiras_chaoCheio_pallets: number;
   garrafeiras_chaoCheio_lastros: number;
@@ -204,6 +213,44 @@ export function Stock10ExpandableSections({
         onSubfieldChange={(field, value) => handleSubfieldChange('refugo', field, value)}
         conversionRates={conversionRates}
       />
+      
+      {/* Separador visual */}
+      <div className="border-t border-gray-200 my-4"></div>
+      
+      {/* GARRAFEIRAS VAZIAS */}
+      <ExpandableStockField
+        label="📦 Garrafeiras Vazias"
+        value={calculateTotal(
+          data.garrafeirasVazias_pallets || 0,
+          data.garrafeirasVazias_lastros || 0,
+          data.garrafeirasVazias_caixas || 0
+        )}
+        unit="cx"
+        hasSubfields
+        subfields={{
+          pallets: data.garrafeirasVazias_pallets || 0,
+          lastros: data.garrafeirasVazias_lastros || 0,
+          caixas: data.garrafeirasVazias_caixas || 0
+        }}
+        onSubfieldChange={(field, value) => handleSubfieldChange('garrafeirasVazias', field, value)}
+        conversionRates={conversionRates}
+      />
+      
+      {/* GAJ/PBR */}
+      <div className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg border">
+        <label className="text-sm font-medium text-gray-700">🏷️ GAJ/PBR</label>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            value={data.gajPbr || 0}
+            onChange={(e) => onChange('gajPbr', parseInt(e.target.value) || 0)}
+            className="w-20 h-10 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+            min="0"
+            placeholder="0"
+          />
+          <span className="text-sm text-gray-600">un</span>
+        </div>
+      </div>
 
     </>
   );
