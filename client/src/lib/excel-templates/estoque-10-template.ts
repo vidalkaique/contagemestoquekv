@@ -96,10 +96,10 @@ export class Estoque10Template implements ExcelTemplate {
         const chaoVazioTotal = (product.chaoVazio || 0);
         const chaoVazioGaj = (product.chaoVazio_gajPbr || 0);
         
-        // GARRAFEIRAS VAZIAS - Usa mesma lógica da aba (padrão: 10 lastros/pallet, 12 cx/lastro)
+        // GARRAFEIRAS VAZIAS - Usa taxas de conversão do produto
         const calculateTotal = (pallets: number, lastros: number, caixas: number): number => {
-          const caixasPorLastro = 12;
-          const lastrosPorPallet = 10;
+          const caixasPorLastro = product.pacotesPorLastro || 12;
+          const lastrosPorPallet = product.lastrosPorPallet || 10;
           return (
             pallets * lastrosPorPallet * caixasPorLastro +
             lastros * caixasPorLastro +

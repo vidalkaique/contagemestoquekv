@@ -487,10 +487,10 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
                 const totalGarrafas = chaoCheio + chaoVazio + refugo + avaria;
                 const totalEquipamentos = (formData.novo || 0) + (formData.manutencao || 0) + (formData.sucata || 0) + (formData.bloqueado || 0);
                 
-                // Cálculos de Garrafeiras Vazias - Usa mesma lógica da aba
+                // Cálculos de Garrafeiras Vazias - Usa taxas de conversão do produto
                 const calculateTotal = (pallets: number, lastros: number, caixas: number): number => {
-                  const caixasPorLastro = 12;
-                  const lastrosPorPallet = 10;
+                  const caixasPorLastro = product?.pacotesPorLastro || 12;
+                  const lastrosPorPallet = product?.lastrosPorPallet || 10;
                   return (
                     pallets * lastrosPorPallet * caixasPorLastro +
                     lastros * caixasPorLastro +

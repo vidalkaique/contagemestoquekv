@@ -2344,10 +2344,10 @@ export default function NewCount() {
                     const totalEquipamentos = (product.novo || 0) + (product.manutencao || 0) + 
                                               (product.sucata || 0) + (product.bloqueado || 0);
                     
-                    // Cálculos de Garrafeiras Vazias - Usa mesma lógica da aba
+                    // Cálculos de Garrafeiras Vazias - Usa taxas de conversão do produto
                     const calculateTotal = (pallets: number, lastros: number, caixas: number): number => {
-                      const caixasPorLastro = 12;
-                      const lastrosPorPallet = 10;
+                      const caixasPorLastro = product.pacotesPorLastro || 12;
+                      const lastrosPorPallet = product.lastrosPorPallet || 10;
                       return (
                         pallets * lastrosPorPallet * caixasPorLastro +
                         lastros * caixasPorLastro +
