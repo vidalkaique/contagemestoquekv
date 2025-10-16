@@ -8,6 +8,7 @@ interface SubfieldConfig {
   lastros?: number;
   caixas?: number;
   quantidade?: number;
+  gajPbr?: number;
 }
 
 interface ConversionRates {
@@ -130,6 +131,11 @@ export function ExpandableStockField({
             {subfields.lastros !== undefined && renderSubfield('lastros', 'Lastros', subfields.lastros)}
             {subfields.caixas !== undefined && renderSubfield('caixas', 'Caixas', subfields.caixas)}
             {subfields.quantidade !== undefined && renderSubfield('quantidade', 'Quantidade', subfields.quantidade)}
+            {subfields.gajPbr !== undefined && (
+              <div className="pt-2 border-t border-gray-300">
+                {renderSubfield('gajPbr', '🏷️ GAJ/PBR', subfields.gajPbr)}
+              </div>
+            )}
           </div>
           
           {/* Informações de conversão (opcional) */}

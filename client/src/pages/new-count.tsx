@@ -107,11 +107,13 @@ export interface ProductItem {
   chaoCheio_pallets?: number;
   chaoCheio_lastros?: number;
   chaoCheio_caixas?: number;
+  chaoCheio_gajPbr?: number;
   
   chaoVazio?: number;
   chaoVazio_pallets?: number;
   chaoVazio_lastros?: number;
   chaoVazio_caixas?: number;
+  chaoVazio_gajPbr?: number;
   
   refugo?: number;
   refugo_pallets?: number;
@@ -2335,7 +2337,8 @@ export default function NewCount() {
                     // Cálculos de garrafas convertidas
                     const chaoCheioGarrafas = calculateGarrafas(chaoCheio);
                     const chaoVazioGarrafas = calculateGarrafas(chaoVazio);
-                    const gajPbrTotal = product.gajPbrRefugo || 0;
+                    const gajPbrChaoCheio = product.chaoCheio_gajPbr || 0;
+                    const gajPbrChaoVazio = product.chaoVazio_gajPbr || 0;
                     
                     const totalGarrafas = chaoCheio + chaoVazio + refugo + avaria;
                     const totalEquipamentos = (product.novo || 0) + (product.manutencao || 0) + 
@@ -2365,7 +2368,7 @@ export default function NewCount() {
                                   </div>
                                   <div className="flex justify-between">
                                     <span className="text-green-700">Total GAJ/PBR Ch.Cheio:</span>
-                                    <span className="font-bold text-green-800">{gajPbrTotal}</span>
+                                    <span className="font-bold text-green-800">{gajPbrChaoCheio}</span>
                                   </div>
                                 </div>
                               </div>
@@ -2386,7 +2389,7 @@ export default function NewCount() {
                                   </div>
                                   <div className="flex justify-between">
                                     <span className="text-blue-700">Total GAJ/PBR Ch.Vazio:</span>
-                                    <span className="font-bold text-blue-800">{gajPbrTotal}</span>
+                                    <span className="font-bold text-blue-800">{gajPbrChaoVazio}</span>
                                   </div>
                                 </div>
                               </div>

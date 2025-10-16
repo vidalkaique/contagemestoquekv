@@ -481,7 +481,8 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
                 // Cálculos de garrafas convertidas
                 const chaoCheioGarrafas = calculateGarrafas(chaoCheio);
                 const chaoVazioGarrafas = calculateGarrafas(chaoVazio);
-                const gajPbrTotal = formData.gajPbrRefugo || 0;
+                const gajPbrChaoCheio = formData.chaoCheio_gajPbr || 0;
+                const gajPbrChaoVazio = formData.chaoVazio_gajPbr || 0;
                 
                 const totalGarrafas = chaoCheio + chaoVazio + refugo + avaria;
                 const totalEquipamentos = (formData.novo || 0) + (formData.manutencao || 0) + (formData.sucata || 0) + (formData.bloqueado || 0);
@@ -510,7 +511,7 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-green-700">Total GAJ/PBR Ch.Cheio:</span>
-                                <span className="font-bold text-green-800">{gajPbrTotal}</span>
+                                <span className="font-bold text-green-800">{gajPbrChaoCheio}</span>
                               </div>
                             </div>
                           </div>
@@ -531,7 +532,7 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-blue-700">Total GAJ/PBR Ch.Vazio:</span>
-                                <span className="font-bold text-blue-800">{gajPbrTotal}</span>
+                                <span className="font-bold text-blue-800">{gajPbrChaoVazio}</span>
                               </div>
                             </div>
                           </div>

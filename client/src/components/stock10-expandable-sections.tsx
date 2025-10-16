@@ -8,11 +8,13 @@ interface Stock10Data {
   chaoCheio_pallets: number;
   chaoCheio_lastros: number;
   chaoCheio_caixas: number;
+  chaoCheio_gajPbr: number;
   
   chaoVazio: number;
   chaoVazio_pallets: number;
   chaoVazio_lastros: number;
   chaoVazio_caixas: number;
+  chaoVazio_gajPbr: number;
   
   avaria: number;
   avaria_pallets: number;
@@ -183,7 +185,8 @@ export function Stock10ExpandableSections({
         subfields={{
           pallets: data.chaoCheio_pallets || 0,
           lastros: data.chaoCheio_lastros || 0,
-          caixas: data.chaoCheio_caixas || 0
+          caixas: data.chaoCheio_caixas || 0,
+          gajPbr: data.chaoCheio_gajPbr || 0
         }}
         onSubfieldChange={(field, value) => handleSubfieldChange('chaoCheio', field, value)}
         conversionRates={conversionRates}
@@ -201,7 +204,8 @@ export function Stock10ExpandableSections({
         subfields={{
           pallets: data.chaoVazio_pallets || 0,
           lastros: data.chaoVazio_lastros || 0,
-          caixas: data.chaoVazio_caixas || 0
+          caixas: data.chaoVazio_caixas || 0,
+          gajPbr: data.chaoVazio_gajPbr || 0
         }}
         onSubfieldChange={(field, value) => handleSubfieldChange('chaoVazio', field, value)}
         conversionRates={conversionRates}
@@ -242,85 +246,6 @@ export function Stock10ExpandableSections({
         onSubfieldChange={(field, value) => handleSubfieldChange('refugo', field, value)}
         conversionRates={conversionRates}
       />
-      
-      {/* GAJ/PBR após Refugo */}
-      <div className="flex items-center justify-between py-3 px-4 bg-yellow-50 rounded-lg border border-yellow-200">
-        <label className="text-sm font-medium text-yellow-700">🏷️ GAJ/PBR</label>
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            value={data.gajPbrRefugo || 0}
-            onChange={(e) => onChange('gajPbrRefugo', parseInt(e.target.value) || 0)}
-            className="w-20 h-10 text-center border border-yellow-300 rounded focus:outline-none focus:ring-2 focus:ring-yellow-500 font-medium"
-            min="0"
-            placeholder="0"
-          />
-          <span className="text-sm text-yellow-600">un</span>
-        </div>
-      </div>
-      
-      {/* RESUMOS POR SEÇÃO */}
-      {(() => {
-        const chaoCheioTotal = calculateTotal(
-          data.chaoCheio_pallets || 0,
-          data.chaoCheio_lastros || 0,
-          data.chaoCheio_caixas || 0
-        );
-        
-        const chaoVazioTotal = calculateTotal(
-          data.chaoVazio_pallets || 0,
-          data.chaoVazio_lastros || 0,
-          data.chaoVazio_caixas || 0
-        );
-        
-        const chaoCheioGarrafas = calculateGarrafas(chaoCheioTotal);
-        const chaoVazioGarrafas = calculateGarrafas(chaoVazioTotal);
-        
-        return (
-          <div className="mt-6 space-y-4">
-            {/* Separador */}
-            <div className="border-t border-gray-300 my-4"></div>
-            
-            {/* Resumo Chão Cheio */}
-            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-              <h4 className="font-bold text-green-800 mb-2">📊 RESUMO CHÃO CHEIO</h4>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-green-700">Total Garrafas Ch.Cheio:</span>
-                  <span className="font-bold text-green-800">{chaoCheioGarrafas} un</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-green-700">Total Garrafeiras Ch.Cheio:</span>
-                  <span className="font-bold text-green-800">{chaoCheioTotal} cx</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-green-700">Total GAJ/PBR Ch.Cheio:</span>
-                  <span className="font-bold text-green-800">{data.gajPbrRefugo || 0}</span>
-                </div>
-              </div>
-            </div>
-            
-            {/* Resumo Chão Vazio */}
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <h4 className="font-bold text-blue-800 mb-2">📊 RESUMO CHÃO VAZIO</h4>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-blue-700">Total Garrafas Ch.Vazio:</span>
-                  <span className="font-bold text-blue-800">{chaoVazioGarrafas} un</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-blue-700">Total Garrafeiras Ch.Vazio:</span>
-                  <span className="font-bold text-blue-800">{chaoVazioTotal} cx</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-blue-700">Total GAJ/PBR Ch.Vazio:</span>
-                  <span className="font-bold text-blue-800">{data.gajPbrRefugo || 0}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
     </>
   );
@@ -454,18 +379,38 @@ export function Stock10ExpandableSections({
         <div className="border-t border-gray-200 my-4"></div>
 
         {/* GAJ/PBR */}
-        <div className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg border">
-          <label className="text-sm font-medium text-gray-700">🏷️ GAJ/PBR</label>
+        <div className="flex items-center justify-between py-2">
+          <span className="text-sm text-gray-700 min-w-[80px]">🏷️ GAJ/PBR:</span>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const currentValue = data.gajPbr || 0;
+                if (currentValue > 0) {
+                  onChange('gajPbr', currentValue - 1);
+                }
+              }}
+              className="w-10 h-10 flex items-center justify-center bg-red-500 text-white rounded hover:bg-red-600 active:bg-red-700 transition-colors font-bold text-lg shadow-sm"
+            >
+              −
+            </button>
             <input
               type="number"
               value={data.gajPbr || 0}
               onChange={(e) => onChange('gajPbr', parseInt(e.target.value) || 0)}
-              className="w-20 h-10 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+              className="w-16 h-10 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
               min="0"
-              placeholder="0"
             />
-            <span className="text-sm text-gray-600">un</span>
+            <button
+              type="button"
+              onClick={() => {
+                const currentValue = data.gajPbr || 0;
+                onChange('gajPbr', currentValue + 1);
+              }}
+              className="w-10 h-10 flex items-center justify-center bg-red-500 text-white rounded hover:bg-red-600 active:bg-red-700 transition-colors font-bold text-lg shadow-sm"
+            >
+              +
+            </button>
           </div>
         </div>
       </div>
