@@ -488,7 +488,7 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
                 const totalEquipamentos = (formData.novo || 0) + (formData.manutencao || 0) + (formData.sucata || 0) + (formData.bloqueado || 0);
                 
                 // Cálculos de Garrafeiras Vazias - Detecta tipo do produto
-                const productName = formData.nome?.toLowerCase() || '';
+                const productName = product?.nome?.toLowerCase() || '';
                 let palletMultiplier = 60; // Padrão para 1L
                 
                 if (productName.includes('300ml') || productName.includes('300')) {
