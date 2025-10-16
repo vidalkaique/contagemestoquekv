@@ -83,78 +83,104 @@ export class Estoque10Template implements ExcelTemplate {
       products: data.products
     };
     
-    // Gerar dados formatados
-    const formattedData = this.formatProductData(data.products);
+    // Dados dos produtos já estão prontos
     
     // Criar planilha com dados
     const sheetData: any[][] = [];
     
-    // Título
-    sheetData.push(['CONTAGEM ESTOQUE 10 - GARRAFEIRAS']);
-    sheetData.push(['Separação por Tipo: 300ML, 600ML e 1000ML']);
-    sheetData.push([`Data: ${new Date().toLocaleDateString('pt-BR')}`]);
-    sheetData.push([]); // Linha vazia
+    // Inicializar todas as linhas até 50 para garantir posição do resumo
+    for (let i = 0; i < 50; i++) {
+      sheetData.push([]);
+    }
     
-    // Seção CHÃO CHEIO
-    sheetData.push(['CHÃO CHEIO']);
-    sheetData.push(['300ML', '', '600ML', '', '1000ML', '', '', 'RESUMO GERAL']);
-    sheetData.push(['PBR', 'CX', 'GAJ', 'CX', 'GAJ', 'CX', '', 'CAIXAS:']);
+    // Título (linha 1)
+    sheetData[0] = ['CONTAGEM ESTOQUE 10 - GARRAFEIRAS'];
+    sheetData[1] = ['Separação por Tipo: 300ML, 600ML e 1000ML'];
+    sheetData[2] = [`Data: ${new Date().toLocaleDateString('pt-BR')}`];
     
-    // Adicionar dados dos produtos (simples para compatibilidade)
+    // Seção CHÃO CHEIO (linha 5)
+    sheetData[4] = ['CHÃO CHEIO', '', '', '', '', '', '', 'RESUMO GERAL'];
+    sheetData[5] = ['300ML', '', '600ML', '', '1000ML', '', '', 'CAIXAS:'];
+    sheetData[6] = ['PBR', 'CX', 'GAJ', 'CX', 'GAJ', 'CX', '', 'TOTAL CAIXAS 600ML:'];
+    
+    // Calcular totais para o resumo
+    const totalChaoCheio = data.products.reduce((sum, p) => sum + (p.chaoCheio || 0), 0);
+    const totalChaoVazio = data.products.reduce((sum, p) => sum + (p.chaoVazio || 0), 0);
+    const totalGarrafeiraCaixas = data.products.reduce((sum, p) => sum + (p.garrafeirasVazias_caixas || 0), 0);
+    const totalGajPbr = data.products.reduce((sum, p) => sum + (p.chaoCheio_gajPbr || 0) + (p.chaoVazio_gajPbr || 0), 0);
+    const totalGarrafeiraPallets = data.products.reduce((sum, p) => sum + (p.garrafeirasVazias_pallets || 0), 0);
+    const totalGarrafeiraLastros = data.products.reduce((sum, p) => sum + (p.garrafeirasVazias_lastros || 0), 0);
+    
+    // Preencher RESUMO GERAL (colunas H-I)
+    sheetData[6][8] = totalChaoCheio + totalChaoVazio + totalGarrafeiraCaixas; // TOTAL CAIXAS 600ML
+    sheetData[7] = ['', '', '', '', '', '', '', 'TOTAL CAIXAS 300ML:', totalChaoCheio + totalChaoVazio + totalGarrafeiraCaixas];
+    sheetData[8] = ['', '', '', '', '', '', '', 'TOTAL CAIXAS 1L:', totalChaoCheio + totalChaoVazio + totalGarrafeiraCaixas];
+    sheetData[9] = ['', '', '', '', '', '', '', ''];
+    sheetData[10] = ['', '', '', '', '', '', '', 'GARRAFAS:'];
+    sheetData[11] = ['', '', '', '', '', '', '', 'TOTAL GARRAFAS 600ML:', (totalChaoCheio + totalChaoVazio) * 24];
+    sheetData[12] = ['', '', '', '', '', '', '', 'TOTAL GARRAFAS 300ML:', (totalChaoCheio + totalChaoVazio) * 24];
+    sheetData[13] = ['', '', '', '', '', '', '', 'TOTAL GARRAFAS 1L:', (totalChaoCheio + totalChaoVazio) * 12];
+    sheetData[14] = ['', '', '', '', '', '', '', ''];
+    sheetData[15] = ['', '', '', '', '', '', '', 'GAJ/PBR:'];
+    sheetData[16] = ['', '', '', '', '', '', '', 'TOTAL GAJ:', totalGajPbr + totalGarrafeiraLastros];
+    sheetData[17] = ['', '', '', '', '', '', '', 'TOTAL PBR:', totalGajPbr + totalGarrafeiraPallets];
+    
+    // Dados dos produtos CHÃO CHEIO
+    let currentRow = 7;
     data.products.forEach(product => {
-      const nomeSimples = product.nome.replace(/\s*\([^)]*\)\s*$/, '');
-      sheetData.push([
-        product.chaoCheio_gajPbr || 0, // 300ML PBR
-        product.chaoCheio || 0,        // 300ML CX
-        product.chaoCheio_gajPbr || 0, // 600ML GAJ
-        product.chaoCheio || 0,        // 600ML CX
-        product.chaoCheio_gajPbr || 0, // 1000ML GAJ
-        product.chaoCheio || 0,        // 1000ML CX
-        '',
-        nomeSimples
-      ]);
+      if ((product.chaoCheio || 0) > 0 || (product.chaoCheio_gajPbr || 0) > 0) {
+        sheetData[currentRow] = [
+          product.chaoCheio_gajPbr || 0, // 300ML PBR
+          product.chaoCheio || 0,        // 300ML CX
+          product.chaoCheio_gajPbr || 0, // 600ML GAJ
+          product.chaoCheio || 0,        // 600ML CX
+          product.chaoCheio_gajPbr || 0, // 1000ML GAJ
+          product.chaoCheio || 0         // 1000ML CX
+        ];
+        currentRow++;
+      }
     });
     
-    // Totais
-    const totalChaoCheio = data.products.reduce((sum, p) => sum + (p.chaoCheio || 0), 0);
-    const totalGajPbr = data.products.reduce((sum, p) => sum + (p.chaoCheio_gajPbr || 0), 0);
-    
-    sheetData.push(['TOTAL (CX)', totalChaoCheio, 'TOTAL (CX)', totalChaoCheio, 'TOTAL (CX)', totalChaoCheio]);
-    sheetData.push(['TOTAL (GRF)', totalChaoCheio * 24, 'TOTAL (GRF)', totalChaoCheio * 24, 'TOTAL (GRF)', totalChaoCheio * 12]);
-    sheetData.push(['TOTAL PBR', totalGajPbr, 'TOTAL GAJ', totalGajPbr, 'TOTAL GAJ', totalGajPbr]);
-    
-    sheetData.push([]); // Linha vazia
+    // Totais CHÃO CHEIO
+    sheetData[currentRow] = ['TOTAL (CX)', totalChaoCheio, 'TOTAL (CX)', totalChaoCheio, 'TOTAL (CX)', totalChaoCheio];
+    sheetData[currentRow + 1] = ['TOTAL (GRF)', totalChaoCheio * 24, 'TOTAL (GRF)', totalChaoCheio * 24, 'TOTAL (GRF)', totalChaoCheio * 12];
+    sheetData[currentRow + 2] = ['TOTAL PBR', totalGajPbr, 'TOTAL GAJ', totalGajPbr, 'TOTAL GAJ', totalGajPbr];
+    currentRow += 4; // Pula linha
     
     // Seção CHÃO VAZIO
-    sheetData.push(['CHÃO VAZIO']);
-    sheetData.push(['300ML', '', '600ML', '', '1000ML', '']);
-    sheetData.push(['PBR', 'CX', 'GAJ', 'CX', 'GAJ', 'CX']);
+    sheetData[currentRow] = ['CHÃO VAZIO'];
+    sheetData[currentRow + 1] = ['300ML', '', '600ML', '', '1000ML', ''];
+    sheetData[currentRow + 2] = ['PBR', 'CX', 'GAJ', 'CX', 'GAJ', 'CX'];
+    currentRow += 3;
     
     // Dados CHÃO VAZIO
     data.products.forEach(product => {
-      sheetData.push([
-        product.chaoVazio_gajPbr || 0,
-        product.chaoVazio || 0,
-        product.chaoVazio_gajPbr || 0,
-        product.chaoVazio || 0,
-        product.chaoVazio_gajPbr || 0,
-        product.chaoVazio || 0
-      ]);
+      if ((product.chaoVazio || 0) > 0 || (product.chaoVazio_gajPbr || 0) > 0) {
+        sheetData[currentRow] = [
+          product.chaoVazio_gajPbr || 0,
+          product.chaoVazio || 0,
+          product.chaoVazio_gajPbr || 0,
+          product.chaoVazio || 0,
+          product.chaoVazio_gajPbr || 0,
+          product.chaoVazio || 0
+        ];
+        currentRow++;
+      }
     });
     
-    const totalChaoVazio = data.products.reduce((sum, p) => sum + (p.chaoVazio || 0), 0);
     const totalChaoVazioGaj = data.products.reduce((sum, p) => sum + (p.chaoVazio_gajPbr || 0), 0);
     
-    sheetData.push(['TOTAL (CX)', totalChaoVazio, 'TOTAL (CX)', totalChaoVazio, 'TOTAL (CX)', totalChaoVazio]);
-    sheetData.push(['TOTAL (GRF)', totalChaoVazio * 24, 'TOTAL (GRF)', totalChaoVazio * 24, 'TOTAL (GRF)', totalChaoVazio * 12]);
-    sheetData.push(['TOTAL PBR', totalChaoVazioGaj, 'TOTAL GAJ', totalChaoVazioGaj, 'TOTAL GAJ', totalChaoVazioGaj]);
-    
-    sheetData.push([]); // Linha vazia
+    // Totais CHÃO VAZIO
+    sheetData[currentRow] = ['TOTAL (CX)', totalChaoVazio, 'TOTAL (CX)', totalChaoVazio, 'TOTAL (CX)', totalChaoVazio];
+    sheetData[currentRow + 1] = ['TOTAL (GRF)', totalChaoVazio * 24, 'TOTAL (GRF)', totalChaoVazio * 24, 'TOTAL (GRF)', totalChaoVazio * 12];
+    sheetData[currentRow + 2] = ['TOTAL PBR', totalChaoVazioGaj, 'TOTAL GAJ', totalChaoVazioGaj, 'TOTAL GAJ', totalChaoVazioGaj];
+    currentRow += 4; // Pula linha
     
     // Seção GARRAFEIRA VAZIA
-    sheetData.push(['GARRAFEIRA VAZIA']);
-    sheetData.push(['300ML', '', '600ML', '', '1000ML', '']);
-    sheetData.push(['PBR', 'CX', 'GAJ', 'CX', 'GAJ', 'CX']);
+    sheetData[currentRow] = ['GARRAFEIRA VAZIA'];
+    sheetData[currentRow + 1] = ['300ML', '', '600ML', '', '1000ML', ''];
+    sheetData[currentRow + 2] = ['PBR', 'CX', 'GAJ', 'CX', 'GAJ', 'CX'];
+    currentRow += 3;
     
     // Dados GARRAFEIRA VAZIA
     data.products.forEach(product => {
@@ -162,44 +188,43 @@ export class Estoque10Template implements ExcelTemplate {
       const lastros = product.garrafeirasVazias_lastros || 0;
       const caixas = product.garrafeirasVazias_caixas || 0;
       
-      sheetData.push([
-        pallets,
-        caixas,
-        lastros,
-        caixas,
-        lastros,
-        caixas
-      ]);
+      if (pallets > 0 || lastros > 0 || caixas > 0) {
+        sheetData[currentRow] = [
+          pallets,
+          caixas,
+          lastros,
+          caixas,
+          lastros,
+          caixas
+        ];
+        currentRow++;
+      }
     });
     
-    const totalGarrafeiraPallets = data.products.reduce((sum, p) => sum + (p.garrafeirasVazias_pallets || 0), 0);
-    const totalGarrafeiraLastros = data.products.reduce((sum, p) => sum + (p.garrafeirasVazias_lastros || 0), 0);
-    const totalGarrafeiraCaixas = data.products.reduce((sum, p) => sum + (p.garrafeirasVazias_caixas || 0), 0);
+    // Totais GARRAFEIRA VAZIA (SEM TOTAL GRF)
+    sheetData[currentRow] = ['TOTAL (CX)', totalGarrafeiraCaixas, 'TOTAL (CX)', totalGarrafeiraCaixas, 'TOTAL (CX)', totalGarrafeiraCaixas];
+    sheetData[currentRow + 1] = ['TOTAL PBR', totalGarrafeiraPallets, 'TOTAL GAJ', totalGarrafeiraLastros, 'TOTAL GAJ', totalGarrafeiraLastros];
     
-    sheetData.push(['TOTAL (CX)', totalGarrafeiraCaixas, 'TOTAL (CX)', totalGarrafeiraCaixas, 'TOTAL (CX)', totalGarrafeiraCaixas]);
-    sheetData.push(['TOTAL PBR', totalGarrafeiraPallets, 'TOTAL GAJ', totalGarrafeiraLastros, 'TOTAL GAJ', totalGarrafeiraLastros]);
-    
-    // Adicionar seção de códigos
-    while (sheetData.length < 37) {
+    // Garantir que chegamos na linha 37 para CÓDIGOS
+    while (sheetData.length < 36) {
       sheetData.push([]);
     }
     
-    sheetData.push(['CÓDIGOS']);
-    sheetData.push([]);
+    // Seção CÓDIGOS na linha 37 (índice 36)
+    sheetData[36] = ['CÓDIGOS'];
     
-    // Códigos fixos
-    const codigosPredefinidos = [
-      ['1023392', 'GARRAFA 1L'],
-      ['1023384', 'GARRAFA 300ML'],
-      ['1023393', 'GARRAFA 600ML'],
-      ['1155350', 'GARRAFA VERDE 600ML'],
-      ['1022893', 'GARRAFEIRA 1L'],
-      ['1022894', 'GARRAFEIRA 300ML'],
-      ['1022895', 'GARRAFEIRA 600ML']
+    const fixedCodes = [
+      '(1022893) GARRAFEIRA PLAST 1L',
+      '(1022894) GARRAFEIRA PLAST 300ML',
+      '(1022895) GARRAFEIRA PLAST 600ML',
+      '(1155350) GARRAFA VERDE 600ML',
+      '(1023392) GARRAFA 1L',
+      '(1023384) GARRAFA 300ML',
+      '(1023393) GARRAFA 600ML'
     ];
     
-    codigosPredefinidos.forEach(([codigo, descricao]) => {
-      sheetData.push([codigo, descricao]);
+    fixedCodes.forEach((code, index) => {
+      sheetData[37 + index] = [code];
     });
     
     // Criar workbook XLSX
@@ -217,147 +242,105 @@ export class Estoque10Template implements ExcelTemplate {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Estoque 10');
     
-    // Configurações da planilha
-    worksheet.pageSetup = {
-      orientation: 'landscape',
-      fitToPage: true,
-      margins: { left: 0.7, right: 0.7, top: 0.75, bottom: 0.75, header: 0.3, footer: 0.3 }
-    };
-    
     let currentRow = 1;
     
-    // 1. TÍTULO PRINCIPAL
+    // TÍTULO
     worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
     const titleCell = worksheet.getCell(`A${currentRow}`);
     titleCell.value = 'CONTAGEM ESTOQUE 10 - GARRAFEIRAS';
-    titleCell.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
-    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
-    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    titleCell.font = { bold: true, size: 16 };
+    titleCell.alignment = { horizontal: 'center' };
     this.addBorders(titleCell, 'thick');
-    currentRow++;
+    currentRow += 2;
     
-    // 2. SUBTÍTULO
-    worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
-    const subtitleCell = worksheet.getCell(`A${currentRow}`);
-    subtitleCell.value = `Separação por Tipo: 300ML, 600ML e 1000ML`;
-    subtitleCell.font = { bold: true, size: 12 };
-    subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF5B9BD5' } };
-    subtitleCell.alignment = { horizontal: 'center' };
-    this.addBorders(subtitleCell, 'medium');
-    currentRow++;
+    // Calcular totais para o resumo
+    const totals = this.calculateTotals(data.products);
     
-    // 3. DATA
-    worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
-    const dateCell = worksheet.getCell(`A${currentRow}`);
-    const dataFormatada = new Date(data.contagem.data_criacao).toLocaleDateString('pt-BR');
-    dateCell.value = `Data: ${dataFormatada}`;
-    dateCell.font = { bold: true };
-    dateCell.alignment = { horizontal: 'center' };
-    this.addBorders(dateCell, 'thin');
-    currentRow += 2; // Pula uma linha
+    // SEÇÃO CHÃO CHEIO
+    currentRow = this.addMainSection(worksheet, 'CHÃO CHEIO', data.products, currentRow, 'chaoCheio');
     
-    // Formatar dados dos produtos
-    const formattedData = this.formatProductData(data.products);
+    // SEÇÃO CHÃO VAZIO
+    currentRow = this.addMainSection(worksheet, 'CHÃO VAZIO', data.products, currentRow, 'chaoVazio');
     
-    // 4. SEÇÃO CHÃO CHEIO
-    currentRow = this.addSection(worksheet, 'CHÃO CHEIO', formattedData, currentRow, 'chaoCheio');
+    // SEÇÃO GARRAFEIRA VAZIA
+    currentRow = this.addMainSection(worksheet, 'GARRAFEIRA VAZIA', data.products, currentRow, 'garrafeiraVazia');
     
-    // 5. SEÇÃO CHÃO VAZIO  
-    currentRow = this.addSection(worksheet, 'CHÃO VAZIO', formattedData, currentRow, 'chaoVazio');
+    // RESUMO GERAL (lado direito)
+    this.addResumoGeral(worksheet, totals);
     
-    // 6. SEÇÃO GARRAFEIRA VAZIA
-    currentRow = this.addSection(worksheet, 'GARRAFEIRA VAZIA', formattedData, currentRow, 'garrafeiraVazia');
-    
-    // 7. RESUMO GERAL (lado direito)
-    this.addResumoGeral(worksheet, formattedData);
-    
-    // 8. SEÇÃO CÓDIGOS (linha 37)
+    // CÓDIGOS (linha 37)
     this.addCodigosSection(worksheet, 37);
     
-    // Ajustar larguras das colunas
+    // Ajustar colunas
     this.adjustColumnWidths(worksheet);
     
-    // Gerar buffer
     return await workbook.xlsx.writeBuffer() as Buffer;
   }
   
   /**
-   * Formatar dados dos produtos
+   * Calcular totais para o resumo
    */
-  private formatProductData(products: any[]) {
-    return products.map(product => {
-      const nomeSimples = product.nome.replace(/\s*\([^)]*\)\s*$/, '');
+  private calculateTotals(products: any[]) {
+    const totals = {
+      caixas_300ml: 0,
+      caixas_600ml: 0,
+      caixas_1l: 0,
+      garrafas_300ml: 0,
+      garrafas_600ml: 0,
+      garrafas_1l: 0,
+      total_gaj: 0,
+      total_pbr: 0
+    };
+    
+    products.forEach(product => {
+      // Somar caixas
+      totals.caixas_300ml += (product.chaoCheio || 0) + (product.chaoVazio || 0) + (product.garrafeirasVazias_caixas || 0);
+      totals.caixas_600ml += (product.chaoCheio || 0) + (product.chaoVazio || 0) + (product.garrafeirasVazias_caixas || 0);
+      totals.caixas_1l += (product.chaoCheio || 0) + (product.chaoVazio || 0) + (product.garrafeirasVazias_caixas || 0);
       
-      return {
-        nome: nomeSimples,
-        codigo: product.codigo || 'N/A',
-        
-        // CHÃO CHEIO
-        chaoCheio_300ml_pbr: product.chaoCheio_gajPbr || 0,
-        chaoCheio_300ml_cx: product.chaoCheio || 0,
-        chaoCheio_600ml_gaj: product.chaoCheio_gajPbr || 0,
-        chaoCheio_600ml_cx: product.chaoCheio || 0,
-        chaoCheio_1000ml_gaj: product.chaoCheio_gajPbr || 0,
-        chaoCheio_1000ml_cx: product.chaoCheio || 0,
-        
-        // CHÃO VAZIO
-        chaoVazio_300ml_pbr: product.chaoVazio_gajPbr || 0,
-        chaoVazio_300ml_cx: product.chaoVazio || 0,
-        chaoVazio_600ml_gaj: product.chaoVazio_gajPbr || 0,
-        chaoVazio_600ml_cx: product.chaoVazio || 0,
-        chaoVazio_1000ml_gaj: product.chaoVazio_gajPbr || 0,
-        chaoVazio_1000ml_cx: product.chaoVazio || 0,
-        
-        // GARRAFEIRA VAZIA
-        garrafeiraVazia_300ml_pbr: product.garrafeirasVazias_pallets || 0,
-        garrafeiraVazia_300ml_cx: product.garrafeirasVazias_caixas || 0,
-        garrafeiraVazia_600ml_gaj: product.garrafeirasVazias_lastros || 0,
-        garrafeiraVazia_600ml_cx: product.garrafeirasVazias_caixas || 0,
-        garrafeiraVazia_1000ml_gaj: product.garrafeirasVazias_lastros || 0,
-        garrafeiraVazia_1000ml_cx: product.garrafeirasVazias_caixas || 0,
-        
-        // Para cálculos
-        product: product
-      };
+      // Somar garrafas (caixas * taxa de conversão)
+      const caixas = (product.chaoCheio || 0) + (product.chaoVazio || 0);
+      totals.garrafas_300ml += caixas * 24;
+      totals.garrafas_600ml += caixas * 24;
+      totals.garrafas_1l += caixas * 12;
+      
+      // Somar GAJ/PBR
+      totals.total_gaj += (product.chaoCheio_gajPbr || 0) + (product.chaoVazio_gajPbr || 0) + (product.garrafeirasVazias_lastros || 0);
+      totals.total_pbr += (product.chaoCheio_gajPbr || 0) + (product.chaoVazio_gajPbr || 0) + (product.garrafeirasVazias_pallets || 0);
     });
+    
+    return totals;
   }
   
   /**
-   * Adiciona uma seção (CHÃO CHEIO, CHÃO VAZIO, GARRAFEIRA VAZIA)
+   * Adicionar seção principal (CHÃO CHEIO, CHÃO VAZIO, GARRAFEIRA VAZIA)
    */
-  private addSection(worksheet: ExcelJS.Worksheet, title: string, data: any[], startRow: number, section: string): number {
+  private addMainSection(worksheet: ExcelJS.Worksheet, title: string, products: any[], startRow: number, section: string): number {
     let currentRow = startRow;
     
-    // Cabeçalho da seção
+    // Título da seção
     worksheet.mergeCells(`A${currentRow}:F${currentRow}`);
-    const headerCell = worksheet.getCell(`A${currentRow}`);
-    headerCell.value = title;
-    headerCell.font = { bold: true, size: 12 };
-    
-    // Cores por seção
-    const colors: { [key: string]: string } = {
-      'CHÃO CHEIO': 'FFE8F5E8',
-      'CHÃO VAZIO': 'FFFFF2CC', 
-      'GARRAFEIRA VAZIA': 'FFF2F2F2'
-    };
-    
-    headerCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors[title] || 'FFFFFFFF' } };
-    this.addBorders(headerCell, 'thick');
+    const titleCell = worksheet.getCell(`A${currentRow}`);
+    titleCell.value = title;
+    titleCell.font = { bold: true, size: 12 };
+    titleCell.alignment = { horizontal: 'center' };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6E6E6' } };
+    this.addBorders(titleCell, 'thick');
     currentRow++;
     
     // Cabeçalhos das colunas
     const headers = ['300ML', '', '600ML', '', '1000ML', ''];
-    const subHeaders = ['PBR', 'CX', 'GAJ', 'CX', 'GAJ', 'CX'];
-    
     headers.forEach((header, index) => {
       const cell = worksheet.getCell(currentRow, index + 1);
       cell.value = header;
       cell.font = { bold: true };
       cell.alignment = { horizontal: 'center' };
-      this.addBorders(cell, 'thin');
+      this.addBorders(cell, 'medium');
     });
     currentRow++;
     
+    // Subcabeçalhos
+    const subHeaders = ['PBR', 'CX', 'GAJ', 'CX', 'GAJ', 'CX'];
     subHeaders.forEach((subHeader, index) => {
       const cell = worksheet.getCell(currentRow, index + 1);
       cell.value = subHeader;
@@ -368,41 +351,96 @@ export class Estoque10Template implements ExcelTemplate {
     currentRow++;
     
     // Dados dos produtos
-    const sectionData = this.getSectionData(data, section);
-    sectionData.forEach(row => {
-      if (this.hasData(row, section)) {
-        const values = this.getSectionValues(row, section);
+    let totalCx = 0;
+    let totalGaj = 0;
+    let totalPbr = 0;
+    
+    products.forEach(product => {
+      const values = this.getProductValues(product, section);
+      if (values.some(v => v > 0)) {
         values.forEach((value, index) => {
           const cell = worksheet.getCell(currentRow, index + 1);
           cell.value = value;
           cell.alignment = { horizontal: 'center' };
           this.addBorders(cell, 'thin');
         });
+        
+        // Acumular totais
+        totalCx += values[1] + values[3] + values[5]; // CX columns
+        totalGaj += values[2] + values[4]; // GAJ columns
+        totalPbr += values[0]; // PBR column
+        
         currentRow++;
       }
     });
     
     // Totais
-    const totals = this.calculateSectionTotals(sectionData, section);
+    this.addSectionTotals(worksheet, currentRow, totalCx, totalGaj, totalPbr, section !== 'garrafeiraVazia');
+    
+    return currentRow + 5; // Espaço para próxima seção
+  }
+  
+  /**
+   * Obter valores do produto para uma seção
+   */
+  private getProductValues(product: any, section: string): number[] {
+    switch (section) {
+      case 'chaoCheio':
+        return [
+          product.chaoCheio_gajPbr || 0, // 300ML PBR
+          product.chaoCheio || 0,        // 300ML CX
+          product.chaoCheio_gajPbr || 0, // 600ML GAJ
+          product.chaoCheio || 0,        // 600ML CX
+          product.chaoCheio_gajPbr || 0, // 1000ML GAJ
+          product.chaoCheio || 0         // 1000ML CX
+        ];
+      case 'chaoVazio':
+        return [
+          product.chaoVazio_gajPbr || 0, // 300ML PBR
+          product.chaoVazio || 0,        // 300ML CX
+          product.chaoVazio_gajPbr || 0, // 600ML GAJ
+          product.chaoVazio || 0,        // 600ML CX
+          product.chaoVazio_gajPbr || 0, // 1000ML GAJ
+          product.chaoVazio || 0         // 1000ML CX
+        ];
+      case 'garrafeiraVazia':
+        return [
+          product.garrafeirasVazias_pallets || 0, // 300ML PBR
+          product.garrafeirasVazias_caixas || 0,  // 300ML CX
+          product.garrafeirasVazias_lastros || 0, // 600ML GAJ
+          product.garrafeirasVazias_caixas || 0,  // 600ML CX
+          product.garrafeirasVazias_lastros || 0, // 1000ML GAJ
+          product.garrafeirasVazias_caixas || 0   // 1000ML CX
+        ];
+      default:
+        return [0, 0, 0, 0, 0, 0];
+    }
+  }
+  
+  /**
+   * Adicionar totais da seção
+   */
+  private addSectionTotals(worksheet: ExcelJS.Worksheet, startRow: number, totalCx: number, totalGaj: number, totalPbr: number, includeGarrafas: boolean) {
+    let currentRow = startRow;
     
     // TOTAL (CX)
-    ['TOTAL (CX)', totals.cx_300ml, 'TOTAL (CX)', totals.cx_600ml, 'TOTAL (CX)', totals.cx_1000ml].forEach((value, index) => {
+    const totalCxLabels = ['TOTAL (CX)', totalCx, 'TOTAL (CX)', totalCx, 'TOTAL (CX)', totalCx];
+    totalCxLabels.forEach((value, index) => {
       const cell = worksheet.getCell(currentRow, index + 1);
       cell.value = value;
       cell.font = { bold: true };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
       cell.alignment = { horizontal: 'center' };
       this.addBorders(cell, 'medium');
     });
     currentRow++;
     
-    // TOTAL (GRF) - apenas para CHÃO CHEIO e CHÃO VAZIO
-    if (section !== 'garrafeiraVazia') {
-      ['TOTAL (GRF)', totals.cx_300ml * 24, 'TOTAL (GRF)', totals.cx_600ml * 24, 'TOTAL (GRF)', totals.cx_1000ml * 12].forEach((value, index) => {
+    // TOTAL (GRF) - apenas se includeGarrafas for true
+    if (includeGarrafas) {
+      const totalGrfLabels = ['TOTAL (GRF)', totalCx * 24, 'TOTAL (GRF)', totalCx * 24, 'TOTAL (GRF)', totalCx * 12];
+      totalGrfLabels.forEach((value, index) => {
         const cell = worksheet.getCell(currentRow, index + 1);
         cell.value = value;
         cell.font = { bold: true };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
         cell.alignment = { horizontal: 'center' };
         this.addBorders(cell, 'medium');
       });
@@ -410,74 +448,99 @@ export class Estoque10Template implements ExcelTemplate {
     }
     
     // TOTAL PBR/GAJ
-    [`TOTAL ${section === 'chaoCheio' ? 'PBR' : section === 'chaoVazio' ? 'PBR' : 'PBR'}`, totals.pbr_gaj_300ml, 'TOTAL GAJ', totals.pbr_gaj_600ml, 'TOTAL GAJ', totals.pbr_gaj_1000ml].forEach((value, index) => {
+    const totalPbrGajLabels = ['TOTAL PBR', totalPbr, 'TOTAL GAJ', totalGaj, 'TOTAL GAJ', totalGaj];
+    totalPbrGajLabels.forEach((value, index) => {
       const cell = worksheet.getCell(currentRow, index + 1);
       cell.value = value;
       cell.font = { bold: true };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
       cell.alignment = { horizontal: 'center' };
       this.addBorders(cell, 'medium');
     });
-    currentRow += 2; // Pula uma linha
-    
-    return currentRow;
   }
   
   /**
-   * Adiciona resumo geral na coluna H-I
+   * Adicionar RESUMO GERAL
    */
-  private addResumoGeral(worksheet: ExcelJS.Worksheet, data: any[]) {
-    const startRow = 8;
-    let currentRow = startRow;
+  private addResumoGeral(worksheet: ExcelJS.Worksheet, totals: any) {
+    let currentRow = 3;
     
-    // Cabeçalho
-    worksheet.mergeCells(`H${currentRow}:I${currentRow}`);
-    const headerCell = worksheet.getCell(`H${currentRow}`);
-    headerCell.value = 'RESUMO GERAL';
-    headerCell.font = { bold: true, size: 12 };
-    headerCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F3FF' } };
-    headerCell.alignment = { horizontal: 'center' };
-    this.addBorders(headerCell, 'thick');
-    currentRow++;
-    
-    // Calcular totais
-    const totals = this.calculateResumoGeral(data);
+    // Título RESUMO GERAL
+    const resumoCell = worksheet.getCell(`H${currentRow}`);
+    resumoCell.value = 'RESUMO GERAL:';
+    resumoCell.font = { bold: true, size: 12 };
+    resumoCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F3FF' } };
+    this.addBorders(resumoCell, 'thick');
+    currentRow += 2;
     
     // CAIXAS
-    const caixasItems = [
-      ['CAIXAS:', ''],
-      ['TOTAL CAIXAS 600ML:', totals.totalCaixas600ML],
-      ['TOTAL CAIXAS 300ML:', totals.totalCaixas300ML],
-      ['TOTAL CAIXAS 1L:', totals.totalCaixas1L],
-      ['', ''],
-      ['GARRAFAS:', ''],
-      ['TOTAL GARRAFAS 600ML:', totals.totalGarrafas600ML],
-      ['TOTAL GARRAFAS 300ML:', totals.totalGarrafas300ML],
-      ['TOTAL GARRAFAS 1L:', totals.totalGarrafas1L],
-      ['', ''],
-      ['GAJ/PBR:', ''],
-      ['TOTAL GAJ:', totals.totalGAJ],
-      ['TOTAL PBR:', totals.totalPBR]
+    const caixasCell = worksheet.getCell(`H${currentRow}`);
+    caixasCell.value = 'CAIXAS:';
+    caixasCell.font = { bold: true };
+    this.addBorders(caixasCell, 'medium');
+    currentRow++;
+    
+    const caixasData = [
+      [`TOTAL CAIXAS 600ML:`, totals.caixas_600ml],
+      [`TOTAL CAIXAS 300ML:`, totals.caixas_300ml],
+      [`TOTAL CAIXAS 1L:`, totals.caixas_1l]
     ];
     
-    caixasItems.forEach(([label, value]) => {
+    caixasData.forEach(([label, value]) => {
       const labelCell = worksheet.getCell(`H${currentRow}`);
       const valueCell = worksheet.getCell(`I${currentRow}`);
-      
       labelCell.value = label;
       valueCell.value = value;
-      
-      if (label.includes('TOTAL') && label !== '') {
-        labelCell.font = { bold: true };
-        valueCell.font = { bold: true };
-      }
-      
-      labelCell.alignment = { horizontal: 'left' };
-      valueCell.alignment = { horizontal: 'right' };
-      
       this.addBorders(labelCell, 'thin');
       this.addBorders(valueCell, 'thin');
-      
+      currentRow++;
+    });
+    
+    currentRow++; // Espaço
+    
+    // GARRAFAS
+    const garrafasCell = worksheet.getCell(`H${currentRow}`);
+    garrafasCell.value = 'GARRAFAS:';
+    garrafasCell.font = { bold: true };
+    this.addBorders(garrafasCell, 'medium');
+    currentRow++;
+    
+    const garrafasData = [
+      [`TOTAL GARRAFAS 600ML:`, totals.garrafas_600ml],
+      [`TOTAL GARRAFAS 300ML:`, totals.garrafas_300ml],
+      [`TOTAL GARRAFAS 1L:`, totals.garrafas_1l]
+    ];
+    
+    garrafasData.forEach(([label, value]) => {
+      const labelCell = worksheet.getCell(`H${currentRow}`);
+      const valueCell = worksheet.getCell(`I${currentRow}`);
+      labelCell.value = label;
+      valueCell.value = value;
+      this.addBorders(labelCell, 'thin');
+      this.addBorders(valueCell, 'thin');
+      currentRow++;
+    });
+    
+    currentRow++; // Espaço
+    
+    // GAJ/PBR
+    const gajPbrCell = worksheet.getCell(`H${currentRow}`);
+    gajPbrCell.value = 'GAJ/PBR:';
+    gajPbrCell.font = { bold: true };
+    this.addBorders(gajPbrCell, 'medium');
+    currentRow++;
+    
+    const gajPbrData = [
+      [`TOTAL GAJ:`, totals.total_gaj],
+      [`TOTAL PBR:`, totals.total_pbr]
+    ];
+    
+    gajPbrData.forEach(([label, value]) => {
+      const labelCell = worksheet.getCell(`H${currentRow}`);
+      const valueCell = worksheet.getCell(`I${currentRow}`);
+      labelCell.value = label;
+      valueCell.value = value;
+      this.addBorders(labelCell, 'thin');
+      this.addBorders(valueCell, 'thin');
       currentRow++;
     });
   }
@@ -486,41 +549,29 @@ export class Estoque10Template implements ExcelTemplate {
    * Adiciona seção de códigos na linha 37
    */
   private addCodigosSection(worksheet: ExcelJS.Worksheet, startRow: number) {
-    let currentRow = startRow;
-    
-    // Cabeçalho
-    const headerCell = worksheet.getCell(`A${currentRow}`);
+    // Título CÓDIGOS
+    const headerCell = worksheet.getCell(`A${startRow}`);
     headerCell.value = 'CÓDIGOS';
     headerCell.font = { bold: true, size: 12 };
-    headerCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE1D5E7' } };
+    headerCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } };
     this.addBorders(headerCell, 'thick');
-    currentRow += 2;
     
-    // Códigos predefinidos
-    const codigosPredefinidos = [
-      ['1023392', 'GARRAFA 1L'],
-      ['1023384', 'GARRAFA 300ML'],
-      ['1023393', 'GARRAFA 600ML'],
-      ['1155350', 'GARRAFA VERDE 600ML'],
-      ['1022893', 'GARRAFEIRA 1L'],
-      ['1022894', 'GARRAFEIRA 300ML'],
-      ['1022895', 'GARRAFEIRA 600ML']
+    // Códigos fixos
+    const fixedCodes = [
+      '(1022893) GARRAFEIRA PLAST 1L',
+      '(1022894) GARRAFEIRA PLAST 300ML',
+      '(1022895) GARRAFEIRA PLAST 600ML',
+      '(1155350) GARRAFA VERDE 600ML',
+      '(1023392) GARRAFA 1L',
+      '(1023384) GARRAFA 300ML',
+      '(1023393) GARRAFA 600ML'
     ];
     
-    codigosPredefinidos.forEach(([codigo, descricao]) => {
-      const codigoCell = worksheet.getCell(`A${currentRow}`);
-      const descricaoCell = worksheet.getCell(`B${currentRow}`);
-      
-      codigoCell.value = codigo;
-      descricaoCell.value = descricao;
-      
-      codigoCell.alignment = { horizontal: 'left' };
-      descricaoCell.alignment = { horizontal: 'left' };
-      
-      this.addBorders(codigoCell, 'thin');
-      this.addBorders(descricaoCell, 'thin');
-      
-      currentRow++;
+    fixedCodes.forEach((code, index) => {
+      const codeCell = worksheet.getCell(`A${startRow + 1 + index}`);
+      codeCell.value = code;
+      codeCell.alignment = { horizontal: 'left' };
+      this.addBorders(codeCell, 'thin');
     });
   }
   
@@ -546,61 +597,5 @@ export class Estoque10Template implements ExcelTemplate {
     });
   }
   
-  // Métodos auxiliares para cálculos
-  private getSectionData(data: any[], section: string) {
-    return data;
-  }
-  
-  private hasData(row: any, section: string): boolean {
-    const fields = this.getSectionFields(section);
-    return fields.some(field => (row[field] || 0) > 0);
-  }
-  
-  private getSectionFields(section: string): string[] {
-    const fieldMap: { [key: string]: string[] } = {
-      'chaoCheio': ['chaoCheio_300ml_pbr', 'chaoCheio_300ml_cx', 'chaoCheio_600ml_gaj', 'chaoCheio_600ml_cx', 'chaoCheio_1000ml_gaj', 'chaoCheio_1000ml_cx'],
-      'chaoVazio': ['chaoVazio_300ml_pbr', 'chaoVazio_300ml_cx', 'chaoVazio_600ml_gaj', 'chaoVazio_600ml_cx', 'chaoVazio_1000ml_gaj', 'chaoVazio_1000ml_cx'],
-      'garrafeiraVazia': ['garrafeiraVazia_300ml_pbr', 'garrafeiraVazia_300ml_cx', 'garrafeiraVazia_600ml_gaj', 'garrafeiraVazia_600ml_cx', 'garrafeiraVazia_1000ml_gaj', 'garrafeiraVazia_1000ml_cx']
-    };
-    return fieldMap[section] || [];
-  }
-  
-  private getSectionValues(row: any, section: string): number[] {
-    const fields = this.getSectionFields(section);
-    return fields.map(field => row[field] || 0);
-  }
-  
-  private calculateSectionTotals(data: any[], section: string) {
-    const fields = this.getSectionFields(section);
-    
-    return {
-      pbr_gaj_300ml: data.reduce((sum, row) => sum + (row[fields[0]] || 0), 0),
-      cx_300ml: data.reduce((sum, row) => sum + (row[fields[1]] || 0), 0),
-      pbr_gaj_600ml: data.reduce((sum, row) => sum + (row[fields[2]] || 0), 0),
-      cx_600ml: data.reduce((sum, row) => sum + (row[fields[3]] || 0), 0),
-      pbr_gaj_1000ml: data.reduce((sum, row) => sum + (row[fields[4]] || 0), 0),
-      cx_1000ml: data.reduce((sum, row) => sum + (row[fields[5]] || 0), 0)
-    };
-  }
-  
-  private calculateResumoGeral(data: any[]) {
-    // Calcular totais de todas as seções
-    const chaoCheioTotals = this.calculateSectionTotals(data, 'chaoCheio');
-    const chaoVazioTotals = this.calculateSectionTotals(data, 'chaoVazio');
-    const garrafeiraVaziaTotals = this.calculateSectionTotals(data, 'garrafeiraVazia');
-    
-    return {
-      totalCaixas600ML: chaoCheioTotals.cx_600ml + chaoVazioTotals.cx_600ml + garrafeiraVaziaTotals.cx_600ml,
-      totalCaixas300ML: chaoCheioTotals.cx_300ml + chaoVazioTotals.cx_300ml + garrafeiraVaziaTotals.cx_300ml,
-      totalCaixas1L: chaoCheioTotals.cx_1000ml + chaoVazioTotals.cx_1000ml + garrafeiraVaziaTotals.cx_1000ml,
-      
-      // Garrafas (apenas CHÃO CHEIO e CHÃO VAZIO, sem garrafeira vazia)
-      totalGarrafas600ML: (chaoCheioTotals.cx_600ml + chaoVazioTotals.cx_600ml) * 24,
-      totalGarrafas300ML: (chaoCheioTotals.cx_300ml + chaoVazioTotals.cx_300ml) * 24,
-      totalGarrafas1L: (chaoCheioTotals.cx_1000ml + chaoVazioTotals.cx_1000ml) * 12,
-      
-      totalGAJ: chaoCheioTotals.pbr_gaj_600ml + chaoVazioTotals.pbr_gaj_600ml + chaoCheioTotals.pbr_gaj_1000ml + chaoVazioTotals.pbr_gaj_1000ml + garrafeiraVaziaTotals.pbr_gaj_600ml + garrafeiraVaziaTotals.pbr_gaj_1000ml,
-      totalPBR: chaoCheioTotals.pbr_gaj_300ml + chaoVazioTotals.pbr_gaj_300ml + garrafeiraVaziaTotals.pbr_gaj_300ml
-    };
-  }
+
 }
