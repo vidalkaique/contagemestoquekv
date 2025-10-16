@@ -487,21 +487,22 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
                 const totalGarrafas = chaoCheio + chaoVazio + refugo + avaria;
                 const totalEquipamentos = (formData.novo || 0) + (formData.manutencao || 0) + (formData.sucata || 0) + (formData.bloqueado || 0);
                 
-                // Cálculos de Garrafeiras Vazias - Detecta tipo do produto
-                const productName = product?.nome?.toLowerCase() || '';
-                let palletMultiplier = 60; // Padrão para 1L
+                // Cálculos de Garrafeiras Vazias - Usa mesma lógica da aba
+                const calculateTotal = (pallets: number, lastros: number, caixas: number): number => {
+                  const caixasPorLastro = 12;
+                  const lastrosPorPallet = 10;
+                  return (
+                    pallets * lastrosPorPallet * caixasPorLastro +
+                    lastros * caixasPorLastro +
+                    caixas
+                  );
+                };
                 
-                if (productName.includes('300ml') || productName.includes('300')) {
-                  palletMultiplier = 49; // 300ML: 1 pallet = 49 cx
-                } else if (productName.includes('600ml') || productName.includes('600')) {
-                  palletMultiplier = 49; // 600ML: 1 pallet = 49 cx
-                } else if (productName.includes('1l') || productName.includes('1000ml') || productName.includes('1000')) {
-                  palletMultiplier = 60; // 1L: 1 pallet = 60 cx
-                }
-                
-                const garrafeirasVazias = (formData.garrafeirasVazias_pallets || 0) * palletMultiplier + 
-                                        (formData.garrafeirasVazias_lastros || 0) * 24 + 
-                                        (formData.garrafeirasVazias_caixas || 0);
+                const garrafeirasVazias = calculateTotal(
+                  formData.garrafeirasVazias_pallets || 0,
+                  formData.garrafeirasVazias_lastros || 0,
+                  formData.garrafeirasVazias_caixas || 0
+                );
                 const gajPbrGarrafeirasVazias = formData.gajPbr || 0;
                 
                 if (totalGarrafas === 0 && totalEquipamentos === 0 && garrafeirasVazias === 0 && gajPbrChaoCheio === 0 && gajPbrChaoVazio === 0 && gajPbrGarrafeirasVazias === 0) return null;

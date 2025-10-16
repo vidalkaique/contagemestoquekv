@@ -96,20 +96,22 @@ export class Estoque10Template implements ExcelTemplate {
         const chaoVazioTotal = (product.chaoVazio || 0);
         const chaoVazioGaj = (product.chaoVazio_gajPbr || 0);
         
-        // GARRAFEIRAS VAZIAS - Detecta tipo do produto para multiplicador correto
-        let palletMultiplier = 60; // Padrão para 1L
+        // GARRAFEIRAS VAZIAS - Usa mesma lógica da aba (padrão: 10 lastros/pallet, 12 cx/lastro)
+        const calculateTotal = (pallets: number, lastros: number, caixas: number): number => {
+          const caixasPorLastro = 12;
+          const lastrosPorPallet = 10;
+          return (
+            pallets * lastrosPorPallet * caixasPorLastro +
+            lastros * caixasPorLastro +
+            caixas
+          );
+        };
         
-        if (type === '300ml') {
-          palletMultiplier = 49; // 300ML: 1 pallet = 49 cx
-        } else if (type === '600ml') {
-          palletMultiplier = 49; // 600ML: 1 pallet = 49 cx
-        } else if (type === '1000ml') {
-          palletMultiplier = 60; // 1L: 1 pallet = 60 cx
-        }
-        
-        const garrafeirasVazias = (product.garrafeirasVazias_pallets || 0) * palletMultiplier + 
-                                (product.garrafeirasVazias_lastros || 0) * 24 + 
-                                (product.garrafeirasVazias_caixas || 0);
+        const garrafeirasVazias = calculateTotal(
+          product.garrafeirasVazias_pallets || 0,
+          product.garrafeirasVazias_lastros || 0,
+          product.garrafeirasVazias_caixas || 0
+        );
         const garrafeirasVaziasGaj = (product.gajPbr || 0);
 
         // Atribui valores baseado no tipo
