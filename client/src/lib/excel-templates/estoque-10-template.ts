@@ -408,12 +408,14 @@ export class Estoque10Template implements ExcelTemplate {
     switch (section) {
       case 'chaoCheio':
         if (is300ml) {
+          // Produto 300ML - valores apenas na coluna 300ML
           return [
             product.chaoCheio_gajPbr || 0, // 300ML PBR
             product.chaoCheio || 0,        // 300ML CX
             0, 0, 0, 0                     // 600ML e 1000ML = 0
           ];
         } else if (is600ml) {
+          // Produto 600ML - valores apenas na coluna 600ML
           return [
             0, 0,                          // 300ML = 0
             product.chaoCheio_gajPbr || 0, // 600ML GAJ
@@ -421,6 +423,7 @@ export class Estoque10Template implements ExcelTemplate {
             0, 0                           // 1000ML = 0
           ];
         } else if (is1l) {
+          // Produto 1L - valores apenas na coluna 1000ML
           return [
             0, 0, 0, 0,                    // 300ML e 600ML = 0
             product.chaoCheio_gajPbr || 0, // 1000ML GAJ
@@ -431,12 +434,14 @@ export class Estoque10Template implements ExcelTemplate {
         
       case 'chaoVazio':
         if (is300ml) {
+          // Produto 300ML - valores apenas na coluna 300ML
           return [
             product.chaoVazio_gajPbr || 0, // 300ML PBR
             product.chaoVazio || 0,        // 300ML CX
             0, 0, 0, 0                     // 600ML e 1000ML = 0
           ];
         } else if (is600ml) {
+          // Produto 600ML - valores apenas na coluna 600ML
           return [
             0, 0,                          // 300ML = 0
             product.chaoVazio_gajPbr || 0, // 600ML GAJ
@@ -444,6 +449,7 @@ export class Estoque10Template implements ExcelTemplate {
             0, 0                           // 1000ML = 0
           ];
         } else if (is1l) {
+          // Produto 1L - valores apenas na coluna 1000ML
           return [
             0, 0, 0, 0,                    // 300ML e 600ML = 0
             product.chaoVazio_gajPbr || 0, // 1000ML GAJ
@@ -454,12 +460,14 @@ export class Estoque10Template implements ExcelTemplate {
         
       case 'garrafeiraVazia':
         if (is300ml) {
+          // Produto 300ML - valores apenas na coluna 300ML
           return [
             product.garrafeirasVazias_pallets || 0, // 300ML PBR
             product.garrafeirasVazias_caixas || 0,  // 300ML CX
             0, 0, 0, 0                              // 600ML e 1000ML = 0
           ];
         } else if (is600ml) {
+          // Produto 600ML - valores apenas na coluna 600ML
           return [
             0, 0,                                   // 300ML = 0
             product.garrafeirasVazias_lastros || 0, // 600ML GAJ
@@ -467,6 +475,7 @@ export class Estoque10Template implements ExcelTemplate {
             0, 0                                    // 1000ML = 0
           ];
         } else if (is1l) {
+          // Produto 1L - valores apenas na coluna 1000ML
           return [
             0, 0, 0, 0,                             // 300ML e 600ML = 0
             product.garrafeirasVazias_lastros || 0, // 1000ML GAJ
@@ -476,7 +485,8 @@ export class Estoque10Template implements ExcelTemplate {
         break;
     }
     
-    return [0, 0, 0, 0, 0, 0]; // Default: todos zeros
+    // Se não identificou o tipo, retorna zeros
+    return [0, 0, 0, 0, 0, 0];
   }
   
   /**
