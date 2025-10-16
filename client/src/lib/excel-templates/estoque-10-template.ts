@@ -128,7 +128,7 @@ export class Estoque10Template implements ExcelTemplate {
       }
 
       return [
-        product.nome,
+        product.nome.replace(/\s*\([^)]*\)\s*$/, ''), // Remove código do nome
         product.codigo || 'N/A',
         // CHÃO CHEIO
         data['300ml_ch_pbr'], data['300ml_ch_cx'], data['600ml_ch_gaj'], data['600ml_ch_cx'], data['1000ml_ch_gaj'], data['1000ml_ch_cx'],
@@ -219,10 +219,9 @@ export class Estoque10Template implements ExcelTemplate {
       }
     });
     
-    // Totais Garrafeira Vazia
+    // Totais Garrafeira Vazia (sem TOTAL GRF)
     const totaisGarrafeiraVazia = this.calculateSectionTotals(formattedData, [14, 15, 16, 17, 18, 19]);
     sheetData.push(['TOTAL (CX)', totaisGarrafeiraVazia[1], 'TOTAL (CX)', totaisGarrafeiraVazia[3], 'TOTAL (CX)', totaisGarrafeiraVazia[5]]);
-    sheetData.push(['TOTAL (GRF)', totaisGarrafeiraVazia[1] * 24, 'TOTAL (GRF)', totaisGarrafeiraVazia[3] * 24, 'TOTAL (GRF)', totaisGarrafeiraVazia[5] * 12]);
     sheetData.push(['TOTAL PBR', totaisGarrafeiraVazia[0], 'TOTAL GAJ', totaisGarrafeiraVazia[2], 'TOTAL GAJ', totaisGarrafeiraVazia[4]]);
     
     sheetData.push([]); // Linha em branco
@@ -257,6 +256,35 @@ export class Estoque10Template implements ExcelTemplate {
     
     if (sheetData[resumoStartRow + 9]) sheetData[resumoStartRow + 9][7] = 'TOTAL PBR:';
     if (sheetData[resumoStartRow + 9]) sheetData[resumoStartRow + 9][8] = resumoGeral.totalPBR;
+    
+    // ========== SEÇÃO CÓDIGOS ==========
+    // Adiciona seção de códigos a partir da linha 37
+    while (sheetData.length < 37) {
+      sheetData.push([]);
+    }
+    
+    sheetData.push(['CÓDIGOS']);
+    sheetData.push([]);
+    
+    // Adiciona produtos com códigos (apenas produtos que têm dados)
+    const produtosComDados = data.products.filter(product => {
+      const hasChaoCheioDados = (product.chaoCheio || 0) > 0 || (product.chaoCheio_gajPbr || 0) > 0;
+      const hasChaoVazioDados = (product.chaoVazio || 0) > 0 || (product.chaoVazio_gajPbr || 0) > 0;
+      const hasGarrafeiraVaziaDados = (
+        (product.garrafeirasVazias_pallets || 0) > 0 || 
+        (product.garrafeirasVazias_lastros || 0) > 0 || 
+        (product.garrafeirasVazias_caixas || 0) > 0 || 
+        (product.gajPbr || 0) > 0
+      );
+      
+      return hasChaoCheioDados || hasChaoVazioDados || hasGarrafeiraVaziaDados;
+    });
+    
+    produtosComDados.forEach(product => {
+      const nomeSimples = product.nome.replace(/\s*\([^)]*\)\s*$/, '');
+      const codigo = product.codigo || 'N/A';
+      sheetData.push([`${nomeSimples}`, `(${codigo})`]);
+    });
     
     // Cria planilha
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
@@ -323,12 +351,39 @@ export class Estoque10Template implements ExcelTemplate {
   private applyAdvancedFormatting(ws: XLSX.WorkSheet, rowCount: number): void {
     const styles = this.getStyles();
     
+    // Define estilo de borda padrão (como na imagem)
+    const borderStyle = {
+      style: 'thin',
+      color: { rgb: '000000' }
+    };
+    
+    const defaultBorder = {
+      top: borderStyle,
+      bottom: borderStyle,
+      left: borderStyle,
+      right: borderStyle
+    };
+    
+    // Aplica bordas em todas as células com conteúdo
+    for (let row = 0; row < rowCount; row++) {
+      for (let col = 0; col < 9; col++) { // Colunas A-I
+        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+        const cell = ws[cellAddress];
+        
+        if (cell && cell.v !== undefined && cell.v !== '') {
+          if (!cell.s) cell.s = {};
+          cell.s.border = defaultBorder;
+        }
+      }
+    }
+    
     // Formata título principal (A1)
     if (ws['A1']) {
       ws['A1'].s = {
         font: { bold: true, size: 16, color: { rgb: 'FFFFFF' } },
         fill: { fgColor: { rgb: '4472C4' } },
-        alignment: { horizontal: 'center' }
+        alignment: { horizontal: 'center' },
+        border: defaultBorder
       };
     }
     
@@ -337,7 +392,8 @@ export class Estoque10Template implements ExcelTemplate {
       ws['A2'].s = {
         font: { bold: true, size: 12 },
         fill: { fgColor: { rgb: '5B9BD5' } },
-        alignment: { horizontal: 'center' }
+        alignment: { horizontal: 'center' },
+        border: defaultBorder
       };
     }
     
@@ -345,71 +401,162 @@ export class Estoque10Template implements ExcelTemplate {
     if (ws['A3']) {
       ws['A3'].s = {
         font: { italic: true },
-        alignment: { horizontal: 'left' }
+        alignment: { horizontal: 'left' },
+        border: defaultBorder
       };
     }
     
-    // Formata cabeçalhos das seções (CHÃO CHEIO, CHÃO VAZIO, etc.)
+    // Formata cabeçalhos das seções e aplica bordas
     for (let row = 0; row < rowCount; row++) {
-      const cellA = ws[XLSX.utils.encode_cell({ r: row, c: 0 })];
-      if (cellA && typeof cellA.v === 'string') {
-        if (cellA.v.includes('CHÃO CHEIO') || cellA.v.includes('CHÃO VAZIO') || cellA.v.includes('GARRAFEIRA VAZIA')) {
-          cellA.s = {
-            font: { bold: true, size: 14, color: { rgb: 'FFFFFF' } },
-            fill: { fgColor: { rgb: '2F5597' } },
-            alignment: { horizontal: 'center' }
-          };
+      for (let col = 0; col < 9; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+        const cell = ws[cellAddress];
+        
+        if (cell && typeof cell.v === 'string') {
+          // Cabeçalhos das seções (CHÃO CHEIO, CHÃO VAZIO, etc.)
+          if (cell.v.includes('CHÃO CHEIO') || cell.v.includes('CHÃO VAZIO') || cell.v.includes('GARRAFEIRA VAZIA')) {
+            cell.s = {
+              font: { bold: true, size: 14, color: { rgb: 'FFFFFF' } },
+              fill: { fgColor: { rgb: '2F5597' } },
+              alignment: { horizontal: 'center' },
+              border: {
+                top: { style: 'thick', color: { rgb: '000000' } },
+                bottom: { style: 'thick', color: { rgb: '000000' } },
+                left: { style: 'thick', color: { rgb: '000000' } },
+                right: { style: 'thick', color: { rgb: '000000' } }
+              }
+            };
+          }
+          
+          // Subcabeçalhos (300ML, 600ML, 1000ML)
+          else if (cell.v === '300ML' || cell.v === '600ML' || cell.v === '1000ML') {
+            cell.s = {
+              font: { bold: true },
+              fill: { fgColor: { rgb: 'D9E2F3' } },
+              alignment: { horizontal: 'center' },
+              border: defaultBorder
+            };
+          }
+          
+          // Labels (PBR, CX, GAJ)
+          else if (cell.v === 'PBR' || cell.v === 'CX' || cell.v === 'GAJ') {
+            cell.s = {
+              font: { bold: true },
+              fill: { fgColor: { rgb: 'E7E6E6' } },
+              alignment: { horizontal: 'center' },
+              border: defaultBorder
+            };
+          }
+          
+          // Linhas de totais
+          else if (cell.v.includes('TOTAL')) {
+            cell.s = {
+              font: { bold: true },
+              fill: { fgColor: { rgb: 'FFF2CC' } },
+              alignment: { horizontal: 'center' },
+              border: {
+                top: { style: 'medium', color: { rgb: '000000' } },
+                bottom: { style: 'medium', color: { rgb: '000000' } },
+                left: borderStyle,
+                right: borderStyle
+              }
+            };
+          }
+          
+          // Seção CÓDIGOS
+          else if (cell.v === 'CÓDIGOS') {
+            cell.s = {
+              font: { bold: true, size: 14, color: { rgb: 'FFFFFF' } },
+              fill: { fgColor: { rgb: '70AD47' } },
+              alignment: { horizontal: 'center' },
+              border: {
+                top: { style: 'thick', color: { rgb: '000000' } },
+                bottom: { style: 'thick', color: { rgb: '000000' } },
+                left: { style: 'thick', color: { rgb: '000000' } },
+                right: { style: 'thick', color: { rgb: '000000' } }
+              }
+            };
+          }
+          
+          // Resumo geral (coluna H)
+          else if (col === 7 && cell.v.includes('TOTAL')) {
+            cell.s = {
+              font: { bold: true },
+              fill: { fgColor: { rgb: 'E2EFDA' } },
+              alignment: { horizontal: 'left' },
+              border: defaultBorder
+            };
+          }
         }
         
-        // Formata subcabeçalhos (300ML, 600ML, 1000ML)
-        if (cellA.v === '300ML' || cellA.v === '600ML' || cellA.v === '1000ML') {
-          cellA.s = {
-            font: { bold: true },
-            fill: { fgColor: { rgb: 'D9E2F3' } },
-            alignment: { horizontal: 'center' }
-          };
-        }
-        
-        // Formata labels (PBR, CX, GAJ)
-        if (cellA.v === 'PBR' || cellA.v === 'CX' || cellA.v === 'GAJ') {
-          cellA.s = {
-            font: { bold: true },
-            fill: { fgColor: { rgb: 'E7E6E6' } },
-            alignment: { horizontal: 'center' }
-          };
-        }
-        
-        // Formata linhas de totais
-        if (cellA.v.includes('TOTAL')) {
-          cellA.s = {
-            font: { bold: true },
-            fill: { fgColor: { rgb: 'FFF2CC' } },
-            alignment: { horizontal: 'center' }
-          };
+        // Formata valores numéricos
+        if (cell && typeof cell.v === 'number') {
+          if (!cell.s) cell.s = {};
+          cell.s.numFmt = '#,##0';
+          cell.s.alignment = { horizontal: 'center' };
+          cell.s.border = defaultBorder;
+          
+          // Valores do resumo (coluna I)
+          if (col === 8) {
+            cell.s.font = { bold: true };
+            cell.s.alignment = { horizontal: 'right' };
+          }
         }
       }
     }
     
-    // Formata resumo geral (coluna H)
+    // Adiciona bordas extras para delimitar seções (como na imagem)
+    this.addSectionBorders(ws, rowCount);
+  }
+  
+  /**
+   * Adiciona bordas especiais para delimitar seções
+   */
+  private addSectionBorders(ws: XLSX.WorkSheet, rowCount: number): void {
+    const thickBorder = {
+      style: 'thick',
+      color: { rgb: '000000' }
+    };
+    
+    // Encontra linhas de seção e adiciona bordas grossas
     for (let row = 0; row < rowCount; row++) {
-      const cellH = ws[XLSX.utils.encode_cell({ r: row, c: 7 })];
-      if (cellH && typeof cellH.v === 'string' && cellH.v.includes('TOTAL')) {
-        cellH.s = {
-          font: { bold: true },
-          fill: { fgColor: { rgb: 'E2EFDA' } },
-          alignment: { horizontal: 'left' }
-        };
-      }
+      const cellA = ws[XLSX.utils.encode_cell({ r: row, c: 0 })];
       
-      // Formata valores do resumo (coluna I)
-      const cellI = ws[XLSX.utils.encode_cell({ r: row, c: 8 })];
-      if (cellI && typeof cellI.v === 'number') {
-        cellI.s = {
-          font: { bold: true },
-          numFmt: '#,##0',
-          alignment: { horizontal: 'right' }
-        };
+      if (cellA && typeof cellA.v === 'string') {
+        // Borda grossa ao redor de cada seção
+        if (cellA.v.includes('CHÃO CHEIO') || cellA.v.includes('CHÃO VAZIO') || cellA.v.includes('GARRAFEIRA VAZIA')) {
+          // Aplica borda grossa na linha da seção (colunas A-F)
+          for (let col = 0; col < 6; col++) {
+            const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
+            const cell = ws[cellAddr];
+            if (cell) {
+              if (!cell.s) cell.s = {};
+              if (!cell.s.border) cell.s.border = {};
+              cell.s.border.top = thickBorder;
+              cell.s.border.bottom = thickBorder;
+              if (col === 0) cell.s.border.left = thickBorder;
+              if (col === 5) cell.s.border.right = thickBorder;
+            }
+          }
+        }
       }
     }
+  }
+
+  /**
+   * Regra #10: Organização - Configuração centralizada
+   */
+  private getColumnWidths(): XLSX.ColInfo[] {
+    return [
+      { wch: 15 }, // A - Dados
+      { wch: 10 }, // B - Dados  
+      { wch: 15 }, // C - Dados
+      { wch: 10 }, // D - Dados
+      { wch: 15 }, // E - Dados
+      { wch: 10 }, // F - Dados
+      { wch: 5 },  // G - Espaço
+      { wch: 20 }, // H - Resumo
+      { wch: 15 }  // I - Valores resumo
+    ];
   }
 }
