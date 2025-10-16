@@ -493,7 +493,7 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
                                         (formData.garrafeirasVazias_caixas || 0);
                 const gajPbrGarrafeirasVazias = formData.gajPbr || 0;
                 
-                if (totalGarrafas === 0 && totalEquipamentos === 0) return null;
+                if (totalGarrafas === 0 && totalEquipamentos === 0 && garrafeirasVazias === 0 && gajPbrChaoCheio === 0 && gajPbrChaoVazio === 0 && gajPbrGarrafeirasVazias === 0) return null;
                 
                 return (
                   <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">

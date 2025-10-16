@@ -2350,7 +2350,7 @@ export default function NewCount() {
                                             (product.garrafeirasVazias_caixas || 0);
                     const gajPbrGarrafeirasVazias = product.gajPbr || 0;
                     
-                    if (totalGarrafas === 0 && totalEquipamentos === 0) return null;
+                    if (totalGarrafas === 0 && totalEquipamentos === 0 && garrafeirasVazias === 0 && gajPbrChaoCheio === 0 && gajPbrChaoVazio === 0 && gajPbrGarrafeirasVazias === 0) return null;
                     
                     return (
                       <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
