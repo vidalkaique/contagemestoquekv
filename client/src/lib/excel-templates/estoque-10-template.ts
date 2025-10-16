@@ -72,10 +72,141 @@ export class Estoque10Template implements ExcelTemplate {
   }
 
   createWorkbook(data: ExcelExportData): XLSX.WorkBook {
-    // Implementação básica para compatibilidade
-    const ws = XLSX.utils.aoa_to_sheet([]);
+    // Converter dados para o formato ExcelJS
+    const estoque10Data: Estoque10ExportData = {
+      contagem: {
+        id: 'temp-id',
+        nome: 'Contagem Estoque 10',
+        data_criacao: new Date().toISOString(),
+        tipo_estoque: 10
+      },
+      products: data.products
+    };
+    
+    // Gerar dados formatados
+    const formattedData = this.formatProductData(data.products);
+    
+    // Criar planilha com dados
+    const sheetData: any[][] = [];
+    
+    // Título
+    sheetData.push(['CONTAGEM ESTOQUE 10 - GARRAFEIRAS']);
+    sheetData.push(['Separação por Tipo: 300ML, 600ML e 1000ML']);
+    sheetData.push([`Data: ${new Date().toLocaleDateString('pt-BR')}`]);
+    sheetData.push([]); // Linha vazia
+    
+    // Seção CHÃO CHEIO
+    sheetData.push(['CHÃO CHEIO']);
+    sheetData.push(['300ML', '', '600ML', '', '1000ML', '', '', 'RESUMO GERAL']);
+    sheetData.push(['PBR', 'CX', 'GAJ', 'CX', 'GAJ', 'CX', '', 'CAIXAS:']);
+    
+    // Adicionar dados dos produtos (simples para compatibilidade)
+    data.products.forEach(product => {
+      const nomeSimples = product.nome.replace(/\s*\([^)]*\)\s*$/, '');
+      sheetData.push([
+        product.chaoCheio_gajPbr || 0, // 300ML PBR
+        product.chaoCheio || 0,        // 300ML CX
+        product.chaoCheio_gajPbr || 0, // 600ML GAJ
+        product.chaoCheio || 0,        // 600ML CX
+        product.chaoCheio_gajPbr || 0, // 1000ML GAJ
+        product.chaoCheio || 0,        // 1000ML CX
+        '',
+        nomeSimples
+      ]);
+    });
+    
+    // Totais
+    const totalChaoCheio = data.products.reduce((sum, p) => sum + (p.chaoCheio || 0), 0);
+    const totalGajPbr = data.products.reduce((sum, p) => sum + (p.chaoCheio_gajPbr || 0), 0);
+    
+    sheetData.push(['TOTAL (CX)', totalChaoCheio, 'TOTAL (CX)', totalChaoCheio, 'TOTAL (CX)', totalChaoCheio]);
+    sheetData.push(['TOTAL (GRF)', totalChaoCheio * 24, 'TOTAL (GRF)', totalChaoCheio * 24, 'TOTAL (GRF)', totalChaoCheio * 12]);
+    sheetData.push(['TOTAL PBR', totalGajPbr, 'TOTAL GAJ', totalGajPbr, 'TOTAL GAJ', totalGajPbr]);
+    
+    sheetData.push([]); // Linha vazia
+    
+    // Seção CHÃO VAZIO
+    sheetData.push(['CHÃO VAZIO']);
+    sheetData.push(['300ML', '', '600ML', '', '1000ML', '']);
+    sheetData.push(['PBR', 'CX', 'GAJ', 'CX', 'GAJ', 'CX']);
+    
+    // Dados CHÃO VAZIO
+    data.products.forEach(product => {
+      sheetData.push([
+        product.chaoVazio_gajPbr || 0,
+        product.chaoVazio || 0,
+        product.chaoVazio_gajPbr || 0,
+        product.chaoVazio || 0,
+        product.chaoVazio_gajPbr || 0,
+        product.chaoVazio || 0
+      ]);
+    });
+    
+    const totalChaoVazio = data.products.reduce((sum, p) => sum + (p.chaoVazio || 0), 0);
+    const totalChaoVazioGaj = data.products.reduce((sum, p) => sum + (p.chaoVazio_gajPbr || 0), 0);
+    
+    sheetData.push(['TOTAL (CX)', totalChaoVazio, 'TOTAL (CX)', totalChaoVazio, 'TOTAL (CX)', totalChaoVazio]);
+    sheetData.push(['TOTAL (GRF)', totalChaoVazio * 24, 'TOTAL (GRF)', totalChaoVazio * 24, 'TOTAL (GRF)', totalChaoVazio * 12]);
+    sheetData.push(['TOTAL PBR', totalChaoVazioGaj, 'TOTAL GAJ', totalChaoVazioGaj, 'TOTAL GAJ', totalChaoVazioGaj]);
+    
+    sheetData.push([]); // Linha vazia
+    
+    // Seção GARRAFEIRA VAZIA
+    sheetData.push(['GARRAFEIRA VAZIA']);
+    sheetData.push(['300ML', '', '600ML', '', '1000ML', '']);
+    sheetData.push(['PBR', 'CX', 'GAJ', 'CX', 'GAJ', 'CX']);
+    
+    // Dados GARRAFEIRA VAZIA
+    data.products.forEach(product => {
+      const pallets = product.garrafeirasVazias_pallets || 0;
+      const lastros = product.garrafeirasVazias_lastros || 0;
+      const caixas = product.garrafeirasVazias_caixas || 0;
+      
+      sheetData.push([
+        pallets,
+        caixas,
+        lastros,
+        caixas,
+        lastros,
+        caixas
+      ]);
+    });
+    
+    const totalGarrafeiraPallets = data.products.reduce((sum, p) => sum + (p.garrafeirasVazias_pallets || 0), 0);
+    const totalGarrafeiraLastros = data.products.reduce((sum, p) => sum + (p.garrafeirasVazias_lastros || 0), 0);
+    const totalGarrafeiraCaixas = data.products.reduce((sum, p) => sum + (p.garrafeirasVazias_caixas || 0), 0);
+    
+    sheetData.push(['TOTAL (CX)', totalGarrafeiraCaixas, 'TOTAL (CX)', totalGarrafeiraCaixas, 'TOTAL (CX)', totalGarrafeiraCaixas]);
+    sheetData.push(['TOTAL PBR', totalGarrafeiraPallets, 'TOTAL GAJ', totalGarrafeiraLastros, 'TOTAL GAJ', totalGarrafeiraLastros]);
+    
+    // Adicionar seção de códigos
+    while (sheetData.length < 37) {
+      sheetData.push([]);
+    }
+    
+    sheetData.push(['CÓDIGOS']);
+    sheetData.push([]);
+    
+    // Códigos fixos
+    const codigosPredefinidos = [
+      ['1023392', 'GARRAFA 1L'],
+      ['1023384', 'GARRAFA 300ML'],
+      ['1023393', 'GARRAFA 600ML'],
+      ['1155350', 'GARRAFA VERDE 600ML'],
+      ['1022893', 'GARRAFEIRA 1L'],
+      ['1022894', 'GARRAFEIRA 300ML'],
+      ['1022895', 'GARRAFEIRA 600ML']
+    ];
+    
+    codigosPredefinidos.forEach(([codigo, descricao]) => {
+      sheetData.push([codigo, descricao]);
+    });
+    
+    // Criar workbook XLSX
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Estoque 10');
+    
     return wb;
   }
   
