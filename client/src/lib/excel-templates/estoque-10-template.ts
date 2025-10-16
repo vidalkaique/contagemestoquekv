@@ -96,8 +96,8 @@ export class Estoque10Template implements ExcelTemplate {
         const chaoVazioTotal = (product.chaoVazio || 0);
         const chaoVazioGaj = (product.chaoVazio_gajPbr || 0);
         
-        // GARRAFEIRAS VAZIAS
-        const garrafeirasVazias = (product.garrafeirasVazias_pallets || 0) * 24 * 12 + 
+        // GARRAFEIRAS VAZIAS - Correção: 1 pallet = 60 cx (não 288)
+        const garrafeirasVazias = (product.garrafeirasVazias_pallets || 0) * 60 + 
                                 (product.garrafeirasVazias_lastros || 0) * 24 + 
                                 (product.garrafeirasVazias_caixas || 0);
         const garrafeirasVaziasGaj = (product.gajPbr || 0);
