@@ -1,12 +1,22 @@
-import * as XLSX from 'xlsx';
-import { ExcelTemplate, ExcelExportData, ExcelStyles } from './index';
-import { ProductItem } from '@/pages/new-count';
+import ExcelJS from 'exceljs';
+import { RealtimeProductItem } from '../types';
+import { ExcelTemplateBase } from './base-template';
+
+export interface Estoque10ExportData {
+  contagem: {
+    id: string;
+    nome: string;
+    data_criacao: string;
+    tipo_estoque: number;
+  };
+  products: RealtimeProductItem[];
+}
 
 /**
  * Template específico para Estoque 10 - Layout por Tipo de Garrafeira
- * Regra #3: TypeScript consistente com interfaces bem definidas
+ * Usando ExcelJS para bordas e formatação avançada
  */
-export class Estoque10Template implements ExcelTemplate {
+export class Estoque10Template extends ExcelTemplateBase {
   
   getTitle(): string {
     return 'CONTAGEM ESTOQUE 10 - GARRAFEIRAS';
