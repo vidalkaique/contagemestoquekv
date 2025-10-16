@@ -487,8 +487,8 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
                 const totalGarrafas = chaoCheio + chaoVazio + refugo + avaria;
                 const totalEquipamentos = (formData.novo || 0) + (formData.manutencao || 0) + (formData.sucata || 0) + (formData.bloqueado || 0);
                 
-                // Cálculos de Garrafeiras Vazias
-                const garrafeirasVazias = (formData.garrafeirasVazias_pallets || 0) * 24 * 12 + 
+                // Cálculos de Garrafeiras Vazias - Correção: 1 pallet = 60 cx
+                const garrafeirasVazias = (formData.garrafeirasVazias_pallets || 0) * 60 + 
                                         (formData.garrafeirasVazias_lastros || 0) * 24 + 
                                         (formData.garrafeirasVazias_caixas || 0);
                 const gajPbrGarrafeirasVazias = formData.gajPbr || 0;

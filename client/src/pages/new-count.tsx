@@ -2344,8 +2344,8 @@ export default function NewCount() {
                     const totalEquipamentos = (product.novo || 0) + (product.manutencao || 0) + 
                                               (product.sucata || 0) + (product.bloqueado || 0);
                     
-                    // Cálculos de Garrafeiras Vazias
-                    const garrafeirasVazias = (product.garrafeirasVazias_pallets || 0) * 24 * 12 + 
+                    // Cálculos de Garrafeiras Vazias - Correção: 1 pallet = 60 cx
+                    const garrafeirasVazias = (product.garrafeirasVazias_pallets || 0) * 60 + 
                                             (product.garrafeirasVazias_lastros || 0) * 24 + 
                                             (product.garrafeirasVazias_caixas || 0);
                     const gajPbrGarrafeirasVazias = product.gajPbr || 0;
