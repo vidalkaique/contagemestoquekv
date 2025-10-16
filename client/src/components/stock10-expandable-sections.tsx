@@ -24,6 +24,9 @@ interface Stock10Data {
   refugo_lastros: number;
   refugo_caixas: number;
   
+  // GAJ/PBR após refugo (novo campo)
+  gajPbrRefugo: number;
+  
   // GARRAFEIRAS VAZIAS (nova seção)
   garrafeirasVazias_pallets: number;
   garrafeirasVazias_lastros: number;
@@ -63,6 +66,7 @@ interface Stock10Data {
 interface Stock10ExpandableSectionsProps {
   data: Partial<Stock10Data>;
   onChange: (field: string, value: number) => void;
+  productName?: string; // Nome do produto para detectar tipo
   conversionRates?: {
     caixasPorLastro: number;
     lastrosPorPallet: number;
@@ -76,6 +80,7 @@ interface Stock10ExpandableSectionsProps {
 export function Stock10ExpandableSections({
   data,
   onChange,
+  productName = '',
   conversionRates = { caixasPorLastro: 12, lastrosPorPallet: 10 }
 }: Stock10ExpandableSectionsProps) {
   const [expandedSections, setExpandedSections] = useState({
@@ -91,6 +96,15 @@ export function Stock10ExpandableSections({
     }));
   };
 
+  // Detecta o tipo de garrafeira baseado no nome do produto
+  const detectGarrafeiraType = (productName: string): '600ml' | '300ml' | '1l' | 'other' => {
+    const nameUpper = productName.toUpperCase();
+    if (nameUpper.includes('600ML') || nameUpper.includes('600')) return '600ml';
+    if (nameUpper.includes('300ML') || nameUpper.includes('300')) return '300ml';
+    if (nameUpper.includes('1L') || nameUpper.includes('1000ML')) return '1l';
+    return 'other';
+  };
+
   // Calcula total de caixas baseado em pallets, lastros e caixas
   const calculateTotal = (pallets: number, lastros: number, caixas: number): number => {
     const { caixasPorLastro, lastrosPorPallet } = conversionRates;
@@ -99,6 +113,20 @@ export function Stock10ExpandableSections({
       lastros * caixasPorLastro +
       caixas
     );
+  };
+
+  // Calcula garrafas baseado no tipo e quantidade de caixas
+  const calculateGarrafas = (caixas: number): number => {
+    const type = detectGarrafeiraType(productName);
+    switch (type) {
+      case '600ml':
+      case '300ml':
+        return caixas * 24;
+      case '1l':
+        return caixas * 12;
+      default:
+        return 0; // Outros produtos não convertem
+    }
   };
 
   // Handler para mudanças em subcampos
@@ -214,6 +242,85 @@ export function Stock10ExpandableSections({
         onSubfieldChange={(field, value) => handleSubfieldChange('refugo', field, value)}
         conversionRates={conversionRates}
       />
+      
+      {/* GAJ/PBR após Refugo */}
+      <div className="flex items-center justify-between py-3 px-4 bg-yellow-50 rounded-lg border border-yellow-200">
+        <label className="text-sm font-medium text-yellow-700">🏷️ GAJ/PBR</label>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            value={data.gajPbrRefugo || 0}
+            onChange={(e) => onChange('gajPbrRefugo', parseInt(e.target.value) || 0)}
+            className="w-20 h-10 text-center border border-yellow-300 rounded focus:outline-none focus:ring-2 focus:ring-yellow-500 font-medium"
+            min="0"
+            placeholder="0"
+          />
+          <span className="text-sm text-yellow-600">un</span>
+        </div>
+      </div>
+      
+      {/* RESUMOS POR SEÇÃO */}
+      {(() => {
+        const chaoCheioTotal = calculateTotal(
+          data.chaoCheio_pallets || 0,
+          data.chaoCheio_lastros || 0,
+          data.chaoCheio_caixas || 0
+        );
+        
+        const chaoVazioTotal = calculateTotal(
+          data.chaoVazio_pallets || 0,
+          data.chaoVazio_lastros || 0,
+          data.chaoVazio_caixas || 0
+        );
+        
+        const chaoCheioGarrafas = calculateGarrafas(chaoCheioTotal);
+        const chaoVazioGarrafas = calculateGarrafas(chaoVazioTotal);
+        
+        return (
+          <div className="mt-6 space-y-4">
+            {/* Separador */}
+            <div className="border-t border-gray-300 my-4"></div>
+            
+            {/* Resumo Chão Cheio */}
+            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+              <h4 className="font-bold text-green-800 mb-2">📊 RESUMO CHÃO CHEIO</h4>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-green-700">Total Garrafas Ch.Cheio:</span>
+                  <span className="font-bold text-green-800">{chaoCheioGarrafas} un</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-green-700">Total Garrafeiras Ch.Cheio:</span>
+                  <span className="font-bold text-green-800">{chaoCheioTotal} cx</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-green-700">Total GAJ/PBR Ch.Cheio:</span>
+                  <span className="font-bold text-green-800">{data.gajPbrRefugo || 0}</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Resumo Chão Vazio */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <h4 className="font-bold text-blue-800 mb-2">📊 RESUMO CHÃO VAZIO</h4>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-blue-700">Total Garrafas Ch.Vazio:</span>
+                  <span className="font-bold text-blue-800">{chaoVazioGarrafas} un</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-blue-700">Total Garrafeiras Ch.Vazio:</span>
+                  <span className="font-bold text-blue-800">{chaoVazioTotal} cx</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-blue-700">Total GAJ/PBR Ch.Vazio:</span>
+                  <span className="font-bold text-blue-800">{data.gajPbrRefugo || 0}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </>
   );

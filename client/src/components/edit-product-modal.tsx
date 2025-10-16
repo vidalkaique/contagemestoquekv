@@ -409,6 +409,7 @@ export default function EditProductModal({ isOpen, onClose, product, onSave, tip
               <Stock10ExpandableSections
                 data={formData}
                 onChange={handleFieldChange}
+                productName={product?.nome || ''}
                 conversionRates={{
                   caixasPorLastro: useCustomParams ? customParams.pacotesPorLastro : (formData.pacotesPorLastro || 12),
                   lastrosPorPallet: useCustomParams ? customParams.lastrosPorPallet : (formData.lastrosPorPallet || 10)
