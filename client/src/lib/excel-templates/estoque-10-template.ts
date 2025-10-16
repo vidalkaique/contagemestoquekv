@@ -523,43 +523,61 @@ export class Estoque10Template implements ExcelTemplate {
   }
   
   /**
-   * Adiciona bordas que realmente funcionam no Excel
+   * Adiciona separadores visuais alternativos (sem bordas)
    */
   private addSectionContours(ws: XLSX.WorkSheet, rowCount: number): void {
-    // Força a criação de todas as células primeiro
-    for (let row = 0; row < rowCount; row++) {
-      for (let col = 0; col < 9; col++) {
-        const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
-        if (!ws[cellAddr]) {
-          ws[cellAddr] = { v: '', t: 's' };
-        }
-      }
-    }
+    // Como a biblioteca XLSX gratuita não suporta bordas,
+    // usamos cores de fundo e formatação para criar separação visual
     
-    // Aplica bordas em todas as células
     for (let row = 0; row < rowCount; row++) {
-      for (let col = 0; col < 9; col++) {
-        const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
-        const cell = ws[cellAddr];
+      const cellA = ws[XLSX.utils.encode_cell({ r: row, c: 0 })];
+      
+      if (cellA && typeof cellA.v === 'string') {
+        // Cabeçalhos das seções com destaque visual forte
+        if (cellA.v.includes('CHÃO CHEIO')) {
+          this.addSectionSeparator(ws, row, 'D5E8D4', true); // Verde escuro
+        } else if (cellA.v.includes('CHÃO VAZIO')) {
+          this.addSectionSeparator(ws, row, 'FFF2CC', true); // Amarelo
+        } else if (cellA.v.includes('GARRAFEIRA VAZIA')) {
+          this.addSectionSeparator(ws, row, 'E2E2E2', true); // Cinza
+        } else if (cellA.v === 'CÓDIGOS') {
+          this.addSectionSeparator(ws, row, 'E1D5E7', true); // Roxo
+        } else if (cellA.v === 'RESUMO GERAL') {
+          this.addSectionSeparator(ws, row, 'CCE5FF', true); // Azul
+        }
         
-        if (cell) {
-          if (!cell.s) cell.s = {};
-          cell.s.border = {
-            top: { style: 'thin', color: { rgb: '000000' } },
-            bottom: { style: 'thin', color: { rgb: '000000' } },
-            left: { style: 'thin', color: { rgb: '000000' } },
-            right: { style: 'thin', color: { rgb: '000000' } }
-          };
+        // Linhas de totais com destaque
+        if (cellA.v.includes('TOTAL')) {
+          for (let col = 0; col < 9; col++) {
+            const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
+            const cell = ws[cellAddr];
+            if (cell) {
+              if (!cell.s) cell.s = {};
+              cell.s.fill = { fgColor: { rgb: 'F5F5F5' } }; // Cinza claro
+              cell.s.font = { bold: true, size: 11 };
+            }
+          }
         }
       }
     }
-    
-    // Define o range da planilha
-    const range = XLSX.utils.encode_range({
-      s: { c: 0, r: 0 },
-      e: { c: 8, r: rowCount - 1 }
-    });
-    ws['!ref'] = range;
+  }
+  
+  /**
+   * Adiciona separador visual para seção
+   */
+  private addSectionSeparator(ws: XLSX.WorkSheet, row: number, color: string, isHeader: boolean): void {
+    for (let col = 0; col < 9; col++) {
+      const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
+      const cell = ws[cellAddr];
+      if (cell) {
+        if (!cell.s) cell.s = {};
+        cell.s.fill = { fgColor: { rgb: color } };
+        if (isHeader) {
+          cell.s.font = { bold: true, size: 14, color: { rgb: '000000' } };
+          cell.s.alignment = { horizontal: 'center' };
+        }
+      }
+    }
   }
 
   /**
