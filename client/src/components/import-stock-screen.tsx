@@ -120,9 +120,10 @@ export function ImportStockScreen({ isOpen, onClose, contagemId, onImportComplet
     
     try {
       // Primeiro, buscar os IDs dos produtos baseados nos códigos
+      // Incluindo o nome para filtrar garrafas vs garrafeiras
       const { data: produtos, error: produtosFetchError } = await supabase
         .from('produtos')
-        .select('id, codigo')
+        .select('id, codigo, nome')
         .in('codigo', previewData.map(p => p.codigo));
       
       if (produtosFetchError) throw produtosFetchError;
@@ -134,8 +135,30 @@ export function ImportStockScreen({ isOpen, onClose, contagemId, onImportComplet
       const produtosAgrupados = new Map();
       
       // Contagem Cega: Importa apenas códigos, SEM valores do sistema
+      // FILTRO: NÃO importa produtos com "GARRAFA" no nome, apenas "GARRAFEIRA"
       previewData
-        .filter(item => codigoParaId.has(item.codigo))
+        .filter(item => {
+          if (!codigoParaId.has(item.codigo)) return false;
+          
+          // Buscar o produto completo para verificar o nome
+          const produto = produtos.find(p => p.codigo === item.codigo);
+          if (!produto) return false;
+          
+          const nomeUpper = produto.nome.toUpperCase();
+          
+          // NÃO importar se contém "GARRAFA" mas NÃO contém "GARRAFEIRA"
+          if (nomeUpper.includes('GARRAFA') && !nomeUpper.includes('GARRAFEIRA')) {
+            console.log(`🚫 Produto filtrado (GARRAFA): ${produto.nome}`);
+            return false;
+          }
+          
+          // Importar se contém "GARRAFEIRA" ou não contém "GARRAFA"
+          if (nomeUpper.includes('GARRAFEIRA')) {
+            console.log(`✅ Produto aceito (GARRAFEIRA): ${produto.nome}`);
+          }
+          
+          return true;
+        })
         .forEach(item => {
           const produtoId = codigoParaId.get(item.codigo)!;
           const chave = `${contagemId}-${produtoId}`;
