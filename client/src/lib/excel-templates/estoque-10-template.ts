@@ -179,8 +179,8 @@ export class Estoque10Template implements ExcelTemplate {
     formattedData.forEach(row => {
       if (row[2] > 0 || row[3] > 0 || row[4] > 0 || row[5] > 0 || row[6] > 0 || row[7] > 0) {
         sheetData.push([
-          row[2], row[3], row[4], row[5], row[6], row[7], // 300ML_PBR, 300ML_CX, 600ML_GAJ, 600ML_CX, 1000ML_GAJ, 1000ML_CX
-          '', `${row[0]} (${row[1]})` // Nome e código do produto
+          row[2], row[3], row[4], row[5], row[6], row[7] // 300ML_PBR, 300ML_CX, 600ML_GAJ, 600ML_CX, 1000ML_GAJ, 1000ML_CX
+          // Removido nome do produto para não interferir no resumo geral
         ]);
       }
     });
@@ -202,8 +202,8 @@ export class Estoque10Template implements ExcelTemplate {
     formattedData.forEach(row => {
       if (row[8] > 0 || row[9] > 0 || row[10] > 0 || row[11] > 0 || row[12] > 0 || row[13] > 0) {
         sheetData.push([
-          row[8], row[9], row[10], row[11], row[12], row[13], // 300ML_PBR, 300ML_CX, 600ML_GAJ, 600ML_CX, 1000ML_GAJ, 1000ML_CX
-          '', `${row[0]} (${row[1]})` // Nome e código do produto
+          row[8], row[9], row[10], row[11], row[12], row[13] // 300ML_PBR, 300ML_CX, 600ML_GAJ, 600ML_CX, 1000ML_GAJ, 1000ML_CX
+          // Removido nome do produto para não interferir no resumo geral
         ]);
       }
     });
@@ -225,8 +225,8 @@ export class Estoque10Template implements ExcelTemplate {
     formattedData.forEach(row => {
       if (row[14] > 0 || row[15] > 0 || row[16] > 0 || row[17] > 0 || row[18] > 0 || row[19] > 0) {
         sheetData.push([
-          row[14], row[15], row[16], row[17], row[18], row[19], // 300ML_PBR, 300ML_CX, 600ML_GAJ, 600ML_CX, 1000ML_GAJ, 1000ML_CX
-          '', `${row[0]} (${row[1]})` // Nome e código do produto
+          row[14], row[15], row[16], row[17], row[18], row[19] // 300ML_PBR, 300ML_CX, 600ML_GAJ, 600ML_CX, 1000ML_GAJ, 1000ML_CX
+          // Removido nome do produto para não interferir no resumo geral
         ]);
       }
     });
@@ -263,11 +263,14 @@ export class Estoque10Template implements ExcelTemplate {
     if (sheetData[resumoStartRow + 6]) sheetData[resumoStartRow + 6][7] = 'TOTAL GARRAFAS 1L:';
     if (sheetData[resumoStartRow + 6]) sheetData[resumoStartRow + 6][8] = resumoGeral.totalGarrafas1L;
     
-    if (sheetData[resumoStartRow + 8]) sheetData[resumoStartRow + 8][7] = 'TOTAL GAJ:';
-    if (sheetData[resumoStartRow + 8]) sheetData[resumoStartRow + 8][8] = resumoGeral.totalGAJ;
+    if (sheetData[resumoStartRow + 8]) sheetData[resumoStartRow + 8][7] = 'GAJ/PBR:';
+    if (sheetData[resumoStartRow + 8]) sheetData[resumoStartRow + 8][8] = '';
     
-    if (sheetData[resumoStartRow + 9]) sheetData[resumoStartRow + 9][7] = 'TOTAL PBR:';
-    if (sheetData[resumoStartRow + 9]) sheetData[resumoStartRow + 9][8] = resumoGeral.totalPBR;
+    if (sheetData[resumoStartRow + 9]) sheetData[resumoStartRow + 9][7] = 'TOTAL GAJ:';
+    if (sheetData[resumoStartRow + 9]) sheetData[resumoStartRow + 9][8] = resumoGeral.totalGAJ;
+    
+    if (sheetData[resumoStartRow + 10]) sheetData[resumoStartRow + 10][7] = 'TOTAL PBR:';
+    if (sheetData[resumoStartRow + 10]) sheetData[resumoStartRow + 10][8] = resumoGeral.totalPBR;
     
     // ========== SEÇÃO CÓDIGOS ==========
     // Adiciona seção de códigos a partir da linha 37
@@ -358,22 +361,28 @@ export class Estoque10Template implements ExcelTemplate {
   }
 
   /**
-   * Aplica formatação avançada para o novo layout
+   * Aplica formatação avançada com contornos claros
    */
   private applyAdvancedFormatting(ws: XLSX.WorkSheet, rowCount: number): void {
     const styles = this.getStyles();
     
-    // Define estilo de borda padrão (como na imagem)
-    const borderStyle = {
-      style: 'thin',
-      color: { rgb: '000000' }
-    };
+    // Define estilos de borda
+    const thinBorder = { style: 'thin', color: { rgb: '000000' } };
+    const mediumBorder = { style: 'medium', color: { rgb: '000000' } };
+    const thickBorder = { style: 'thick', color: { rgb: '000000' } };
     
     const defaultBorder = {
-      top: borderStyle,
-      bottom: borderStyle,
-      left: borderStyle,
-      right: borderStyle
+      top: thinBorder,
+      bottom: thinBorder,
+      left: thinBorder,
+      right: thinBorder
+    };
+    
+    const sectionBorder = {
+      top: thickBorder,
+      bottom: thickBorder,
+      left: thickBorder,
+      right: thickBorder
     };
     
     // Aplica bordas em todas as células com conteúdo
@@ -388,6 +397,12 @@ export class Estoque10Template implements ExcelTemplate {
         }
       }
     }
+    
+    // Adiciona contornos especiais para delimitar seções
+    this.addSectionContours(ws, rowCount);
+    
+    // Adiciona cores de fundo para destacar seções
+    this.addSectionColors(ws, rowCount);
     
     // Formata título principal (A1)
     if (ws['A1']) {
@@ -522,35 +537,138 @@ export class Estoque10Template implements ExcelTemplate {
   }
   
   /**
-   * Adiciona bordas especiais para delimitar seções
+   * Adiciona contornos organizados para delimitar seções
    */
-  private addSectionBorders(ws: XLSX.WorkSheet, rowCount: number): void {
-    const thickBorder = {
-      style: 'thick',
-      color: { rgb: '000000' }
-    };
+  private addSectionContours(ws: XLSX.WorkSheet, rowCount: number): void {
+    const thickBorder = { style: 'thick', color: { rgb: '000000' } };
+    const mediumBorder = { style: 'medium', color: { rgb: '000000' } };
     
-    // Encontra linhas de seção e adiciona bordas grossas
+    // 1. CONTORNO PRINCIPAL (Colunas A-F para dados principais)
+    for (let row = 0; row < rowCount; row++) {
+      for (let col = 0; col < 6; col++) {
+        const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
+        const cell = ws[cellAddr];
+        if (cell && cell.v !== undefined && cell.v !== '') {
+          if (!cell.s) cell.s = {};
+          if (!cell.s.border) cell.s.border = {};
+          
+          // Borda esquerda da área principal
+          if (col === 0) cell.s.border.left = thickBorder;
+          // Borda direita da área principal
+          if (col === 5) cell.s.border.right = thickBorder;
+        }
+      }
+    }
+    
+    // 2. CONTORNO DO RESUMO GERAL (Colunas H-I)
+    for (let row = 0; row < rowCount; row++) {
+      for (let col = 7; col < 9; col++) {
+        const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
+        const cell = ws[cellAddr];
+        if (cell && cell.v !== undefined && cell.v !== '') {
+          if (!cell.s) cell.s = {};
+          if (!cell.s.border) cell.s.border = {};
+          
+          // Borda esquerda do resumo
+          if (col === 7) cell.s.border.left = thickBorder;
+          // Borda direita do resumo
+          if (col === 8) cell.s.border.right = thickBorder;
+        }
+      }
+    }
+    
+    // 3. SEPARADORES ENTRE SEÇÕES
     for (let row = 0; row < rowCount; row++) {
       const cellA = ws[XLSX.utils.encode_cell({ r: row, c: 0 })];
       
       if (cellA && typeof cellA.v === 'string') {
-        // Borda grossa ao redor de cada seção
-        if (cellA.v.includes('CHÃO CHEIO') || cellA.v.includes('CHÃO VAZIO') || cellA.v.includes('GARRAFEIRA VAZIA')) {
-          // Aplica borda grossa na linha da seção (colunas A-F)
-          for (let col = 0; col < 6; col++) {
+        // Borda grossa acima dos cabeçalhos das seções
+        if (cellA.v.includes('CHÃO CHEIO') || cellA.v.includes('CHÃO VAZIO') || cellA.v.includes('GARRAFEIRA VAZIA') || cellA.v === 'CÓDIGOS') {
+          for (let col = 0; col < 9; col++) {
             const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
             const cell = ws[cellAddr];
             if (cell) {
               if (!cell.s) cell.s = {};
               if (!cell.s.border) cell.s.border = {};
               cell.s.border.top = thickBorder;
-              cell.s.border.bottom = thickBorder;
-              if (col === 0) cell.s.border.left = thickBorder;
-              if (col === 5) cell.s.border.right = thickBorder;
+              cell.s.border.bottom = mediumBorder;
             }
           }
         }
+        
+        // Borda grossa abaixo das linhas de totais
+        if (cellA.v.includes('TOTAL')) {
+          for (let col = 0; col < 6; col++) {
+            const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
+            const cell = ws[cellAddr];
+            if (cell) {
+              if (!cell.s) cell.s = {};
+              if (!cell.s.border) cell.s.border = {};
+              cell.s.border.bottom = mediumBorder;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Adiciona cores de fundo para destacar seções
+   */
+  private addSectionColors(ws: XLSX.WorkSheet, rowCount: number): void {
+    for (let row = 0; row < rowCount; row++) {
+      const cellA = ws[XLSX.utils.encode_cell({ r: row, c: 0 })];
+      
+      if (cellA && typeof cellA.v === 'string') {
+        // Cores para cabeçalhos das seções
+        if (cellA.v.includes('CHÃO CHEIO')) {
+          this.applySectionHeaderColor(ws, row, 'E8F5E8'); // Verde claro
+        } else if (cellA.v.includes('CHÃO VAZIO')) {
+          this.applySectionHeaderColor(ws, row, 'FFF2CC'); // Amarelo claro
+        } else if (cellA.v.includes('GARRAFEIRA VAZIA')) {
+          this.applySectionHeaderColor(ws, row, 'F2F2F2'); // Cinza claro
+        } else if (cellA.v === 'CÓDIGOS') {
+          this.applySectionHeaderColor(ws, row, 'E1D5E7'); // Roxo claro
+        } else if (cellA.v === 'RESUMO GERAL') {
+          // Cor especial para o resumo geral (colunas H-I)
+          for (let col = 7; col < 9; col++) {
+            const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
+            const cell = ws[cellAddr];
+            if (cell) {
+              if (!cell.s) cell.s = {};
+              cell.s.fill = { fgColor: { rgb: 'E6F3FF' } }; // Azul claro
+              cell.s.font = { bold: true };
+            }
+          }
+        }
+        
+        // Destaque para linhas de totais
+        if (cellA.v.includes('TOTAL')) {
+          for (let col = 0; col < 6; col++) {
+            const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
+            const cell = ws[cellAddr];
+            if (cell) {
+              if (!cell.s) cell.s = {};
+              cell.s.fill = { fgColor: { rgb: 'F0F0F0' } }; // Cinza muito claro
+              cell.s.font = { bold: true };
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Aplica cor de fundo para cabeçalho de seção
+   */
+  private applySectionHeaderColor(ws: XLSX.WorkSheet, row: number, color: string): void {
+    for (let col = 0; col < 6; col++) {
+      const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
+      const cell = ws[cellAddr];
+      if (cell) {
+        if (!cell.s) cell.s = {};
+        cell.s.fill = { fgColor: { rgb: color } };
+        cell.s.font = { bold: true, size: 12 };
       }
     }
   }
