@@ -123,6 +123,17 @@ export interface ProductItem {
   avaria_lastros?: number;
   avaria_caixas?: number;
   
+  // GAJ/PBR após refugo (novo campo)
+  gajPbrRefugo?: number;
+  
+  // GARRAFEIRAS VAZIAS (nova seção)
+  garrafeirasVazias_pallets?: number;
+  garrafeirasVazias_lastros?: number;
+  garrafeirasVazias_caixas?: number;
+  
+  // GAJ/PBR (novo campo)
+  gajPbr?: number;
+  
   // Campos do Estoque 10 (Status) - GARRAFEIRAS
   garrafeiras_chaoCheio?: number;
   garrafeiras_chaoCheio_pallets?: number;
