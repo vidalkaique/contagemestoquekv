@@ -204,7 +204,7 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     currentRow++; // Linha em branco
     
     // ========== SEÇÃO CÓDIGOS ==========
-    currentRow = await this.createCodigosSection(worksheet, currentRow);
+    currentRow = this.createCodigosSectionSync(worksheet, currentRow);
     currentRow += 2; // Linha em branco
     
     // ========== RESUMO GERAL ==========
