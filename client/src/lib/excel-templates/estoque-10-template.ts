@@ -297,26 +297,19 @@ export class Estoque10Template implements ExcelTemplate {
       sheetData.push([codigo, descricao]);
     });
     
-    // Cria planilha
-    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    // ========== ABA 1: GARRAFEIRAS ==========
+    const wsGarrafeiras = XLSX.utils.aoa_to_sheet(sheetData);
+    this.applyAdvancedFormatting(wsGarrafeiras, sheetData.length);
+    this.setColumnWidths(wsGarrafeiras);
+    XLSX.utils.book_append_sheet(wb, wsGarrafeiras, 'Garrafeiras');
     
-    // Aplica formatação
-    this.applyAdvancedFormatting(ws, sheetData.length);
+    // ========== ABA 2: OUTROS PRODUTOS ==========
+    const outrosProdutosData = this.createOutrosProdutosSheet(data);
+    const wsOutros = XLSX.utils.aoa_to_sheet(outrosProdutosData);
+    this.applyAdvancedFormatting(wsOutros, outrosProdutosData.length);
+    this.setColumnWidths(wsOutros);
+    XLSX.utils.book_append_sheet(wb, wsOutros, 'Outros Produtos');
     
-    // Ajusta larguras das colunas
-    ws['!cols'] = [
-      { width: 15 }, // A - Dados
-      { width: 10 }, // B - Dados
-      { width: 15 }, // C - Dados
-      { width: 10 }, // D - Dados
-      { width: 15 }, // E - Dados
-      { width: 10 }, // F - Dados
-      { width: 5 },  // G - Espaço
-      { width: 20 }, // H - Resumo
-      { width: 15 }  // I - Valores resumo
-    ];
-    
-    XLSX.utils.book_append_sheet(wb, ws, 'Estoque 10');
     return wb;
   }
 
@@ -639,6 +632,88 @@ export class Estoque10Template implements ExcelTemplate {
         cell.s.font = { bold: true, size: 12 };
       }
     }
+  }
+
+  /**
+   * Cria dados para a aba "Outros Produtos"
+   */
+  private createOutrosProdutosSheet(data: Estoque10ExportData): any[][] {
+    const sheetData: any[][] = [];
+    
+    // Título
+    sheetData.push(['OUTROS PRODUTOS - ESTOQUE 10']);
+    sheetData.push([]);
+    
+    // Filtra produtos que NÃO são garrafeiras
+    const outrosProdutos = data.products.filter(product => {
+      const nomeMinusculo = product.nome.toLowerCase();
+      return !nomeMinusculo.includes('garrafeira') && 
+             !nomeMinusculo.includes('garrafa');
+    });
+    
+    if (outrosProdutos.length === 0) {
+      sheetData.push(['Nenhum outro produto encontrado nesta contagem.']);
+      return sheetData;
+    }
+    
+    // Cabeçalho
+    sheetData.push(['PRODUTO', 'CÓDIGO', 'QUANTIDADE', 'UNIDADE', 'OBSERVAÇÕES']);
+    sheetData.push([]);
+    
+    // Dados dos outros produtos
+    outrosProdutos.forEach(product => {
+      const nomeSimples = product.nome.replace(/\s*\([^)]*\)\s*$/, '');
+      const codigo = product.codigo || 'N/A';
+      
+      // Verifica se tem algum dado preenchido
+      const temDados = (
+        (product.chaoCheio || 0) > 0 ||
+        (product.chaoVazio || 0) > 0 ||
+        (product.garrafeirasVazias_pallets || 0) > 0 ||
+        (product.garrafeirasVazias_lastros || 0) > 0 ||
+        (product.garrafeirasVazias_caixas || 0) > 0
+      );
+      
+      if (temDados) {
+        let quantidade = 0;
+        let unidade = 'UN';
+        let observacoes = '';
+        
+        // Soma todas as quantidades
+        if (product.chaoCheio) {
+          quantidade += product.chaoCheio;
+          observacoes += `Chão Cheio: ${product.chaoCheio}; `;
+        }
+        if (product.chaoVazio) {
+          quantidade += product.chaoVazio;
+          observacoes += `Chão Vazio: ${product.chaoVazio}; `;
+        }
+        
+        sheetData.push([nomeSimples, codigo, quantidade, unidade, observacoes]);
+      }
+    });
+    
+    sheetData.push([]);
+    sheetData.push(['TOTAL DE OUTROS PRODUTOS:', '', outrosProdutos.length, 'ITENS', '']);
+    
+    return sheetData;
+  }
+  
+  /**
+   * Configura larguras das colunas
+   */
+  private setColumnWidths(ws: XLSX.WorkSheet): void {
+    ws['!cols'] = [
+      { width: 25 }, // A - Produto/Dados
+      { width: 12 }, // B - Código/Dados
+      { width: 15 }, // C - Quantidade/Dados
+      { width: 12 }, // D - Unidade/Dados
+      { width: 30 }, // E - Observações/Dados
+      { width: 10 }, // F - Dados
+      { width: 5 },  // G - Espaço
+      { width: 20 }, // H - Resumo
+      { width: 15 }  // I - Valores resumo
+    ];
   }
 
   /**
