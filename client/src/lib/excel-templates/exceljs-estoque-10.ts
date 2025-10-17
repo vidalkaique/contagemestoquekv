@@ -766,7 +766,7 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
       currentRow++;
     });
     
-    // TOTAIS COMPLETOS (incluindo PBR e GAJ que estavam faltando)
+    // TOTAIS APENAS (CX) e PBR conforme solicitado pelo usuário
     const totais = this.calculateSectionTotals(formattedData, [14, 15, 16, 17, 18, 19]);
     worksheet.getCell(`A${currentRow}`).value = 'TOTAL (CX)';
     worksheet.getCell(`B${currentRow}`).value = totais[1];
@@ -776,19 +776,11 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     worksheet.getCell(`F${currentRow}`).value = totais[5];
     currentRow++;
     
-    worksheet.getCell(`A${currentRow}`).value = 'TOTAL (GRF)';
-    worksheet.getCell(`B${currentRow}`).value = totais[1] * 24;
-    worksheet.getCell(`C${currentRow}`).value = 'TOTAL (GRF)';
-    worksheet.getCell(`D${currentRow}`).value = totais[3] * 24;
-    worksheet.getCell(`E${currentRow}`).value = 'TOTAL (GRF)';
-    worksheet.getCell(`F${currentRow}`).value = totais[5] * 12;
-    currentRow++;
-    
     worksheet.getCell(`A${currentRow}`).value = 'TOTAL PBR';
     worksheet.getCell(`B${currentRow}`).value = totais[0];
-    worksheet.getCell(`C${currentRow}`).value = 'TOTAL GAJ';
+    worksheet.getCell(`C${currentRow}`).value = 'TOTAL PBR';
     worksheet.getCell(`D${currentRow}`).value = totais[2];
-    worksheet.getCell(`E${currentRow}`).value = 'TOTAL GAJ';
+    worksheet.getCell(`E${currentRow}`).value = 'TOTAL PBR';
     worksheet.getCell(`F${currentRow}`).value = totais[4];
     currentRow++;
     
@@ -909,27 +901,31 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
 
   /**
    * Agrupa dados por linha para evitar zeros desnecessários
-   * CORREÇÃO: Resolve problema de visualização com dados espalhados
+   * CORREÇÃO: Resolve problema de visualização com dados espalhados + ordem correta
    * Regra #4: Componente bem estruturado - organização clara dos dados
    */
   private agruparDadosPorLinha(formattedData: any[], columnIndexes: number[]): number[][] {
-    const linhasComDados: number[][] = [];
+    // CORREÇÃO: Soma todos os valores por coluna em vez de manter linhas separadas
+    // Isso resolve o problema da ordem 1000ml -> 300ml -> 600ml
+    const totaisPorColuna = new Array(columnIndexes.length).fill(0);
     
-    // Coleta todas as linhas que têm pelo menos um valor > 0
+    // Soma todos os valores de cada coluna
     formattedData.forEach(row => {
-      const temDados = columnIndexes.some(index => (row[index] || 0) > 0);
-      if (temDados) {
-        const linha = columnIndexes.map(index => row[index] || 0);
-        linhasComDados.push(linha);
-      }
+      columnIndexes.forEach((index, i) => {
+        totaisPorColuna[i] += (row[index] || 0);
+      });
     });
     
-    // Se não há dados, retorna uma linha com zeros para manter estrutura
-    if (linhasComDados.length === 0) {
-      linhasComDados.push(new Array(columnIndexes.length).fill(0));
-    }
+    // Verifica se há pelo menos um valor > 0
+    const temDados = totaisPorColuna.some(valor => valor > 0);
     
-    return linhasComDados;
+    // Retorna uma única linha com os totais consolidados
+    if (temDados) {
+      return [totaisPorColuna];
+    } else {
+      // Se não há dados, retorna uma linha com zeros para manter estrutura
+      return [new Array(columnIndexes.length).fill(0)];
+    }
   }
 
   /**
