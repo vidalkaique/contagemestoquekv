@@ -150,7 +150,11 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     currentRow++; // Linha em branco
     
     // ========== SEÇÃO CÓDIGOS ==========
-    this.createCodigosSectionSync(worksheet, currentRow);
+    currentRow = this.createCodigosSectionSync(worksheet, currentRow);
+    currentRow += 2; // Linha em branco
+    
+    // ========== RESUMO GERAL ==========
+    this.createResumoGeralSection(worksheet, formattedData, currentRow);
     
     // Aplica bordas profissionais
     this.applyProfessionalBorders(worksheet);
@@ -200,7 +204,11 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     currentRow++; // Linha em branco
     
     // ========== SEÇÃO CÓDIGOS ==========
-    await this.createCodigosSection(worksheet, currentRow);
+    currentRow = await this.createCodigosSection(worksheet, currentRow);
+    currentRow += 2; // Linha em branco
+    
+    // ========== RESUMO GERAL ==========
+    this.createResumoGeralSection(worksheet, formattedData, currentRow);
     
     // Aplica bordas profissionais
     this.applyProfessionalBorders(worksheet);
@@ -745,7 +753,7 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     return currentRow;
   }
 
-  private createCodigosSectionSync(worksheet: ExcelJS.Worksheet, startRow: number): void {
+  private createCodigosSectionSync(worksheet: ExcelJS.Worksheet, startRow: number): number {
     const codigosPredefinidos = [
       ['1023392', 'GARRAFA 1L'],
       ['1023384', 'GARRAFA 300ML'],
@@ -757,6 +765,7 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     ];
     
     worksheet.getCell(`A${startRow}`).value = 'CÓDIGOS';
+    this.applySectionHeaderStyle(worksheet.getCell(`A${startRow}`));
     startRow += 2;
     
     codigosPredefinidos.forEach(([codigo, descricao]) => {
@@ -764,6 +773,91 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
       worksheet.getCell(`B${startRow}`).value = descricao;
       startRow++;
     });
+    
+    return startRow;
+  }
+
+  /**
+   * Cria seção Resumo Geral conforme estrutura solicitada pelo usuário
+   * Regra #4: Componente bem estruturado - resumo organizado por categorias
+   */
+  private createResumoGeralSection(worksheet: ExcelJS.Worksheet, formattedData: any[], startRow: number): void {
+    let currentRow = startRow;
+    
+    // Título da seção
+    worksheet.getCell(`A${currentRow}`).value = 'RESUMO GERAL';
+    this.applySectionHeaderStyle(worksheet.getCell(`A${currentRow}`));
+    currentRow++;
+    
+    // ========== CAIXAS ==========
+    worksheet.getCell(`A${currentRow}`).value = 'CAIXAS:';
+    this.applySubheaderStyle(worksheet.getCell(`A${currentRow}`));
+    currentRow++;
+    
+    // Calcula totais de caixas (Chão Cheio + Chão Vazio + Garrafeira Vazia)
+    const totalCaixas600ml = this.calculateTotalCaixas(formattedData, [5, 11, 17]); // CX 600ML
+    const totalCaixas300ml = this.calculateTotalCaixas(formattedData, [3, 9, 15]);  // CX 300ML
+    const totalCaixas1L = this.calculateTotalCaixas(formattedData, [7, 13, 19]);    // CX 1L
+    
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL CAIXAS 600ML:';
+    worksheet.getCell(`C${currentRow}`).value = totalCaixas600ml;
+    currentRow++;
+    
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL CAIXAS 300ML:';
+    worksheet.getCell(`C${currentRow}`).value = totalCaixas300ml;
+    currentRow++;
+    
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL CAIXAS 1L:';
+    worksheet.getCell(`C${currentRow}`).value = totalCaixas1L;
+    currentRow += 2;
+    
+    // ========== GARRAFAS ==========
+    worksheet.getCell(`A${currentRow}`).value = 'GARRAFAS:';
+    this.applySubheaderStyle(worksheet.getCell(`A${currentRow}`));
+    currentRow++;
+    
+    // Calcula totais de garrafas (apenas Chão Cheio + Chão Vazio, SEM Garrafeira Vazia)
+    const totalGarrafas600ml = (totalCaixas600ml - this.calculateTotalCaixas(formattedData, [17])) * 24; // 600ML = 24 garrafas/caixa
+    const totalGarrafas300ml = (totalCaixas300ml - this.calculateTotalCaixas(formattedData, [15])) * 24; // 300ML = 24 garrafas/caixa
+    const totalGarrafas1L = (totalCaixas1L - this.calculateTotalCaixas(formattedData, [19])) * 12;       // 1L = 12 garrafas/caixa
+    
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL GARRAFAS 600ML:';
+    worksheet.getCell(`C${currentRow}`).value = totalGarrafas600ml;
+    currentRow++;
+    
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL GARRAFAS 300ML:';
+    worksheet.getCell(`C${currentRow}`).value = totalGarrafas300ml;
+    currentRow++;
+    
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL GARRAFAS 1L:';
+    worksheet.getCell(`C${currentRow}`).value = totalGarrafas1L;
+    currentRow += 2;
+    
+    // ========== GAJ/PBR ==========
+    worksheet.getCell(`A${currentRow}`).value = 'GAJ/PBR:';
+    this.applySubheaderStyle(worksheet.getCell(`A${currentRow}`));
+    currentRow++;
+    
+    // Calcula totais GAJ/PBR (Chão Cheio + Chão Vazio + Garrafeira Vazia)
+    const totalGAJ = this.calculateTotalCaixas(formattedData, [4, 6, 10, 12, 16, 18]); // GAJ 600ML + 1L de todas as seções
+    const totalPBR = this.calculateTotalCaixas(formattedData, [2, 8, 14]);              // PBR 300ML de todas as seções
+    
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL GAJ:';
+    worksheet.getCell(`C${currentRow}`).value = totalGAJ;
+    currentRow++;
+    
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL PBR:';
+    worksheet.getCell(`C${currentRow}`).value = totalPBR;
+  }
+
+  /**
+   * Calcula total de caixas para índices específicos
+   * Regra #1: DRY - Método reutilizável para cálculos
+   */
+  private calculateTotalCaixas(formattedData: any[], columnIndexes: number[]): number {
+    return formattedData.reduce((total, row) => {
+      return total + columnIndexes.reduce((sum, index) => sum + (row[index] || 0), 0);
+    }, 0);
   }
 
   /**
