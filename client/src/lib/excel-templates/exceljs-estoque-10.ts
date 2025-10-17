@@ -629,17 +629,16 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     worksheet.getCell(`H${currentRow}`).value = 'CAIXAS:';
     currentRow++;
     
-    // Dados dos produtos
-    formattedData.forEach(row => {
-      if (row[2] > 0 || row[3] > 0 || row[4] > 0 || row[5] > 0 || row[6] > 0 || row[7] > 0) {
-        worksheet.getCell(`A${currentRow}`).value = row[2]; // 300ML_PBR
-        worksheet.getCell(`B${currentRow}`).value = row[3]; // 300ML_CX
-        worksheet.getCell(`C${currentRow}`).value = row[4]; // 600ML_GAJ
-        worksheet.getCell(`D${currentRow}`).value = row[5]; // 600ML_CX
-        worksheet.getCell(`E${currentRow}`).value = row[6]; // 1000ML_GAJ
-        worksheet.getCell(`F${currentRow}`).value = row[7]; // 1000ML_CX
-        currentRow++;
-      }
+    // CORREÇÃO: Agrupa dados em uma linha para evitar zeros desnecessários
+    const dadosAgrupados = this.agruparDadosPorLinha(formattedData, [2, 3, 4, 5, 6, 7]);
+    dadosAgrupados.forEach(linha => {
+      worksheet.getCell(`A${currentRow}`).value = linha[0]; // 300ML_PBR
+      worksheet.getCell(`B${currentRow}`).value = linha[1]; // 300ML_CX
+      worksheet.getCell(`C${currentRow}`).value = linha[2]; // 600ML_GAJ
+      worksheet.getCell(`D${currentRow}`).value = linha[3]; // 600ML_CX
+      worksheet.getCell(`E${currentRow}`).value = linha[4]; // 1000ML_GAJ
+      worksheet.getCell(`F${currentRow}`).value = linha[5]; // 1000ML_CX
+      currentRow++;
     });
     
     // Totais
@@ -956,17 +955,16 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     worksheet.getCell(`H${currentRow}`).value = 'CAIXAS:';
     currentRow++;
     
-    // Dados dos produtos
-    formattedData.forEach(row => {
-      if (row[2] > 0 || row[3] > 0 || row[4] > 0 || row[5] > 0 || row[6] > 0 || row[7] > 0) {
-        worksheet.getCell(`A${currentRow}`).value = row[2]; // 300ML_PBR
-        worksheet.getCell(`B${currentRow}`).value = row[3]; // 300ML_CX
-        worksheet.getCell(`C${currentRow}`).value = row[4]; // 600ML_GAJ
-        worksheet.getCell(`D${currentRow}`).value = row[5]; // 600ML_CX
-        worksheet.getCell(`E${currentRow}`).value = row[6]; // 1000ML_GAJ
-        worksheet.getCell(`F${currentRow}`).value = row[7]; // 1000ML_CX
-        currentRow++;
-      }
+    // CORREÇÃO: Agrupa dados em uma linha para evitar zeros desnecessários
+    const dadosAgrupados = this.agruparDadosPorLinha(formattedData, [2, 3, 4, 5, 6, 7]);
+    dadosAgrupados.forEach(linha => {
+      worksheet.getCell(`A${currentRow}`).value = linha[0]; // 300ML_PBR
+      worksheet.getCell(`B${currentRow}`).value = linha[1]; // 300ML_CX
+      worksheet.getCell(`C${currentRow}`).value = linha[2]; // 600ML_GAJ
+      worksheet.getCell(`D${currentRow}`).value = linha[3]; // 600ML_CX
+      worksheet.getCell(`E${currentRow}`).value = linha[4]; // 1000ML_GAJ
+      worksheet.getCell(`F${currentRow}`).value = linha[5]; // 1000ML_CX
+      currentRow++;
     });
     
     // Totais
