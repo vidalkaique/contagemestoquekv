@@ -3,6 +3,13 @@ import { ExcelTemplate, ExcelExportData, ExcelStyles } from './index';
 import { ProductItem } from '@/pages/new-count';
 
 /**
+ * Interface para dados de exportação do Estoque 10
+ */
+interface Estoque10ExportData extends ExcelExportData {
+  products: ProductItem[];
+}
+
+/**
  * Template específico para Estoque 10 - Layout por Tipo de Garrafeira
  * Regra #3: TypeScript consistente com interfaces bem definidas
  */
@@ -645,7 +652,7 @@ export class Estoque10Template implements ExcelTemplate {
     sheetData.push([]);
     
     // Filtra produtos que NÃO são garrafeiras
-    const outrosProdutos = data.products.filter(product => {
+    const outrosProdutos = data.products.filter((product: ProductItem) => {
       const nomeMinusculo = product.nome.toLowerCase();
       return !nomeMinusculo.includes('garrafeira') && 
              !nomeMinusculo.includes('garrafa');
@@ -661,7 +668,7 @@ export class Estoque10Template implements ExcelTemplate {
     sheetData.push([]);
     
     // Dados dos outros produtos
-    outrosProdutos.forEach(product => {
+    outrosProdutos.forEach((product: ProductItem) => {
       const nomeSimples = product.nome.replace(/\s*\([^)]*\)\s*$/, '');
       const codigo = product.codigo || 'N/A';
       
