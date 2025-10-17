@@ -779,19 +779,20 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
 
   /**
    * Cria seção Resumo Geral conforme estrutura solicitada pelo usuário
+   * CORREÇÃO: Posicionamento correto na coluna H conforme layout
    * Regra #4: Componente bem estruturado - resumo organizado por categorias
    */
   private createResumoGeralSection(worksheet: ExcelJS.Worksheet, formattedData: any[], startRow: number): void {
     let currentRow = startRow;
     
-    // Título da seção
-    worksheet.getCell(`A${currentRow}`).value = 'RESUMO GERAL';
-    this.applySectionHeaderStyle(worksheet.getCell(`A${currentRow}`));
+    // Título da seção (coluna H)
+    worksheet.getCell(`H${currentRow}`).value = 'RESUMO GERAL';
+    this.applySectionHeaderStyle(worksheet.getCell(`H${currentRow}`));
     currentRow++;
     
     // ========== CAIXAS ==========
-    worksheet.getCell(`A${currentRow}`).value = 'CAIXAS:';
-    this.applySubheaderStyle(worksheet.getCell(`A${currentRow}`));
+    worksheet.getCell(`H${currentRow}`).value = 'CAIXAS:';
+    this.applySubheaderStyle(worksheet.getCell(`H${currentRow}`));
     currentRow++;
     
     // Calcula totais de caixas (Chão Cheio + Chão Vazio + Garrafeira Vazia)
@@ -799,55 +800,59 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     const totalCaixas300ml = this.calculateTotalCaixas(formattedData, [3, 9, 15]);  // CX 300ML
     const totalCaixas1L = this.calculateTotalCaixas(formattedData, [7, 13, 19]);    // CX 1L
     
-    worksheet.getCell(`A${currentRow}`).value = 'TOTAL CAIXAS 600ML:';
-    worksheet.getCell(`C${currentRow}`).value = totalCaixas600ml;
+    worksheet.getCell(`H${currentRow}`).value = 'TOTAL CX 600ML:';
+    worksheet.getCell(`J${currentRow}`).value = totalCaixas600ml;
     currentRow++;
     
-    worksheet.getCell(`A${currentRow}`).value = 'TOTAL CAIXAS 300ML:';
-    worksheet.getCell(`C${currentRow}`).value = totalCaixas300ml;
+    worksheet.getCell(`H${currentRow}`).value = 'TOTAL CX 300ML:';
+    worksheet.getCell(`J${currentRow}`).value = totalCaixas300ml;
     currentRow++;
     
-    worksheet.getCell(`A${currentRow}`).value = 'TOTAL CAIXAS 1L:';
-    worksheet.getCell(`C${currentRow}`).value = totalCaixas1L;
+    worksheet.getCell(`H${currentRow}`).value = 'TOTAL CX 1L:';
+    worksheet.getCell(`J${currentRow}`).value = totalCaixas1L;
     currentRow += 2;
     
     // ========== GARRAFAS ==========
-    worksheet.getCell(`A${currentRow}`).value = 'GARRAFAS:';
-    this.applySubheaderStyle(worksheet.getCell(`A${currentRow}`));
+    worksheet.getCell(`H${currentRow}`).value = 'GARRAFAS:';
+    this.applySubheaderStyle(worksheet.getCell(`H${currentRow}`));
     currentRow++;
     
     // Calcula totais de garrafas (apenas Chão Cheio + Chão Vazio, SEM Garrafeira Vazia)
-    const totalGarrafas600ml = (totalCaixas600ml - this.calculateTotalCaixas(formattedData, [17])) * 24; // 600ML = 24 garrafas/caixa
-    const totalGarrafas300ml = (totalCaixas300ml - this.calculateTotalCaixas(formattedData, [15])) * 24; // 300ML = 24 garrafas/caixa
-    const totalGarrafas1L = (totalCaixas1L - this.calculateTotalCaixas(formattedData, [19])) * 12;       // 1L = 12 garrafas/caixa
+    const caixasChaoCheioeVazio600ml = this.calculateTotalCaixas(formattedData, [5, 11]); // Apenas Chão Cheio + Chão Vazio
+    const caixasChaoCheioeVazio300ml = this.calculateTotalCaixas(formattedData, [3, 9]);   // Apenas Chão Cheio + Chão Vazio
+    const caixasChaoCheioeVazio1L = this.calculateTotalCaixas(formattedData, [7, 13]);     // Apenas Chão Cheio + Chão Vazio
     
-    worksheet.getCell(`A${currentRow}`).value = 'TOTAL GARRAFAS 600ML:';
-    worksheet.getCell(`C${currentRow}`).value = totalGarrafas600ml;
+    const totalGarrafas600ml = caixasChaoCheioeVazio600ml * 24; // 600ML = 24 garrafas/caixa
+    const totalGarrafas300ml = caixasChaoCheioeVazio300ml * 24; // 300ML = 24 garrafas/caixa
+    const totalGarrafas1L = caixasChaoCheioeVazio1L * 12;       // 1L = 12 garrafas/caixa
+    
+    worksheet.getCell(`H${currentRow}`).value = 'TOTAL GRF 600ML:';
+    worksheet.getCell(`J${currentRow}`).value = totalGarrafas600ml;
     currentRow++;
     
-    worksheet.getCell(`A${currentRow}`).value = 'TOTAL GARRAFAS 300ML:';
-    worksheet.getCell(`C${currentRow}`).value = totalGarrafas300ml;
+    worksheet.getCell(`H${currentRow}`).value = 'TOTAL GRF 300ML:';
+    worksheet.getCell(`J${currentRow}`).value = totalGarrafas300ml;
     currentRow++;
     
-    worksheet.getCell(`A${currentRow}`).value = 'TOTAL GARRAFAS 1L:';
-    worksheet.getCell(`C${currentRow}`).value = totalGarrafas1L;
+    worksheet.getCell(`H${currentRow}`).value = 'TOTAL GRF 1L:';
+    worksheet.getCell(`J${currentRow}`).value = totalGarrafas1L;
     currentRow += 2;
     
     // ========== GAJ/PBR ==========
-    worksheet.getCell(`A${currentRow}`).value = 'GAJ/PBR:';
-    this.applySubheaderStyle(worksheet.getCell(`A${currentRow}`));
+    worksheet.getCell(`H${currentRow}`).value = 'GAJ/PBR:';
+    this.applySubheaderStyle(worksheet.getCell(`H${currentRow}`));
     currentRow++;
     
     // Calcula totais GAJ/PBR (Chão Cheio + Chão Vazio + Garrafeira Vazia)
     const totalGAJ = this.calculateTotalCaixas(formattedData, [4, 6, 10, 12, 16, 18]); // GAJ 600ML + 1L de todas as seções
     const totalPBR = this.calculateTotalCaixas(formattedData, [2, 8, 14]);              // PBR 300ML de todas as seções
     
-    worksheet.getCell(`A${currentRow}`).value = 'TOTAL GAJ:';
-    worksheet.getCell(`C${currentRow}`).value = totalGAJ;
+    worksheet.getCell(`H${currentRow}`).value = 'TOTAL GAJ:';
+    worksheet.getCell(`J${currentRow}`).value = totalGAJ;
     currentRow++;
     
-    worksheet.getCell(`A${currentRow}`).value = 'TOTAL PBR:';
-    worksheet.getCell(`C${currentRow}`).value = totalPBR;
+    worksheet.getCell(`H${currentRow}`).value = 'TOTAL PBR:';
+    worksheet.getCell(`J${currentRow}`).value = totalPBR;
   }
 
   /**
