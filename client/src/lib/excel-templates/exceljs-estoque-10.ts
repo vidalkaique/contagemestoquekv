@@ -150,8 +150,8 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     
     let currentRow = 1;
     
-    // Título principal
-    worksheet.mergeCells(`A${currentRow}:F${currentRow}`);
+    // Título principal (10 colunas)
+    worksheet.mergeCells(`A${currentRow}:J${currentRow}`);
     worksheet.getCell(`A${currentRow}`).value = 'OUTROS PRODUTOS - ESTOQUE 10';
     this.applyHeaderStyle(worksheet.getCell(`A${currentRow}`));
     currentRow += 2;
@@ -160,16 +160,20 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     worksheet.getCell(`A${currentRow}`).value = `TOTAL DE PRODUTOS RECEBIDOS: ${data.products.length}`;
     currentRow += 2;
     
-    // Cabeçalho da tabela
+    // Cabeçalho da tabela (EXPANDIDO)
     worksheet.getCell(`A${currentRow}`).value = 'PRODUTO';
     worksheet.getCell(`B${currentRow}`).value = 'CÓDIGO';
     worksheet.getCell(`C${currentRow}`).value = 'TIPO';
     worksheet.getCell(`D${currentRow}`).value = 'CHÃO CHEIO';
     worksheet.getCell(`E${currentRow}`).value = 'CHÃO VAZIO';
-    worksheet.getCell(`F${currentRow}`).value = 'OBSERVAÇÕES';
+    worksheet.getCell(`F${currentRow}`).value = 'NOVO';
+    worksheet.getCell(`G${currentRow}`).value = 'MANUTENÇÃO';
+    worksheet.getCell(`H${currentRow}`).value = 'SUCATA';
+    worksheet.getCell(`I${currentRow}`).value = 'BLOQUEADO';
+    worksheet.getCell(`J${currentRow}`).value = 'OBSERVAÇÕES';
     
-    // Aplica estilo ao cabeçalho
-    for (let col = 1; col <= 6; col++) {
+    // Aplica estilo ao cabeçalho (10 colunas)
+    for (let col = 1; col <= 10; col++) {
       this.applySubheaderStyle(worksheet.getCell(currentRow, col));
     }
     currentRow += 2;
@@ -177,53 +181,61 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     let produtosComDados = 0;
     let outrosProdutos = 0;
     
-    // Filtra e exibe produtos com dados
+    // Exibe TODOS os produtos (conforme solicitado pelo usuário)
     data.products.forEach((product: ProductItem) => {
       const nomeSimples = product.nome.replace(/\s*\([^)]*\)\s*$/, '');
       const codigo = product.codigo || 'N/A';
       const nomeMinusculo = product.nome.toLowerCase();
       
-      // Verifica se tem algum dado preenchido (EXPANSIVO)
+      // Verifica se tem algum dado preenchido (para estatísticas)
       const temDados = this.hasProductData(product);
-      
       if (temDados) {
         produtosComDados++;
+      }
+      
+      // Verifica se é "outros produtos" (não garrafeira)
+      const isGarrafeira = nomeMinusculo.includes('300ml') || 
+                          nomeMinusculo.includes('300 ml') ||
+                          nomeMinusculo.includes('600ml') || 
+                          nomeMinusculo.includes('600 ml') ||
+                          nomeMinusculo.includes('1000ml') || 
+                          nomeMinusculo.includes('1000 ml') ||
+                          nomeMinusculo.includes('1l');
+      
+      // MOSTRA TODOS OS PRODUTOS (não só os com dados)
+      if (!isGarrafeira) {
+        outrosProdutos++;
         
-        // Verifica se é "outros produtos" (não garrafeira)
-        const isGarrafeira = nomeMinusculo.includes('300ml') || 
-                            nomeMinusculo.includes('300 ml') ||
-                            nomeMinusculo.includes('600ml') || 
-                            nomeMinusculo.includes('600 ml') ||
-                            nomeMinusculo.includes('1000ml') || 
-                            nomeMinusculo.includes('1000 ml') ||
-                            nomeMinusculo.includes('1l');
-        
-        if (!isGarrafeira) {
-          outrosProdutos++;
-          
-          // Determina tipo do produto
-          let tipo = 'OUTROS';
-          if (nomeMinusculo.includes('equipamento') || nomeMinusculo.includes('equip')) {
-            tipo = 'EQUIPAMENTO';
-          } else if (nomeMinusculo.includes('material') || nomeMinusculo.includes('mat')) {
-            tipo = 'MATERIAL';
-          }
-          
-          // Valores dos campos
-          const chaoCheioValue = this.getFieldSummary(product, 'chaoCheio');
-          const chaoVazioValue = this.getFieldSummary(product, 'chaoVazio');
-          const observacoes = this.buildObservations(product);
-          
-          // Adiciona linha do produto
-          worksheet.getCell(`A${currentRow}`).value = nomeSimples;
-          worksheet.getCell(`B${currentRow}`).value = codigo;
-          worksheet.getCell(`C${currentRow}`).value = tipo;
-          worksheet.getCell(`D${currentRow}`).value = chaoCheioValue;
-          worksheet.getCell(`E${currentRow}`).value = chaoVazioValue;
-          worksheet.getCell(`F${currentRow}`).value = observacoes;
-          
-          currentRow++;
+        // Determina tipo do produto
+        let tipo = 'OUTROS';
+        if (nomeMinusculo.includes('equipamento') || nomeMinusculo.includes('equip')) {
+          tipo = 'EQUIPAMENTO';
+        } else if (nomeMinusculo.includes('material') || nomeMinusculo.includes('mat')) {
+          tipo = 'MATERIAL';
         }
+        
+        // Valores dos campos (com valores reais)
+        const chaoCheioValue = this.getFieldSummary(product, 'chaoCheio');
+        const chaoVazioValue = this.getFieldSummary(product, 'chaoVazio');
+        const novoValue = (product.novo || 0) > 0 ? product.novo : '-';
+        const manutencaoValue = (product.manutencao || 0) > 0 ? product.manutencao : '-';
+        const sucataValue = (product.sucata || 0) > 0 ? product.sucata : '-';
+        const bloqueadoValue = (product.bloqueado || 0) > 0 ? product.bloqueado : '-';
+        const observacoes = this.buildObservations(product);
+        
+        // Adiciona linha do produto (10 colunas)
+        worksheet.getCell(`A${currentRow}`).value = nomeSimples;
+        worksheet.getCell(`B${currentRow}`).value = codigo;
+        worksheet.getCell(`C${currentRow}`).value = tipo;
+        worksheet.getCell(`D${currentRow}`).value = chaoCheioValue;
+        worksheet.getCell(`E${currentRow}`).value = chaoVazioValue;
+        worksheet.getCell(`F${currentRow}`).value = novoValue;
+        worksheet.getCell(`G${currentRow}`).value = manutencaoValue;
+        worksheet.getCell(`H${currentRow}`).value = sucataValue;
+        worksheet.getCell(`I${currentRow}`).value = bloqueadoValue;
+        worksheet.getCell(`J${currentRow}`).value = observacoes;
+        
+        currentRow++;
       }
     });
     
@@ -781,16 +793,20 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
   }
 
   /**
-   * Configura larguras das colunas para Outros Produtos
+   * Configura larguras das colunas para Outros Produtos (10 colunas)
    */
   private setOutrosProdutosColumnWidths(worksheet: ExcelJS.Worksheet): void {
     worksheet.columns = [
-      { width: 30 }, // A - Produto
-      { width: 15 }, // B - Código
-      { width: 15 }, // C - Tipo
-      { width: 20 }, // D - Chão Cheio
-      { width: 20 }, // E - Chão Vazio
-      { width: 50 }  // F - Observações
+      { width: 25 }, // A - Produto
+      { width: 12 }, // B - Código
+      { width: 12 }, // C - Tipo
+      { width: 15 }, // D - Chão Cheio
+      { width: 15 }, // E - Chão Vazio
+      { width: 12 }, // F - Novo
+      { width: 15 }, // G - Manutenção
+      { width: 12 }, // H - Sucata
+      { width: 12 }, // I - Bloqueado
+      { width: 40 }  // J - Observações
     ];
   }
 }
