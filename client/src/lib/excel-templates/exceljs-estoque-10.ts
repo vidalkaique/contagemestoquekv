@@ -158,7 +158,26 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     
     // DEBUG: Total de produtos
     worksheet.getCell(`A${currentRow}`).value = `TOTAL DE PRODUTOS RECEBIDOS: ${data.products.length}`;
-    currentRow += 2;
+    currentRow++;
+    
+    // DEBUG: Lista todos os produtos para análise
+    worksheet.getCell(`A${currentRow}`).value = 'DEBUG - LISTA DE PRODUTOS:';
+    currentRow++;
+    data.products.forEach((product: ProductItem, index: number) => {
+      const nomeMinusculo = product.nome.toLowerCase();
+      const isGarrafeira = nomeMinusculo.includes('300ml') || 
+                          nomeMinusculo.includes('300 ml') ||
+                          nomeMinusculo.includes('600ml') || 
+                          nomeMinusculo.includes('600 ml') ||
+                          nomeMinusculo.includes('1000ml') || 
+                          nomeMinusculo.includes('1000 ml') ||
+                          nomeMinusculo.includes('1l');
+      const temDados = this.hasProductData(product);
+      
+      worksheet.getCell(`A${currentRow}`).value = `${index + 1}. ${product.nome} - Garrafeira: ${isGarrafeira ? 'SIM' : 'NÃO'} - Dados: ${temDados ? 'SIM' : 'NÃO'}`;
+      currentRow++;
+    });
+    currentRow++;
     
     // Cabeçalho da tabela (EXPANDIDO)
     worksheet.getCell(`A${currentRow}`).value = 'PRODUTO';
