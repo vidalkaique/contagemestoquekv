@@ -56,6 +56,7 @@ export interface ExcelStyles {
  */
 // Imports dos templates (Regra #3: TypeScript consistente)
 import { Estoque10Template } from './estoque-10-template';
+import { ExcelJSEstoque10Template } from './exceljs-estoque-10'; // MIGRAÇÃO EXCELJS ATIVA
 import { Estoque11Template } from './estoque-11-template';
 import { Estoque23Template } from './estoque-23-template';
 
@@ -63,7 +64,7 @@ export class ExcelTemplateFactory {
   static create(tipoEstoque: string): ExcelTemplate {
     switch (tipoEstoque) {
       case '10':
-        return new Estoque10Template();
+        return new ExcelJSEstoque10Template(); // MIGRAÇÃO EXCELJS ATIVADA!
       case '11':
         return new Estoque11Template();
       case '23':
