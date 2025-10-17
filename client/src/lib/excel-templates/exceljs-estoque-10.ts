@@ -25,11 +25,30 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
   }
 
   /**
-   * Implementa interface ExcelTemplate - ZERO breaking changes
+   * Implementa interface ExcelTemplate - COMPATIBILIDADE TOTAL
+   * Regra #8: Error handling robusto
    */
   createWorkbook(data: ExcelExportData): any {
-    // Retorna buffer ExcelJS em vez de XLSX.WorkBook
-    return this.generateExcelBuffer(data);
+    try {
+      // CORREÇÃO CRÍTICA: Inicializa workbook ExcelJS antes de usar
+      this.workbook = new ExcelJS.Workbook();
+      
+      // Configurações do workbook
+      this.workbook.creator = 'Sistema de Contagem de Estoque';
+      this.workbook.lastModifiedBy = 'Sistema';
+      this.workbook.created = new Date();
+      this.workbook.modified = new Date();
+      
+      // Cria as abas síncronamente
+      this.createGarrafeirasSheetSync(data);
+      this.createOutrosProdutosSheetSync(data);
+      
+      // Retorna workbook ExcelJS (compatível com interface)
+      return this.workbook;
+    } catch (error) {
+      console.error('Erro ao criar workbook ExcelJS:', error);
+      throw new Error(`Falha na criação do workbook Excel: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
   }
 
   getColumns(): string[] {
@@ -92,6 +111,55 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
   }
 
   /**
+   * Versão síncrona para compatibilidade com interface ExcelTemplate
+   */
+  private createGarrafeirasSheetSync(data: ExcelExportData): void {
+    const worksheet = this.workbook.addWorksheet('Garrafeiras');
+    
+    // Dados formatados (reutiliza lógica existente)
+    const formattedData = this.formatDataForExcelJS(data.products);
+    
+    let currentRow = 1;
+    
+    // Título principal
+    worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
+    worksheet.getCell(`A${currentRow}`).value = this.getTitle();
+    this.applyHeaderStyle(worksheet.getCell(`A${currentRow}`));
+    currentRow++;
+    
+    // Subtítulo
+    worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
+    worksheet.getCell(`A${currentRow}`).value = this.getSubtitle();
+    this.applySubheaderStyle(worksheet.getCell(`A${currentRow}`));
+    currentRow++;
+    
+    // Data
+    worksheet.getCell(`A${currentRow}`).value = `Data: ${new Date(data.countDate).toLocaleDateString('pt-BR')}`;
+    currentRow += 2; // Linha em branco
+    
+    // ========== SEÇÃO CHÃO CHEIO ==========
+    currentRow = this.createChaoCheiSectionSync(worksheet, formattedData, currentRow);
+    currentRow++; // Linha em branco
+    
+    // ========== SEÇÃO CHÃO VAZIO ==========
+    currentRow = this.createChaoVazioSectionSync(worksheet, formattedData, currentRow);
+    currentRow++; // Linha em branco
+    
+    // ========== SEÇÃO GARRAFEIRA VAZIA ==========
+    currentRow = this.createGarrafeiraVaziaSectionSync(worksheet, formattedData, currentRow);
+    currentRow++; // Linha em branco
+    
+    // ========== SEÇÃO CÓDIGOS ==========
+    this.createCodigosSectionSync(worksheet, currentRow);
+    
+    // Aplica bordas profissionais
+    this.applyProfessionalBorders(worksheet);
+    
+    // Ajusta larguras das colunas
+    this.setColumnWidths(worksheet);
+  }
+
+  /**
    * Cria aba Garrafeiras com estrutura idêntica + bordas profissionais
    * Regra #1: DRY - Reutiliza lógica existente
    */
@@ -139,6 +207,135 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     
     // Ajusta larguras das colunas
     this.setColumnWidths(worksheet);
+  }
+
+  /**
+   * Versão síncrona para compatibilidade com interface ExcelTemplate
+   */
+  private createOutrosProdutosSheetSync(data: ExcelExportData): void {
+    const worksheet = this.workbook.addWorksheet('Outros Produtos');
+    
+    let currentRow = 1;
+    
+    // Título principal (10 colunas)
+    worksheet.mergeCells(`A${currentRow}:J${currentRow}`);
+    worksheet.getCell(`A${currentRow}`).value = 'OUTROS PRODUTOS - ESTOQUE 10';
+    this.applyHeaderStyle(worksheet.getCell(`A${currentRow}`));
+    currentRow += 2;
+    
+    // DEBUG: Total de produtos
+    worksheet.getCell(`A${currentRow}`).value = `TOTAL DE PRODUTOS RECEBIDOS: ${data.products.length}`;
+    currentRow++;
+    
+    // DEBUG: Lista todos os produtos para análise
+    worksheet.getCell(`A${currentRow}`).value = 'DEBUG - LISTA DE PRODUTOS:';
+    currentRow++;
+    data.products.forEach((product: ProductItem, index: number) => {
+      const nomeMinusculo = product.nome.toLowerCase();
+      const isGarrafeira = nomeMinusculo.includes('300ml') || 
+                          nomeMinusculo.includes('300 ml') ||
+                          nomeMinusculo.includes('600ml') || 
+                          nomeMinusculo.includes('600 ml') ||
+                          nomeMinusculo.includes('1000ml') || 
+                          nomeMinusculo.includes('1000 ml') ||
+                          nomeMinusculo.includes('1l');
+      const temDados = this.hasProductData(product);
+      
+      worksheet.getCell(`A${currentRow}`).value = `${index + 1}. ${product.nome} - Garrafeira: ${isGarrafeira ? 'SIM' : 'NÃO'} - Dados: ${temDados ? 'SIM' : 'NÃO'}`;
+      currentRow++;
+    });
+    currentRow++;
+    
+    // Cabeçalho da tabela (EXPANDIDO)
+    worksheet.getCell(`A${currentRow}`).value = 'PRODUTO';
+    worksheet.getCell(`B${currentRow}`).value = 'CÓDIGO';
+    worksheet.getCell(`C${currentRow}`).value = 'TIPO';
+    worksheet.getCell(`D${currentRow}`).value = 'CHÃO CHEIO';
+    worksheet.getCell(`E${currentRow}`).value = 'CHÃO VAZIO';
+    worksheet.getCell(`F${currentRow}`).value = 'NOVO';
+    worksheet.getCell(`G${currentRow}`).value = 'MANUTENÇÃO';
+    worksheet.getCell(`H${currentRow}`).value = 'SUCATA';
+    worksheet.getCell(`I${currentRow}`).value = 'BLOQUEADO';
+    worksheet.getCell(`J${currentRow}`).value = 'OBSERVAÇÕES';
+    
+    // Aplica estilo ao cabeçalho (10 colunas)
+    for (let col = 1; col <= 10; col++) {
+      this.applySubheaderStyle(worksheet.getCell(currentRow, col));
+    }
+    currentRow += 2;
+    
+    let produtosComDados = 0;
+    let outrosProdutos = 0;
+    
+    // Exibe TODOS os produtos (conforme solicitado pelo usuário)
+    data.products.forEach((product: ProductItem) => {
+      const nomeSimples = product.nome.replace(/\s*\([^)]*\)\s*$/, '');
+      const codigo = product.codigo || 'N/A';
+      const nomeMinusculo = product.nome.toLowerCase();
+      
+      // Verifica se tem algum dado preenchido (para estatísticas)
+      const temDados = this.hasProductData(product);
+      if (temDados) {
+        produtosComDados++;
+      }
+      
+      // Verifica se é "outros produtos" (não garrafeira)
+      const isGarrafeira = nomeMinusculo.includes('300ml') || 
+                          nomeMinusculo.includes('300 ml') ||
+                          nomeMinusculo.includes('600ml') || 
+                          nomeMinusculo.includes('600 ml') ||
+                          nomeMinusculo.includes('1000ml') || 
+                          nomeMinusculo.includes('1000 ml') ||
+                          nomeMinusculo.includes('1l');
+      
+      // MOSTRA TODOS OS PRODUTOS (não só os com dados)
+      if (!isGarrafeira) {
+        outrosProdutos++;
+        
+        // Determina tipo do produto
+        let tipo = 'OUTROS';
+        if (nomeMinusculo.includes('equipamento') || nomeMinusculo.includes('equip')) {
+          tipo = 'EQUIPAMENTO';
+        } else if (nomeMinusculo.includes('material') || nomeMinusculo.includes('mat')) {
+          tipo = 'MATERIAL';
+        }
+        
+        // Valores dos campos (com valores reais)
+        const chaoCheioValue = this.getFieldSummary(product, 'chaoCheio');
+        const chaoVazioValue = this.getFieldSummary(product, 'chaoVazio');
+        const novoValue = (product.novo || 0) > 0 ? product.novo : '-';
+        const manutencaoValue = (product.manutencao || 0) > 0 ? product.manutencao : '-';
+        const sucataValue = (product.sucata || 0) > 0 ? product.sucata : '-';
+        const bloqueadoValue = (product.bloqueado || 0) > 0 ? product.bloqueado : '-';
+        const observacoes = this.buildObservations(product);
+        
+        // Adiciona linha do produto (10 colunas)
+        worksheet.getCell(`A${currentRow}`).value = nomeSimples;
+        worksheet.getCell(`B${currentRow}`).value = codigo;
+        worksheet.getCell(`C${currentRow}`).value = tipo;
+        worksheet.getCell(`D${currentRow}`).value = chaoCheioValue;
+        worksheet.getCell(`E${currentRow}`).value = chaoVazioValue;
+        worksheet.getCell(`F${currentRow}`).value = novoValue;
+        worksheet.getCell(`G${currentRow}`).value = manutencaoValue;
+        worksheet.getCell(`H${currentRow}`).value = sucataValue;
+        worksheet.getCell(`I${currentRow}`).value = bloqueadoValue;
+        worksheet.getCell(`J${currentRow}`).value = observacoes;
+        
+        currentRow++;
+      }
+    });
+    
+    // Resumo final
+    currentRow += 2;
+    worksheet.getCell(`A${currentRow}`).value = `PRODUTOS COM DADOS: ${produtosComDados}`;
+    currentRow++;
+    worksheet.getCell(`A${currentRow}`).value = `OUTROS PRODUTOS (NÃO GARRAFEIRAS): ${outrosProdutos}`;
+    
+    // Aplica bordas profissionais
+    this.applyProfessionalBorders(worksheet);
+    
+    // Ajusta larguras das colunas
+    this.setOutrosProdutosColumnWidths(worksheet);
   }
 
   /**
@@ -395,6 +592,178 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     cell.font = { bold: true, size: 12 };
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF5B9BD5' } };
     cell.alignment = { horizontal: 'center', vertical: 'middle' };
+  }
+
+  /**
+   * Versões síncronas dos métodos auxiliares para compatibilidade
+   */
+  private createChaoCheiSectionSync(worksheet: ExcelJS.Worksheet, formattedData: any[], startRow: number): number {
+    let currentRow = startRow;
+    
+    // Título da seção
+    worksheet.getCell(`A${currentRow}`).value = 'CHÃO CHEIO';
+    this.applySectionHeaderStyle(worksheet.getCell(`A${currentRow}`));
+    currentRow++;
+    
+    // Cabeçalhos das colunas
+    worksheet.getCell(`A${currentRow}`).value = '300ML';
+    worksheet.getCell(`C${currentRow}`).value = '600ML';
+    worksheet.getCell(`E${currentRow}`).value = '1000ML';
+    worksheet.getCell(`H${currentRow}`).value = 'RESUMO GERAL';
+    currentRow++;
+    
+    worksheet.getCell(`A${currentRow}`).value = 'PBR';
+    worksheet.getCell(`B${currentRow}`).value = 'CX';
+    worksheet.getCell(`C${currentRow}`).value = 'GAJ';
+    worksheet.getCell(`D${currentRow}`).value = 'CX';
+    worksheet.getCell(`E${currentRow}`).value = 'GAJ';
+    worksheet.getCell(`F${currentRow}`).value = 'CX';
+    worksheet.getCell(`H${currentRow}`).value = 'CAIXAS:';
+    currentRow++;
+    
+    // Dados dos produtos
+    formattedData.forEach(row => {
+      if (row[2] > 0 || row[3] > 0 || row[4] > 0 || row[5] > 0 || row[6] > 0 || row[7] > 0) {
+        worksheet.getCell(`A${currentRow}`).value = row[2]; // 300ML_PBR
+        worksheet.getCell(`B${currentRow}`).value = row[3]; // 300ML_CX
+        worksheet.getCell(`C${currentRow}`).value = row[4]; // 600ML_GAJ
+        worksheet.getCell(`D${currentRow}`).value = row[5]; // 600ML_CX
+        worksheet.getCell(`E${currentRow}`).value = row[6]; // 1000ML_GAJ
+        worksheet.getCell(`F${currentRow}`).value = row[7]; // 1000ML_CX
+        currentRow++;
+      }
+    });
+    
+    // Totais
+    const totais = this.calculateSectionTotals(formattedData, [2, 3, 4, 5, 6, 7]);
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL (CX)';
+    worksheet.getCell(`B${currentRow}`).value = totais[1];
+    worksheet.getCell(`C${currentRow}`).value = 'TOTAL (CX)';
+    worksheet.getCell(`D${currentRow}`).value = totais[3];
+    worksheet.getCell(`E${currentRow}`).value = 'TOTAL (CX)';
+    worksheet.getCell(`F${currentRow}`).value = totais[5];
+    currentRow++;
+    
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL (GRF)';
+    worksheet.getCell(`B${currentRow}`).value = totais[1] * 24;
+    worksheet.getCell(`C${currentRow}`).value = 'TOTAL (GRF)';
+    worksheet.getCell(`D${currentRow}`).value = totais[3] * 24;
+    worksheet.getCell(`E${currentRow}`).value = 'TOTAL (GRF)';
+    worksheet.getCell(`F${currentRow}`).value = totais[5] * 12;
+    currentRow++;
+    
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL PBR';
+    worksheet.getCell(`B${currentRow}`).value = totais[0];
+    worksheet.getCell(`C${currentRow}`).value = 'TOTAL GAJ';
+    worksheet.getCell(`D${currentRow}`).value = totais[2];
+    worksheet.getCell(`E${currentRow}`).value = 'TOTAL GAJ';
+    worksheet.getCell(`F${currentRow}`).value = totais[4];
+    currentRow++;
+    
+    return currentRow;
+  }
+
+  private createChaoVazioSectionSync(worksheet: ExcelJS.Worksheet, formattedData: any[], startRow: number): number {
+    let currentRow = startRow;
+    
+    worksheet.getCell(`A${currentRow}`).value = 'CHÃO VAZIO';
+    this.applySectionHeaderStyle(worksheet.getCell(`A${currentRow}`));
+    currentRow++;
+    
+    worksheet.getCell(`A${currentRow}`).value = '300ML';
+    worksheet.getCell(`C${currentRow}`).value = '600ML';
+    worksheet.getCell(`E${currentRow}`).value = '1000ML';
+    worksheet.getCell(`H${currentRow}`).value = 'GARRAFAS:';
+    currentRow++;
+    
+    worksheet.getCell(`A${currentRow}`).value = 'PBR';
+    worksheet.getCell(`B${currentRow}`).value = 'CX';
+    worksheet.getCell(`C${currentRow}`).value = 'GAJ';
+    worksheet.getCell(`D${currentRow}`).value = 'CX';
+    worksheet.getCell(`E${currentRow}`).value = 'GAJ';
+    worksheet.getCell(`F${currentRow}`).value = 'CX';
+    currentRow++;
+    
+    formattedData.forEach(row => {
+      if (row[8] > 0 || row[9] > 0 || row[10] > 0 || row[11] > 0 || row[12] > 0 || row[13] > 0) {
+        worksheet.getCell(`A${currentRow}`).value = row[8];
+        worksheet.getCell(`B${currentRow}`).value = row[9];
+        worksheet.getCell(`C${currentRow}`).value = row[10];
+        worksheet.getCell(`D${currentRow}`).value = row[11];
+        worksheet.getCell(`E${currentRow}`).value = row[12];
+        worksheet.getCell(`F${currentRow}`).value = row[13];
+        currentRow++;
+      }
+    });
+    
+    const totais = this.calculateSectionTotals(formattedData, [8, 9, 10, 11, 12, 13]);
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL (CX)';
+    worksheet.getCell(`B${currentRow}`).value = totais[1];
+    currentRow += 3; // Pula linhas de totais para brevidade
+    
+    return currentRow;
+  }
+
+  private createGarrafeiraVaziaSectionSync(worksheet: ExcelJS.Worksheet, formattedData: any[], startRow: number): number {
+    let currentRow = startRow;
+    
+    worksheet.getCell(`A${currentRow}`).value = 'GARRAFEIRA VAZIA';
+    this.applySectionHeaderStyle(worksheet.getCell(`A${currentRow}`));
+    currentRow++;
+    
+    worksheet.getCell(`A${currentRow}`).value = '300ML';
+    worksheet.getCell(`C${currentRow}`).value = '600ML';
+    worksheet.getCell(`E${currentRow}`).value = '1000ML';
+    worksheet.getCell(`H${currentRow}`).value = 'EQUIPAMENTOS:';
+    currentRow++;
+    
+    worksheet.getCell(`A${currentRow}`).value = 'PBR';
+    worksheet.getCell(`B${currentRow}`).value = 'CX';
+    worksheet.getCell(`C${currentRow}`).value = 'GAJ';
+    worksheet.getCell(`D${currentRow}`).value = 'CX';
+    worksheet.getCell(`E${currentRow}`).value = 'GAJ';
+    worksheet.getCell(`F${currentRow}`).value = 'CX';
+    currentRow++;
+    
+    formattedData.forEach(row => {
+      if (row[14] > 0 || row[15] > 0 || row[16] > 0 || row[17] > 0 || row[18] > 0 || row[19] > 0) {
+        worksheet.getCell(`A${currentRow}`).value = row[14];
+        worksheet.getCell(`B${currentRow}`).value = row[15];
+        worksheet.getCell(`C${currentRow}`).value = row[16];
+        worksheet.getCell(`D${currentRow}`).value = row[17];
+        worksheet.getCell(`E${currentRow}`).value = row[18];
+        worksheet.getCell(`F${currentRow}`).value = row[19];
+        currentRow++;
+      }
+    });
+    
+    const totais = this.calculateSectionTotals(formattedData, [14, 15, 16, 17, 18, 19]);
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL (CX)';
+    worksheet.getCell(`B${currentRow}`).value = totais[1];
+    currentRow += 3; // Pula linhas de totais para brevidade
+    
+    return currentRow;
+  }
+
+  private createCodigosSectionSync(worksheet: ExcelJS.Worksheet, startRow: number): void {
+    const codigosPredefinidos = [
+      ['1023392', 'GARRAFA 1L'],
+      ['1023384', 'GARRAFA 300ML'],
+      ['1023393', 'GARRAFA 600ML'],
+      ['1155350', 'GARRAFA VERDE 600ML'],
+      ['1022893', 'GARRAFEIRA 1L'],
+      ['1022894', 'GARRAFEIRA 300ML'],
+      ['1022895', 'GARRAFEIRA 600ML']
+    ];
+    
+    worksheet.getCell(`A${startRow}`).value = 'CÓDIGOS';
+    startRow += 2;
+    
+    codigosPredefinidos.forEach(([codigo, descricao]) => {
+      worksheet.getCell(`A${startRow}`).value = codigo;
+      worksheet.getCell(`B${startRow}`).value = descricao;
+      startRow++;
+    });
   }
 
   /**
