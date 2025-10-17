@@ -50,17 +50,32 @@ export function useProductSearch({ query, estoqueId }: ProductSearchOptions) {
       
       // Se houver um estoqueId, busca apenas os produtos desse estoque
       if (estoqueId) {
-        const { data: produtosEstoque, error: peError } = await supabase
+        // EXCEÇÃO ESPECIAL: Sempre incluir "garrafa verde" mesmo com filtro de garrafeiras
+        const isGarrafaVerdeSearch = searchTerm.includes('garrafa verde') || searchTerm.includes('verde');
+        
+        let query = supabase
           .from('produto_estoque')
           .select(`
             *,
             produto:produtos(${fullProductSelect})
           `)
-          .eq('estoque_id', estoqueId)
-          .or(
+          .eq('estoque_id', estoqueId);
+        
+        // Se for busca por "garrafa verde", inclui especificamente esse produto
+        if (isGarrafaVerdeSearch) {
+          query = query.or(
+            `produto.nome.ilike.%${searchTerm}%,` +
+            `produto.codigo.ilike.%${searchTerm}%,` +
+            `produto.nome.ilike.%garrafa verde%`
+          );
+        } else {
+          query = query.or(
             `produto.nome.ilike.%${searchTerm}%,` +
             `produto.codigo.ilike.%${searchTerm}%`
           );
+        }
+        
+        const { data: produtosEstoque, error: peError } = await query;
           
         if (peError) throw peError;
         

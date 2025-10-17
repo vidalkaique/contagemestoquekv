@@ -100,6 +100,26 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
     }));
   };
 
+  // FUNCIONALIDADE ESPECIAL: Converte automaticamente para unidades se for "garrafa verde"
+  const isGarrafaVerde = selectedProduct?.nome.toLowerCase().includes('garrafa verde');
+  
+  // Calcula total em unidades para garrafa verde
+  const calculateTotalUnidadesGarrafaVerde = () => {
+    if (!isGarrafaVerde || !selectedProduct) return formData.unidades;
+    
+    const unidadesPorPacote = useCustomParams ? customParams.unidadesPorPacote : selectedProduct.unidadesPorPacote || 1;
+    const pacotesPorLastro = useCustomParams ? customParams.pacotesPorLastro : selectedProduct.pacotesPorLastro || 1;
+    const lastrosPorPallet = useCustomParams ? customParams.lastrosPorPallet : selectedProduct.lastrosPorPallet || 1;
+    
+    // Converte tudo para unidades
+    const unidadesDePallets = formData.pallets * lastrosPorPallet * pacotesPorLastro * unidadesPorPacote;
+    const unidadesDeLastros = formData.lastros * pacotesPorLastro * unidadesPorPacote;
+    const unidadesDePacotes = formData.pacotes * unidadesPorPacote;
+    const unidadesDiretas = formData.unidades;
+    
+    return unidadesDePallets + unidadesDeLastros + unidadesDePacotes + unidadesDiretas;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -127,19 +147,45 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
         });
     }
 
-    onAddProduct({
-      id: selectedProduct.id,
-      codigo: selectedProduct.codigo,
-      nome: selectedProduct.nome,
-      pallets: formData.pallets,
-      lastros: formData.lastros,
-      pacotes: formData.pacotes,
-      unidades: formData.unidades,
-      // Usa parâmetros customizados se ativados, senão usa valores padrão do produto
-      unidadesPorPacote: useCustomParams ? customParams.unidadesPorPacote : selectedProduct.unidadesPorPacote,
-      pacotesPorLastro: useCustomParams ? customParams.pacotesPorLastro : selectedProduct.pacotesPorLastro,
-      lastrosPorPallet: useCustomParams ? customParams.lastrosPorPallet : selectedProduct.lastrosPorPallet,
-    });
+    // CONVERSÃO ESPECIAL: Se for "garrafa verde", converte tudo para unidades
+    if (isGarrafaVerde) {
+      const totalUnidades = calculateTotalUnidadesGarrafaVerde();
+      
+      onAddProduct({
+        id: selectedProduct.id,
+        codigo: selectedProduct.codigo,
+        nome: selectedProduct.nome,
+        pallets: 0, // Zera pallets pois foi convertido para unidades
+        lastros: 0, // Zera lastros pois foi convertido para unidades
+        pacotes: 0, // Zera pacotes pois foi convertido para unidades
+        unidades: totalUnidades, // Total convertido em unidades
+        // Usa parâmetros customizados se ativados, senão usa valores padrão do produto
+        unidadesPorPacote: useCustomParams ? customParams.unidadesPorPacote : selectedProduct.unidadesPorPacote,
+        pacotesPorLastro: useCustomParams ? customParams.pacotesPorLastro : selectedProduct.pacotesPorLastro,
+        lastrosPorPallet: useCustomParams ? customParams.lastrosPorPallet : selectedProduct.lastrosPorPallet,
+      });
+      
+      // Mostra toast informativo sobre a conversão
+      toast({
+        title: "Garrafa Verde - Conversão Automática",
+        description: `${formData.pallets} pallets + ${formData.lastros} lastros + ${formData.pacotes} pacotes + ${formData.unidades} unidades = ${totalUnidades} UN`,
+      });
+    } else {
+      // Comportamento normal para outros produtos
+      onAddProduct({
+        id: selectedProduct.id,
+        codigo: selectedProduct.codigo,
+        nome: selectedProduct.nome,
+        pallets: formData.pallets,
+        lastros: formData.lastros,
+        pacotes: formData.pacotes,
+        unidades: formData.unidades,
+        // Usa parâmetros customizados se ativados, senão usa valores padrão do produto
+        unidadesPorPacote: useCustomParams ? customParams.unidadesPorPacote : selectedProduct.unidadesPorPacote,
+        pacotesPorLastro: useCustomParams ? customParams.pacotesPorLastro : selectedProduct.pacotesPorLastro,
+        lastrosPorPallet: useCustomParams ? customParams.lastrosPorPallet : selectedProduct.lastrosPorPallet,
+      });
+    }
     
     // Fecha o modal e limpa o formulário
     onClose();
@@ -296,6 +342,26 @@ export default function ProductModal({ isOpen, onClose, estoqueId, onAddProduct 
               <div>
                 <h4 className="font-medium">{selectedProduct.nome}</h4>
                 <p className="text-sm text-gray-500">Código: {selectedProduct.codigo}</p>
+                
+                {/* INDICADOR ESPECIAL: Garrafa Verde - Conversão Automática */}
+                {isGarrafaVerde && (
+                  <div className="mt-3 bg-green-50 border border-green-200 p-3 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-sm font-medium text-green-800">
+                        🍾 GARRAFA VERDE - Conversão Automática Ativa
+                      </span>
+                    </div>
+                    <p className="text-xs text-green-700 mt-1">
+                      Pallets, lastros e pacotes serão automaticamente convertidos para unidades (UN)
+                    </p>
+                    {formData.pallets > 0 || formData.lastros > 0 || formData.pacotes > 0 || formData.unidades > 0 ? (
+                      <p className="text-xs text-green-700 mt-1 font-medium">
+                        Total: {calculateTotalUnidadesGarrafaVerde()} UN
+                      </p>
+                    ) : null}
+                  </div>
+                )}
               </div>
               
               {/* Seção de Parâmetros do Produto com Override para CD */}
