@@ -651,26 +651,22 @@ export class Estoque10Template implements ExcelTemplate {
     sheetData.push(['OUTROS PRODUTOS - ESTOQUE 10']);
     sheetData.push([]);
     
-    // Filtra produtos que NÃO são garrafeiras
-    const outrosProdutos = data.products.filter((product: ProductItem) => {
-      const nomeMinusculo = product.nome.toLowerCase();
-      return !nomeMinusculo.includes('garrafeira') && 
-             !nomeMinusculo.includes('garrafa');
-    });
-    
-    if (outrosProdutos.length === 0) {
-      sheetData.push(['Nenhum outro produto encontrado nesta contagem.']);
-      return sheetData;
-    }
-    
-    // Cabeçalho
-    sheetData.push(['PRODUTO', 'CÓDIGO', 'QUANTIDADE', 'UNIDADE', 'OBSERVAÇÕES']);
+    // DEBUG: Mostra informações dos produtos para debug
+    sheetData.push([`TOTAL DE PRODUTOS RECEBIDOS: ${data.products.length}`]);
     sheetData.push([]);
     
-    // Dados dos outros produtos
-    outrosProdutos.forEach((product: ProductItem) => {
+    // Cabeçalho
+    sheetData.push(['PRODUTO', 'CÓDIGO', 'TIPO', 'CHÃO CHEIO', 'CHÃO VAZIO', 'OBSERVAÇÕES']);
+    sheetData.push([]);
+    
+    let produtosComDados = 0;
+    let outrosProdutos = 0;
+    
+    // Mostra TODOS os produtos com dados (para debug)
+    data.products.forEach((product: ProductItem) => {
       const nomeSimples = product.nome.replace(/\s*\([^)]*\)\s*$/, '');
       const codigo = product.codigo || 'N/A';
+      const nomeMinusculo = product.nome.toLowerCase();
       
       // Verifica se tem algum dado preenchido
       const temDados = (
@@ -678,30 +674,47 @@ export class Estoque10Template implements ExcelTemplate {
         (product.chaoVazio || 0) > 0 ||
         (product.garrafeirasVazias_pallets || 0) > 0 ||
         (product.garrafeirasVazias_lastros || 0) > 0 ||
-        (product.garrafeirasVazias_caixas || 0) > 0
+        (product.garrafeirasVazias_caixas || 0) > 0 ||
+        (product.chaoCheio_gajPbr || 0) > 0 ||
+        (product.chaoVazio_gajPbr || 0) > 0
       );
       
       if (temDados) {
-        let quantidade = 0;
-        let unidade = 'UN';
+        produtosComDados++;
+        
+        // Determina o tipo do produto
+        let tipo = 'OUTRO';
+        if (nomeMinusculo.includes('garrafeira')) {
+          tipo = 'GARRAFEIRA';
+        } else if (nomeMinusculo.includes('garrafa')) {
+          tipo = 'GARRAFA';
+        } else {
+          tipo = 'OUTRO PRODUTO';
+          outrosProdutos++;
+        }
+        
         let observacoes = '';
+        if (product.chaoCheio) observacoes += `Chão Cheio: ${product.chaoCheio}; `;
+        if (product.chaoVazio) observacoes += `Chão Vazio: ${product.chaoVazio}; `;
+        if (product.garrafeirasVazias_pallets) observacoes += `Pallets: ${product.garrafeirasVazias_pallets}; `;
+        if (product.garrafeirasVazias_lastros) observacoes += `Lastros: ${product.garrafeirasVazias_lastros}; `;
+        if (product.garrafeirasVazias_caixas) observacoes += `Caixas: ${product.garrafeirasVazias_caixas}; `;
         
-        // Soma todas as quantidades
-        if (product.chaoCheio) {
-          quantidade += product.chaoCheio;
-          observacoes += `Chão Cheio: ${product.chaoCheio}; `;
-        }
-        if (product.chaoVazio) {
-          quantidade += product.chaoVazio;
-          observacoes += `Chão Vazio: ${product.chaoVazio}; `;
-        }
-        
-        sheetData.push([nomeSimples, codigo, quantidade, unidade, observacoes]);
+        sheetData.push([
+          nomeSimples, 
+          codigo, 
+          tipo,
+          product.chaoCheio || 0,
+          product.chaoVazio || 0,
+          observacoes
+        ]);
       }
     });
     
     sheetData.push([]);
-    sheetData.push(['TOTAL DE OUTROS PRODUTOS:', '', outrosProdutos.length, 'ITENS', '']);
+    sheetData.push(['RESUMO:']);
+    sheetData.push([`Total de produtos com dados: ${produtosComDados}`]);
+    sheetData.push([`Outros produtos (não garrafeiras): ${outrosProdutos}`]);
     
     return sheetData;
   }
