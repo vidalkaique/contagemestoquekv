@@ -77,14 +77,41 @@ export class ExcelTemplateFactory {
 
 /**
  * Função principal para exportar Excel com template específico
+ * CORREÇÃO CRÍTICA: Detecta se é ExcelJS ou XLSX e usa método correto
  */
-export function exportToExcelWithTemplate(
+export async function exportToExcelWithTemplate(
   tipoEstoque: string,
   data: ExcelExportData
-): void {
+): Promise<void> {
   const template = ExcelTemplateFactory.create(tipoEstoque);
   const workbook = template.createWorkbook(data);
   
   const fileName = `contagem_estoque_${tipoEstoque}_${new Date().toISOString().split('T')[0]}.xlsx`;
-  XLSX.writeFile(workbook, fileName);
+  
+  // CORREÇÃO: Detecta tipo de workbook e usa método apropriado
+  if (tipoEstoque === '10') {
+    // ExcelJS workbook - usa writeBuffer + download manual
+    const ExcelJS = await import('exceljs');
+    if (workbook instanceof ExcelJS.Workbook) {
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      
+      // Download manual do arquivo
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } else {
+      throw new Error('Workbook ExcelJS inválido');
+    }
+  } else {
+    // XLSX workbook - usa método tradicional
+    XLSX.writeFile(workbook, fileName);
+  }
 }

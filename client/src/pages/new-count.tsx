@@ -2187,8 +2187,9 @@ export default function NewCount() {
    * Exporta os produtos para Excel com template específico por estoque
    * Regra #1: DRY - Código reutilizável e modular
    * Regra #7: Separação de lógica e apresentação
+   * CORREÇÃO: Agora assíncrona para suportar ExcelJS
    */
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     try {
       // Regra #8: Tratamento correto de dados
       const exportData: ExcelExportData = {
@@ -2199,8 +2200,8 @@ export default function NewCount() {
         totalProducts: products.length
       };
 
-      // Regra #3: TypeScript consistente - usa factory pattern
-      exportToExcelWithTemplate(tipoEstoque, exportData);
+      // Regra #3: TypeScript consistente - usa factory pattern (agora assíncrono)
+      await exportToExcelWithTemplate(tipoEstoque, exportData);
       
       toast({
         title: "Exportação concluída",
