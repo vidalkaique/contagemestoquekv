@@ -668,15 +668,41 @@ export class Estoque10Template implements ExcelTemplate {
       const codigo = product.codigo || 'N/A';
       const nomeMinusculo = product.nome.toLowerCase();
       
-      // Verifica se tem algum dado preenchido
+      // Verifica se tem algum dado preenchido (TODOS os campos possíveis)
       const temDados = (
+        // Campos básicos
+        (product.pallets || 0) > 0 ||
+        (product.lastros || 0) > 0 ||
+        (product.pacotes || 0) > 0 ||
+        (product.unidades || 0) > 0 ||
+        
+        // Estoque 10 - Garrafas
         (product.chaoCheio || 0) > 0 ||
+        (product.chaoCheio_pallets || 0) > 0 ||
+        (product.chaoCheio_lastros || 0) > 0 ||
+        (product.chaoCheio_caixas || 0) > 0 ||
+        (product.chaoCheio_gajPbr || 0) > 0 ||
+        
         (product.chaoVazio || 0) > 0 ||
+        (product.chaoVazio_pallets || 0) > 0 ||
+        (product.chaoVazio_lastros || 0) > 0 ||
+        (product.chaoVazio_caixas || 0) > 0 ||
+        (product.chaoVazio_gajPbr || 0) > 0 ||
+        
+        (product.refugo || 0) > 0 ||
+        (product.avaria || 0) > 0 ||
+        (product.gajPbrRefugo || 0) > 0 ||
+        (product.gajPbr || 0) > 0 ||
+        
+        // Garrafeiras Vazias
         (product.garrafeirasVazias_pallets || 0) > 0 ||
         (product.garrafeirasVazias_lastros || 0) > 0 ||
         (product.garrafeirasVazias_caixas || 0) > 0 ||
-        (product.chaoCheio_gajPbr || 0) > 0 ||
-        (product.chaoVazio_gajPbr || 0) > 0
+        
+        // Estoque 10 - Garrafeiras
+        (product.garrafeiras_chaoCheio || 0) > 0 ||
+        (product.garrafeiras_chaoVazio || 0) > 0 ||
+        (product.garrafeiras_avaria || 0) > 0
       );
       
       if (temDados) {
@@ -694,11 +720,28 @@ export class Estoque10Template implements ExcelTemplate {
         }
         
         let observacoes = '';
+        
+        // Campos básicos
+        if (product.pallets) observacoes += `Pallets: ${product.pallets}; `;
+        if (product.lastros) observacoes += `Lastros: ${product.lastros}; `;
+        if (product.pacotes) observacoes += `Pacotes: ${product.pacotes}; `;
+        if (product.unidades) observacoes += `Unidades: ${product.unidades}; `;
+        
+        // Estoque 10 - Garrafas
         if (product.chaoCheio) observacoes += `Chão Cheio: ${product.chaoCheio}; `;
         if (product.chaoVazio) observacoes += `Chão Vazio: ${product.chaoVazio}; `;
-        if (product.garrafeirasVazias_pallets) observacoes += `Pallets: ${product.garrafeirasVazias_pallets}; `;
-        if (product.garrafeirasVazias_lastros) observacoes += `Lastros: ${product.garrafeirasVazias_lastros}; `;
-        if (product.garrafeirasVazias_caixas) observacoes += `Caixas: ${product.garrafeirasVazias_caixas}; `;
+        if (product.refugo) observacoes += `Refugo: ${product.refugo}; `;
+        if (product.avaria) observacoes += `Avaria: ${product.avaria}; `;
+        
+        // Garrafeiras Vazias
+        if (product.garrafeirasVazias_pallets) observacoes += `GV Pallets: ${product.garrafeirasVazias_pallets}; `;
+        if (product.garrafeirasVazias_lastros) observacoes += `GV Lastros: ${product.garrafeirasVazias_lastros}; `;
+        if (product.garrafeirasVazias_caixas) observacoes += `GV Caixas: ${product.garrafeirasVazias_caixas}; `;
+        
+        // GAJ/PBR
+        if (product.gajPbr) observacoes += `GAJ/PBR: ${product.gajPbr}; `;
+        if (product.chaoCheio_gajPbr) observacoes += `CH GAJ/PBR: ${product.chaoCheio_gajPbr}; `;
+        if (product.chaoVazio_gajPbr) observacoes += `CV GAJ/PBR: ${product.chaoVazio_gajPbr}; `;
         
         sheetData.push([
           nomeSimples, 
