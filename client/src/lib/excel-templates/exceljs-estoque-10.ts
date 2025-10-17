@@ -1000,6 +1000,7 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
   /**
    * Aplica bordas profissionais (FINALMENTE BORDAS QUE FUNCIONAM!)
    * Regra #3: TypeScript rigoroso com tipos corretos
+   * ATUALIZADO: Bordas específicas nos intervalos solicitados pelo usuário
    */
   private applyProfessionalBorders(worksheet: ExcelJS.Worksheet): void {
     const borderStyle: Partial<ExcelJS.Border> = { 
@@ -1011,7 +1012,7 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
       color: { argb: 'FF000000' } 
     };
     
-    // Aplica bordas em todas as células com conteúdo
+    // Aplica bordas em todas as células com conteúdo (comportamento original)
     worksheet.eachRow((row, rowNumber) => {
       row.eachCell((cell, colNumber) => {
         if (cell.value) {
@@ -1024,6 +1025,54 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
         }
       });
     });
+    
+    // BORDAS ESPECÍFICAS SOLICITADAS PELO USUÁRIO:
+    // Aplica bordas nos intervalos específicos da aba Garrafeiras
+    this.applyBordersToSpecificRanges(worksheet, borderStyle);
+  }
+
+  /**
+   * Aplica bordas em intervalos específicos da aba Garrafeiras
+   * Intervalos: A5:F13, A15:F20, A25:F30
+   * Regra #4: Componente bem estruturado - bordas por seção
+   */
+  private applyBordersToSpecificRanges(worksheet: ExcelJS.Worksheet, borderStyle: Partial<ExcelJS.Border>): void {
+    const borderConfig = {
+      top: borderStyle,
+      left: borderStyle,
+      bottom: borderStyle,
+      right: borderStyle
+    };
+
+    // Intervalo 1: A5:F13 (Seção Chão Cheio)
+    this.applyBordersToRange(worksheet, 5, 13, 1, 6, borderConfig);
+    
+    // Intervalo 2: A15:F20 (Seção Chão Vazio)
+    this.applyBordersToRange(worksheet, 15, 20, 1, 6, borderConfig);
+    
+    // Intervalo 3: A25:F30 (Seção Garrafeira Vazia)
+    this.applyBordersToRange(worksheet, 25, 30, 1, 6, borderConfig);
+  }
+
+  /**
+   * Aplica bordas em um intervalo específico de células
+   * Regra #1: DRY - Método reutilizável para bordas
+   */
+  private applyBordersToRange(
+    worksheet: ExcelJS.Worksheet, 
+    startRow: number, 
+    endRow: number, 
+    startCol: number, 
+    endCol: number,
+    borderConfig: any
+  ): void {
+    // Aplica bordas em todas as células do intervalo (mesmo vazias)
+    for (let row = startRow; row <= endRow; row++) {
+      for (let col = startCol; col <= endCol; col++) {
+        const cell = worksheet.getCell(row, col);
+        cell.border = borderConfig;
+      }
+    }
   }
 
   /**
