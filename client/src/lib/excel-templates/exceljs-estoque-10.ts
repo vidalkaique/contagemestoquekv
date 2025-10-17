@@ -692,22 +692,43 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     worksheet.getCell(`F${currentRow}`).value = 'CX';
     currentRow++;
     
-    formattedData.forEach(row => {
-      if (row[8] > 0 || row[9] > 0 || row[10] > 0 || row[11] > 0 || row[12] > 0 || row[13] > 0) {
-        worksheet.getCell(`A${currentRow}`).value = row[8];
-        worksheet.getCell(`B${currentRow}`).value = row[9];
-        worksheet.getCell(`C${currentRow}`).value = row[10];
-        worksheet.getCell(`D${currentRow}`).value = row[11];
-        worksheet.getCell(`E${currentRow}`).value = row[12];
-        worksheet.getCell(`F${currentRow}`).value = row[13];
-        currentRow++;
-      }
+    // CORREÇÃO: Agrupa dados por linha para evitar zeros desnecessários
+    const dadosAgrupados = this.agruparDadosPorLinha(formattedData, [8, 9, 10, 11, 12, 13]);
+    dadosAgrupados.forEach(linha => {
+      worksheet.getCell(`A${currentRow}`).value = linha[0]; // 300ML_PBR
+      worksheet.getCell(`B${currentRow}`).value = linha[1]; // 300ML_CX
+      worksheet.getCell(`C${currentRow}`).value = linha[2]; // 600ML_GAJ
+      worksheet.getCell(`D${currentRow}`).value = linha[3]; // 600ML_CX
+      worksheet.getCell(`E${currentRow}`).value = linha[4]; // 1000ML_GAJ
+      worksheet.getCell(`F${currentRow}`).value = linha[5]; // 1000ML_CX
+      currentRow++;
     });
     
+    // TOTAIS COMPLETOS (igual ao Chão Cheio)
     const totais = this.calculateSectionTotals(formattedData, [8, 9, 10, 11, 12, 13]);
     worksheet.getCell(`A${currentRow}`).value = 'TOTAL (CX)';
     worksheet.getCell(`B${currentRow}`).value = totais[1];
-    currentRow += 3; // Pula linhas de totais para brevidade
+    worksheet.getCell(`C${currentRow}`).value = 'TOTAL (CX)';
+    worksheet.getCell(`D${currentRow}`).value = totais[3];
+    worksheet.getCell(`E${currentRow}`).value = 'TOTAL (CX)';
+    worksheet.getCell(`F${currentRow}`).value = totais[5];
+    currentRow++;
+    
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL (GRF)';
+    worksheet.getCell(`B${currentRow}`).value = totais[1] * 24;
+    worksheet.getCell(`C${currentRow}`).value = 'TOTAL (GRF)';
+    worksheet.getCell(`D${currentRow}`).value = totais[3] * 24;
+    worksheet.getCell(`E${currentRow}`).value = 'TOTAL (GRF)';
+    worksheet.getCell(`F${currentRow}`).value = totais[5] * 12;
+    currentRow++;
+    
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL PBR';
+    worksheet.getCell(`B${currentRow}`).value = totais[0];
+    worksheet.getCell(`C${currentRow}`).value = 'TOTAL GAJ';
+    worksheet.getCell(`D${currentRow}`).value = totais[2];
+    worksheet.getCell(`E${currentRow}`).value = 'TOTAL GAJ';
+    worksheet.getCell(`F${currentRow}`).value = totais[4];
+    currentRow++;
     
     return currentRow;
   }
@@ -733,22 +754,43 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     worksheet.getCell(`F${currentRow}`).value = 'CX';
     currentRow++;
     
-    formattedData.forEach(row => {
-      if (row[14] > 0 || row[15] > 0 || row[16] > 0 || row[17] > 0 || row[18] > 0 || row[19] > 0) {
-        worksheet.getCell(`A${currentRow}`).value = row[14];
-        worksheet.getCell(`B${currentRow}`).value = row[15];
-        worksheet.getCell(`C${currentRow}`).value = row[16];
-        worksheet.getCell(`D${currentRow}`).value = row[17];
-        worksheet.getCell(`E${currentRow}`).value = row[18];
-        worksheet.getCell(`F${currentRow}`).value = row[19];
-        currentRow++;
-      }
+    // CORREÇÃO: Agrupa dados por linha para evitar zeros desnecessários
+    const dadosAgrupados = this.agruparDadosPorLinha(formattedData, [14, 15, 16, 17, 18, 19]);
+    dadosAgrupados.forEach(linha => {
+      worksheet.getCell(`A${currentRow}`).value = linha[0]; // 300ML_PBR
+      worksheet.getCell(`B${currentRow}`).value = linha[1]; // 300ML_CX
+      worksheet.getCell(`C${currentRow}`).value = linha[2]; // 600ML_GAJ
+      worksheet.getCell(`D${currentRow}`).value = linha[3]; // 600ML_CX
+      worksheet.getCell(`E${currentRow}`).value = linha[4]; // 1000ML_GAJ
+      worksheet.getCell(`F${currentRow}`).value = linha[5]; // 1000ML_CX
+      currentRow++;
     });
     
+    // TOTAIS COMPLETOS (incluindo PBR e GAJ que estavam faltando)
     const totais = this.calculateSectionTotals(formattedData, [14, 15, 16, 17, 18, 19]);
     worksheet.getCell(`A${currentRow}`).value = 'TOTAL (CX)';
     worksheet.getCell(`B${currentRow}`).value = totais[1];
-    currentRow += 3; // Pula linhas de totais para brevidade
+    worksheet.getCell(`C${currentRow}`).value = 'TOTAL (CX)';
+    worksheet.getCell(`D${currentRow}`).value = totais[3];
+    worksheet.getCell(`E${currentRow}`).value = 'TOTAL (CX)';
+    worksheet.getCell(`F${currentRow}`).value = totais[5];
+    currentRow++;
+    
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL (GRF)';
+    worksheet.getCell(`B${currentRow}`).value = totais[1] * 24;
+    worksheet.getCell(`C${currentRow}`).value = 'TOTAL (GRF)';
+    worksheet.getCell(`D${currentRow}`).value = totais[3] * 24;
+    worksheet.getCell(`E${currentRow}`).value = 'TOTAL (GRF)';
+    worksheet.getCell(`F${currentRow}`).value = totais[5] * 12;
+    currentRow++;
+    
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL PBR';
+    worksheet.getCell(`B${currentRow}`).value = totais[0];
+    worksheet.getCell(`C${currentRow}`).value = 'TOTAL GAJ';
+    worksheet.getCell(`D${currentRow}`).value = totais[2];
+    worksheet.getCell(`E${currentRow}`).value = 'TOTAL GAJ';
+    worksheet.getCell(`F${currentRow}`).value = totais[4];
+    currentRow++;
     
     return currentRow;
   }
@@ -785,14 +827,14 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
   private createResumoGeralSection(worksheet: ExcelJS.Worksheet, formattedData: any[], startRow: number): void {
     let currentRow = startRow;
     
-    // Título da seção (coluna H)
-    worksheet.getCell(`H${currentRow}`).value = 'RESUMO GERAL';
-    this.applySectionHeaderStyle(worksheet.getCell(`H${currentRow}`));
+    // Título da seção (VOLTANDO PARA COLUNA A)
+    worksheet.getCell(`A${currentRow}`).value = 'RESUMO GERAL';
+    this.applySectionHeaderStyle(worksheet.getCell(`A${currentRow}`));
     currentRow++;
     
     // ========== CAIXAS ==========
-    worksheet.getCell(`H${currentRow}`).value = 'CAIXAS:';
-    this.applySubheaderStyle(worksheet.getCell(`H${currentRow}`));
+    worksheet.getCell(`A${currentRow}`).value = 'CAIXAS:';
+    this.applySubheaderStyle(worksheet.getCell(`A${currentRow}`));
     currentRow++;
     
     // Calcula totais de caixas (Chão Cheio + Chão Vazio + Garrafeira Vazia)
@@ -800,21 +842,21 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     const totalCaixas300ml = this.calculateTotalCaixas(formattedData, [3, 9, 15]);  // CX 300ML
     const totalCaixas1L = this.calculateTotalCaixas(formattedData, [7, 13, 19]);    // CX 1L
     
-    worksheet.getCell(`H${currentRow}`).value = 'TOTAL CX 600ML:';
-    worksheet.getCell(`J${currentRow}`).value = totalCaixas600ml;
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL CX 600ML:';
+    worksheet.getCell(`C${currentRow}`).value = totalCaixas600ml;
     currentRow++;
     
-    worksheet.getCell(`H${currentRow}`).value = 'TOTAL CX 300ML:';
-    worksheet.getCell(`J${currentRow}`).value = totalCaixas300ml;
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL CX 300ML:';
+    worksheet.getCell(`C${currentRow}`).value = totalCaixas300ml;
     currentRow++;
     
-    worksheet.getCell(`H${currentRow}`).value = 'TOTAL CX 1L:';
-    worksheet.getCell(`J${currentRow}`).value = totalCaixas1L;
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL CX 1L:';
+    worksheet.getCell(`C${currentRow}`).value = totalCaixas1L;
     currentRow += 2;
     
     // ========== GARRAFAS ==========
-    worksheet.getCell(`H${currentRow}`).value = 'GARRAFAS:';
-    this.applySubheaderStyle(worksheet.getCell(`H${currentRow}`));
+    worksheet.getCell(`A${currentRow}`).value = 'GARRAFAS:';
+    this.applySubheaderStyle(worksheet.getCell(`A${currentRow}`));
     currentRow++;
     
     // Calcula totais de garrafas (apenas Chão Cheio + Chão Vazio, SEM Garrafeira Vazia)
@@ -826,33 +868,33 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     const totalGarrafas300ml = caixasChaoCheioeVazio300ml * 24; // 300ML = 24 garrafas/caixa
     const totalGarrafas1L = caixasChaoCheioeVazio1L * 12;       // 1L = 12 garrafas/caixa
     
-    worksheet.getCell(`H${currentRow}`).value = 'TOTAL GRF 600ML:';
-    worksheet.getCell(`J${currentRow}`).value = totalGarrafas600ml;
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL GRF 600ML:';
+    worksheet.getCell(`C${currentRow}`).value = totalGarrafas600ml;
     currentRow++;
     
-    worksheet.getCell(`H${currentRow}`).value = 'TOTAL GRF 300ML:';
-    worksheet.getCell(`J${currentRow}`).value = totalGarrafas300ml;
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL GRF 300ML:';
+    worksheet.getCell(`C${currentRow}`).value = totalGarrafas300ml;
     currentRow++;
     
-    worksheet.getCell(`H${currentRow}`).value = 'TOTAL GRF 1L:';
-    worksheet.getCell(`J${currentRow}`).value = totalGarrafas1L;
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL GRF 1L:';
+    worksheet.getCell(`C${currentRow}`).value = totalGarrafas1L;
     currentRow += 2;
     
     // ========== GAJ/PBR ==========
-    worksheet.getCell(`H${currentRow}`).value = 'GAJ/PBR:';
-    this.applySubheaderStyle(worksheet.getCell(`H${currentRow}`));
+    worksheet.getCell(`A${currentRow}`).value = 'GAJ/PBR:';
+    this.applySubheaderStyle(worksheet.getCell(`A${currentRow}`));
     currentRow++;
     
     // Calcula totais GAJ/PBR (Chão Cheio + Chão Vazio + Garrafeira Vazia)
     const totalGAJ = this.calculateTotalCaixas(formattedData, [4, 6, 10, 12, 16, 18]); // GAJ 600ML + 1L de todas as seções
     const totalPBR = this.calculateTotalCaixas(formattedData, [2, 8, 14]);              // PBR 300ML de todas as seções
     
-    worksheet.getCell(`H${currentRow}`).value = 'TOTAL GAJ:';
-    worksheet.getCell(`J${currentRow}`).value = totalGAJ;
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL GAJ:';
+    worksheet.getCell(`C${currentRow}`).value = totalGAJ;
     currentRow++;
     
-    worksheet.getCell(`H${currentRow}`).value = 'TOTAL PBR:';
-    worksheet.getCell(`J${currentRow}`).value = totalPBR;
+    worksheet.getCell(`A${currentRow}`).value = 'TOTAL PBR:';
+    worksheet.getCell(`C${currentRow}`).value = totalPBR;
   }
 
   /**
@@ -863,6 +905,31 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     return formattedData.reduce((total, row) => {
       return total + columnIndexes.reduce((sum, index) => sum + (row[index] || 0), 0);
     }, 0);
+  }
+
+  /**
+   * Agrupa dados por linha para evitar zeros desnecessários
+   * CORREÇÃO: Resolve problema de visualização com dados espalhados
+   * Regra #4: Componente bem estruturado - organização clara dos dados
+   */
+  private agruparDadosPorLinha(formattedData: any[], columnIndexes: number[]): number[][] {
+    const linhasComDados: number[][] = [];
+    
+    // Coleta todas as linhas que têm pelo menos um valor > 0
+    formattedData.forEach(row => {
+      const temDados = columnIndexes.some(index => (row[index] || 0) > 0);
+      if (temDados) {
+        const linha = columnIndexes.map(index => row[index] || 0);
+        linhasComDados.push(linha);
+      }
+    });
+    
+    // Se não há dados, retorna uma linha com zeros para manter estrutura
+    if (linhasComDados.length === 0) {
+      linhasComDados.push(new Array(columnIndexes.length).fill(0));
+    }
+    
+    return linhasComDados;
   }
 
   /**
