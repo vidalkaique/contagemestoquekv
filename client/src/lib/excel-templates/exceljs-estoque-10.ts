@@ -50,13 +50,7 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
     ]);
   }
 
-  getTitle(): string {
-    return 'CONTAGEM ESTOQUE 10 - GARRAFEIRAS';
-  }
-
-  getSubtitle(): string {
-    return 'Separação por Tipo: 300ML, 600ML e 1000ML';
-  }
+  // Métodos getTitle() e getSubtitle() movidos para o final do arquivo
 
   getStyles(): ExcelStyles {
     // Mantém interface existente
@@ -605,10 +599,17 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
 
   /**
    * Aplica bordas profissionais (FINALMENTE BORDAS QUE FUNCIONAM!)
+   * Regra #3: TypeScript rigoroso com tipos corretos
    */
   private applyProfessionalBorders(worksheet: ExcelJS.Worksheet): void {
-    const borderStyle = { style: 'thin', color: { argb: 'FF000000' } };
-    const thickBorderStyle = { style: 'thick', color: { argb: 'FF000000' } };
+    const borderStyle: Partial<ExcelJS.Border> = { 
+      style: 'thin' as ExcelJS.BorderStyle, 
+      color: { argb: 'FF000000' } 
+    };
+    const thickBorderStyle: Partial<ExcelJS.Border> = { 
+      style: 'thick' as ExcelJS.BorderStyle, 
+      color: { argb: 'FF000000' } 
+    };
     
     // Aplica bordas em todas as células com conteúdo
     worksheet.eachRow((row, rowNumber) => {
@@ -667,16 +668,16 @@ export class ExcelJSEstoque10Template implements ExcelTemplate {
   }
 
   /**
-   * Obtém título (reutiliza lógica existente)
+   * Obtém título (implementação da interface)
    */
-  private getTitle(): string {
+  getTitle(): string {
     return 'CONTAGEM DE ESTOQUE - ESTOQUE 10';
   }
 
   /**
-   * Obtém subtítulo (reutiliza lógica existente)
+   * Obtém subtítulo (implementação da interface)
    */
-  private getSubtitle(): string {
+  getSubtitle(): string {
     return 'Relatório de Garrafeiras';
   }
 
